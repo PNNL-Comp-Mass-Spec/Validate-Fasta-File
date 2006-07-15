@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.0.2347; June 5, 2006
+	 - Added new warning that checks for protein descriptions over 900 characters long
+
 Version 2.0.2203; January 12, 2006
 	- No longer trimming spaces from the end of a line since we need to be able to check for residue lines ending in spaces
 	- Updated the logging (file or console) to include the value and context associated with a given message, warning, or error
