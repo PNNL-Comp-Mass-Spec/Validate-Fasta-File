@@ -1,0 +1,175 @@
+Date	SourceFile	MessageType	LineNumber	ColumnNumber	Description_or_Protein	Info	Context
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Status	0	Full path to file	D:\My Documents\Projects\DataMining\ValidateFastaFiles.NET\bin\Shewanella_2003-12-19.fasta
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Status	0	Protein count	4898
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Status	0	Residue count	1451180
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Error	0	Error count	3
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Error	30354	SO4494.1	Duplicate protein name found
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Error	30799	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 12:58:42 PM	Shewanella_2003-12-19.fasta	Error	30823	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:44 PM	PCQ_ETJ_2004-01-21.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\PCQ_ETJ_2004-01-21.fasta
+1/12/2006 1:54:44 PM	PCQ_ETJ_2004-01-21.fasta	Status	0	Protein count	65
+1/12/2006 1:54:44 PM	PCQ_ETJ_2004-01-21.fasta	Status	0	Residue count	11845
+1/12/2006 1:54:44 PM	PCQ_ETJ_2004-01-21.fasta	Warning	0	Warning count	1
+1/12/2006 1:54:44 PM	PCQ_ETJ_2004-01-21.fasta	Error	150	002|des-Pro3,Ala2,6-Bradykinin	Protein name contains undesirable characters (,)	s-Pro3,Ala2,6
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\shewanella_1999-12-08.fasta
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Status	0	Protein count	6008
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Status	0	Residue count	1544829
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Warning	0	Warning count	6008
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Error	1	ORFA00001	Line contains a protein name, but not a description	>ORFA00001
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Error	13	ORFA00002	Line contains a protein name, but not a description	>ORFA00002
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Error	19	ORFA00003	Line contains a protein name, but not a description	>ORFA00003
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Error	28	ORFA00004	Line contains a protein name, but not a description	>ORFA00004
+1/12/2006 1:54:45 PM	shewanella_1999-12-08.fasta	Error	34	ORFA00005	Line contains a protein name, but not a description	>ORFA00005
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\shewanella_2001-01-08.fasta
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Status	0	Protein count	4756
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Status	0	Residue count	1469878
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Warning	0	Warning count	4756
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Error	1	ORF00002	Line contains a protein name, but not a description	>ORF00002
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Error	6	ORF00003	Line contains a protein name, but not a description	>ORF00003
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Error	9	ORF00004	Line contains a protein name, but not a description	>ORF00004
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Error	14	ORF00005	Line contains a protein name, but not a description	>ORF00005
+1/12/2006 1:54:46 PM	shewanella_2001-01-08.fasta	Error	19	ORF00006	Line contains a protein name, but not a description	>ORF00006
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2001-03-27.fasta
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Status	0	Protein count	6117
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Status	0	Residue count	1572434
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Warning	0	Warning count	6117
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Error	1	ORF00002	Line contains a protein name, but not a description	>ORF00002  
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Error	5	ORF00003	Line contains a protein name, but not a description	>ORF00003  
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Error	8	ORF00004	Line contains a protein name, but not a description	>ORF00004  
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Error	12	ORF00005	Line contains a protein name, but not a description	>ORF00005  
+1/12/2006 1:54:47 PM	Shewanella_2001-03-27.fasta	Error	17	ORF00006	Line contains a protein name, but not a description	>ORF00006  
+1/12/2006 1:54:48 PM	Shewanella_2001-07-26.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2001-07-26.fasta
+1/12/2006 1:54:48 PM	Shewanella_2001-07-26.fasta	Status	0	Protein count	4904
+1/12/2006 1:54:48 PM	Shewanella_2001-07-26.fasta	Status	0	Residue count	1442723
+1/12/2006 1:54:48 PM	Shewanella_2001-08-10.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2001-08-10.fasta
+1/12/2006 1:54:48 PM	Shewanella_2001-08-10.fasta	Status	0	Protein count	4944
+1/12/2006 1:54:48 PM	Shewanella_2001-08-10.fasta	Status	0	Residue count	1457749
+1/12/2006 1:54:48 PM	Shewanella_2001-08-10.fasta	Error	0	Error count	1
+1/12/2006 1:54:48 PM	Shewanella_2001-08-10.fasta	Error	27628	ORFA00089	Duplicate protein name found
+1/12/2006 1:54:49 PM	Shewanella_2001-08-10_NTM.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2001-08-10_NTM.fasta
+1/12/2006 1:54:49 PM	Shewanella_2001-08-10_NTM.fasta	Status	0	Protein count	4944
+1/12/2006 1:54:49 PM	Shewanella_2001-08-10_NTM.fasta	Status	0	Residue count	1429796
+1/12/2006 1:54:49 PM	Shewanella_2001-08-10_NTM.fasta	Error	0	Error count	1
+1/12/2006 1:54:49 PM	Shewanella_2001-08-10_NTM.fasta	Error	27261	ORFA00089	Duplicate protein name found
+1/12/2006 1:54:50 PM	Shewanella_2002-08-07.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2002-08-07.fasta
+1/12/2006 1:54:50 PM	Shewanella_2002-08-07.fasta	Status	0	Protein count	4867
+1/12/2006 1:54:50 PM	Shewanella_2002-08-07.fasta	Status	0	Residue count	1435188
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19.fasta
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Status	0	Protein count	4898
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Status	0	Residue count	1451180
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Error	0	Error count	3
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Error	30354	SO4494.1	Duplicate protein name found
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Error	30799	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:51 PM	Shewanella_2003-12-19.fasta	Error	30823	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19_combined_reverse_forward.fasta
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Status	0	Protein count	9822
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Status	0	Residue count	2902612
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	0	Error count	2
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	30796	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	30820	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Warning	0	Warning count	8
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	31442	pep-11	Line contains a protein name, but not a description	>pep-11
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	31444	pep-12	Line contains a protein name, but not a description	>pep-12
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	31450	pep-15	Line contains a protein name, but not a description	>pep-15
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	31458	pep-20	Line contains a protein name, but not a description	>pep-20
+1/12/2006 1:54:52 PM	Shewanella_2003-12-19_combined_reverse_forward.fasta	Error	31460	pep-24	Line contains a protein name, but not a description	>pep-24
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19_PCQ_Stds.fasta
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Status	0	Protein count	4962
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Status	0	Residue count	1462949
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Error	0	Error count	2
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Error	30796	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Error	30820	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Warning	0	Warning count	1
+1/12/2006 1:54:53 PM	Shewanella_2003-12-19_PCQ_Stds.fasta	Error	31589	002|des-Pro3,Ala2,6-Bradykinin	Protein name contains undesirable characters (,)	s-Pro3,Ala2,6
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19_PepStds.fasta
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Status	0	Protein count	4911
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Status	0	Residue count	1451307
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	0	Error count	2
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	30796	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	30820	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Warning	0	Warning count	8
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	31442	pep-11	Line contains a protein name, but not a description	>pep-11
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	31444	pep-12	Line contains a protein name, but not a description	>pep-12
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	31450	pep-15	Line contains a protein name, but not a description	>pep-15
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	31458	pep-20	Line contains a protein name, but not a description	>pep-20
+1/12/2006 1:54:54 PM	Shewanella_2003-12-19_PepStds.fasta	Error	31460	pep-24	Line contains a protein name, but not a description	>pep-24
+1/12/2006 1:54:55 PM	Shewanella_2003-12-19_reverse.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19_reverse.fasta
+1/12/2006 1:54:55 PM	Shewanella_2003-12-19_reverse.fasta	Status	0	Protein count	4911
+1/12/2006 1:54:55 PM	Shewanella_2003-12-19_reverse.fasta	Status	0	Residue count	1451305
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2003-12-19_with_contaminants.fasta
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Status	0	Protein count	5076
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Status	0	Residue count	1502238
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	0	Error count	2
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	31725	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	31749	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Warning	0	Warning count	152
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	15	gi|113876|sp|P01017|ANGT_BOVIN	Protein name contains two or more vertical bars (|113876|)	>gi|113876|sp
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	17	gi|229232|prf||670366A	Protein name contains two or more vertical bars (|229232|)	>gi|229232|pr
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	19	gi|136429|sp|P00761|TRYP_PIG	Protein name contains two or more vertical bars (|136429|)	>gi|136429|sp
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	24	gi|136425|sp|P00760|TRYP_BOVIN	Protein name contains two or more vertical bars (|136425|)	>gi|136425|sp
+1/12/2006 1:54:56 PM	Shewanella_2003-12-19_with_contaminants.fasta	Error	28	owl|P00766|CTRA_BOVIN	Protein name contains two or more vertical bars (|P00766|)	>owl|P00766|C
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_2004-02-04_PCQ_Stds.fasta
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Status	0	Protein count	4951
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Status	0	Residue count	1462782
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Error	0	Error count	2
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Error	31070	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Error	31094	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Warning	0	Warning count	1
+1/12/2006 1:54:57 PM	Shewanella_2004-02-04_PCQ_Stds.fasta	Error	3	002|des-Pro3,Ala2,6-Bradykinin	Protein name contains undesirable characters (,)	s-Pro3,Ala2,6
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_23peptide_12Prot_mix_2004-02-03.fasta
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Status	0	Protein count	4534
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Status	0	Residue count	1431708
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	0	Error count	20
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26257	Trypa2|PromTArt2	A blank line was found between the protein name and its residues
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26260	Trypa3|PromTArt3	A blank line was found between the protein name and its residues
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26263	Trypa4|PromTArt4	A blank line was found between the protein name and its residues
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26266	Trypa5|PromTArt5	A blank line was found between the protein name and its residues
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26269	Trypa6|TrypArt6	A blank line was found between the protein name and its residues
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Warning	0	Warning count	156
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26274	gi|113876|sp|P01017|ANGT_BOVIN	Protein name contains two or more vertical bars (|113876|)	>gi|113876|sp
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26277	gi|229232|prf||670366A	Protein name contains two or more vertical bars (|229232|)	>gi|229232|pr
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26280	gi|136429|sp|P00761|TRYP_PIG	Protein name contains two or more vertical bars (|136429|)	>gi|136429|sp
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26286	gi|136425|sp|P00760|TRYP_BOVIN	Protein name contains two or more vertical bars (|136425|)	>gi|136425|sp
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	26291	owl|P00766|CTRA_BOVIN	Protein name contains two or more vertical bars (|P00766|)	>owl|P00766|C
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	3	002|des-Pro(3),Ala(2,6)-Bradykinin	Protein name contains undesirable characters (()	es-Pro(3),Ala
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	5	003|des-Pro(2)-Bradykinin	Protein name contains undesirable characters (()	es-Pro(2)-Bra
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	9	005|[Tyr(8)]-Bradykinin	Protein name contains undesirable characters ([)	>005|[Tyr(8)]
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	19	010|[Phe22]	Protein name contains undesirable characters ([)	>010|[Phe22] 
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	27	014|[Ala(92)]-Peptide	Protein name contains undesirable characters ([)	>014|[Ala(92)
+1/12/2006 1:54:58 PM	Shewanella_23peptide_12Prot_mix_2004-02-03.fasta	Error	731	SO0101	Residues line contains U (selenocysteine); this residue is unsupported by Sequest	RNUHS
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_Heme_proteins_2003-11-19.fasta
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19.fasta	Status	0	Protein count	45
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19.fasta	Status	0	Residue count	15408
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19_reverse.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_Heme_proteins_2003-11-19_reverse.fasta
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19_reverse.fasta	Status	0	Protein count	45
+1/12/2006 1:54:58 PM	Shewanella_Heme_proteins_2003-11-19_reverse.fasta	Status	0	Residue count	15408
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_MiniProteomeA_2004-10-26.fasta
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Status	0	Protein count	4903
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Status	0	Residue count	1452377
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Error	0	Error count	3
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Error	30381	SO4494.1	Duplicate protein name found
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Error	30826	SO3820	A space or tab was found in the residues	SL 
+1/12/2006 1:54:59 PM	Shewanella_MiniProteomeA_2004-10-26.fasta	Error	30850	SOA0163	A space or tab was found in the residues	NG 
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Status	0	Protein count	29512
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Status	0	Residue count	2190956
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	0	Error count	4
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	78845	contig24405	A space or tab was found in the residues	GS 
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	78847	contig24406	A space or tab was found in the residues	TV 
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	78851	contig24408	A space or tab was found in the residues	KN 
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	78853	contig24409	A space or tab was found in the residues	CG 
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Warning	0	Warning count	854
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	24	SO0004	Protein description contains a quotation mark	SO0004 "integ
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	52	SO0009	Protein description contains a quotation mark	SO0009 "DNA p
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	67	SO0011	Protein description contains a quotation mark	SO0011 "DNA g
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	87	SO0014	Protein description contains a quotation mark	SO0014 "glycy
+1/12/2006 1:55:00 PM	Shewanella_oneidensis_MR1_Stop-to-Start_2005-10-12.fasta	Error	100	SO0015	Protein description contains a quotation mark	SO0015 "glycy
+1/12/2006 1:55:06 PM	Shewanella_StoS_2004-01-12_Final.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\Shewanella_StoS_2004-01-12_Final.fasta
+1/12/2006 1:55:06 PM	Shewanella_StoS_2004-01-12_Final.fasta	Status	0	Protein count	84657
+1/12/2006 1:55:06 PM	Shewanella_StoS_2004-01-12_Final.fasta	Status	0	Residue count	5347793
+1/12/2006 1:55:06 PM	SO1777_MtrA.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\SO1777_MtrA.fasta
+1/12/2006 1:55:06 PM	SO1777_MtrA.fasta	Status	0	Protein count	1
+1/12/2006 1:55:06 PM	SO1777_MtrA.fasta	Status	0	Residue count	333
+1/12/2006 1:55:07 PM	SO1778.fasta	Status	0	Full path to file	Z:\Shewanella\Fasta\SO1778.fasta
+1/12/2006 1:55:07 PM	SO1778.fasta	Status	0	Protein count	1
+1/12/2006 1:55:07 PM	SO1778.fasta	Status	0	Residue count	671

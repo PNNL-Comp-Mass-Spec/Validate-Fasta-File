@@ -1,0 +1,15 @@
+Validate Fasta File Change Log
+
+Version 2.0.2203; January 12, 2006
+	- No longer trimming spaces from the end of a line since we need to be able to check for residue lines ending in spaces
+	- Updated the logging (file or console) to include the value and context associated with a given message, warning, or error
+
+Version 2.0.2103; October 4, 2005
+	- Updated the SaveSettingsToParameterFile function to re-open the .Xml file and replace instances of "&gt;" with ">" to improve readability
+
+Version 2.0.2056; August 18, 2005
+	- Added new validation rule to look for escape code characters in the protein description
+	- Added option to fix the line terminator to guarantee it ends in CRLF
+
+Version 2.0.2028; July 22, 2005
+	- Stable release
