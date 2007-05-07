@@ -3,15 +3,35 @@ Option Strict On
 ' This class can be used to parse the text following the program name when a 
 '  program is started from the command line
 '
+' -------------------------------------------------------------------------------
 ' Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
-' Started November 8, 2003
+' Program started November 8, 2003
+
+' E-mail: matthew.monroe@pnl.gov or matt@alchemistmatt.com
+' Website: http://ncrr.pnl.gov/ or http://www.sysbio.org/resources/staff/
+' -------------------------------------------------------------------------------
+' 
+' Licensed under the Apache License, Version 2.0; you may not use this file except
+' in compliance with the License.  You may obtain a copy of the License at 
+' http://www.apache.org/licenses/LICENSE-2.0
 '
-' Last modified February 8, 2005
+' Notice: This computer software was prepared by Battelle Memorial Institute, 
+' hereinafter the Contractor, under Contract No. DE-AC05-76RL0 1830 with the 
+' Department of Energy (DOE).  All rights in the computer software are reserved 
+' by DOE on behalf of the United States Government and the Contractor as 
+' provided in the Contract.  NEITHER THE GOVERNMENT NOR THE CONTRACTOR MAKES ANY 
+' WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS 
+' SOFTWARE.  This notice including this sentence must appear on any copies of 
+' this computer software.
 
-Friend Class clsParseCommandLine
+'
+' Last modified February 20, 2007
 
-    Private htSwitches As Hashtable
+Public Class clsParseCommandLine
+
+    Private mSwitches As Hashtable
+    Private mNonSwitchParameters() As String
+
     Private mShowHelp As Boolean
 
     Public ReadOnly Property NeedToShowHelp() As Boolean
@@ -22,10 +42,20 @@ Friend Class clsParseCommandLine
 
     Public ReadOnly Property ParameterCount() As Integer
         Get
-            If Not htSwitches Is Nothing Then
-                Return htSwitches.Count
-            Else
+            If mSwitches Is Nothing Then
                 Return 0
+            Else
+                Return mSwitches.Count
+            End If
+        End Get
+    End Property
+
+    Public ReadOnly Property NonSwitchParameterCount() As Integer
+        Get
+            If mNonSwitchParameters Is Nothing Then
+                Return 0
+            Else
+                Return mNonSwitchParameters.Length
             End If
         End Get
     End Property
@@ -37,7 +67,7 @@ Friend Class clsParseCommandLine
         Dim blnMatchFound As Boolean
 
         Try
-            Dim iEnum As System.Collections.IDictionaryEnumerator = htSwitches.GetEnumerator()
+            Dim iEnum As System.Collections.IDictionaryEnumerator = mSwitches.GetEnumerator()
 
             Do While iEnum.MoveNext()
                 blnMatchFound = False
@@ -58,7 +88,7 @@ Friend Class clsParseCommandLine
                 If Not blnMatchFound Then Return True
             Loop
 
-        Catch ex As Exception
+        Catch ex As System.Exception
             Throw New System.Exception("Error in InvalidParametersPresent", ex)
         End Try
 
@@ -73,19 +103,23 @@ Friend Class clsParseCommandLine
         Dim strCmdLine As String
         Dim strKey As String, strValue As String
         Dim intCharLoc As Integer
+        Dim intNonSwitchParameterCount As Integer
 
         Dim intIndex As Integer
         Dim strParameters() As String
 
-        htSwitches = New Hashtable
+        mSwitches = New Hashtable
+
+        intNonSwitchParameterCount = 0
+        ReDim mNonSwitchParameters(9)
 
         Try
             Try
                 ' This command will fail if the program is called from a network share
                 strCmdLine = System.Environment.CommandLine()
                 strParameters = System.Environment.GetCommandLineArgs()
-            Catch ex As Exception
-                MsgBox("This program cannot be run from a network share.  Please map a drive to the network share you are currently accessing or copy the program files and required DLL's to your local computer.")
+            Catch ex As System.Exception
+                Windows.Forms.MessageBox.Show("This program cannot be run from a network share.  Please map a drive to the network share you are currently accessing or copy the program files and required DLL's to your local computer.", "Error", Windows.Forms.MessageBoxButtons.OK, Windows.Forms.MessageBoxIcon.Exclamation)
                 mShowHelp = True
                 Return False
             End Try
@@ -98,13 +132,13 @@ Friend Class clsParseCommandLine
             End If
 
             ' Parse the command line
-            htSwitches.Clear()
+            mSwitches.Clear()
 
             ' Note that strParameters(0) is the path to the Executable for the calling program
             For intIndex = 1 To strParameters.Length - 1
 
-                ' Look for strSwitchParameterChar in strParameters(intIndex)
                 If strParameters(intIndex).Length > 0 Then
+                    ' Look for strSwitchParameterChar in strParameters(intIndex)
                     intCharLoc = strParameters(intIndex).IndexOf(strSwitchParameterChar)
 
                     strKey = strParameters(intIndex)
@@ -114,30 +148,62 @@ Friend Class clsParseCommandLine
                         strValue = strKey.Substring(intCharLoc + 1).Trim
 
                         ' Remove any starting and ending quotation marks
-                        strValue = strValue.TrimStart(ControlChars.Quote)
-                        strValue = strValue.TrimEnd(ControlChars.Quote)
+                        strValue = strValue.Trim(""""c)
 
                         strKey = strKey.Substring(0, intCharLoc)
+
+                        If strKey.Substring(0, 1) = "-" Or strKey.Substring(0, 1) = "/" Then
+                            strKey = strKey.Substring(1)
+                        End If
+                        strKey = strKey.Trim
+
+                        ' Note: .Item() will add strKey if it doesn't exist (which is normally the case)
+                        mSwitches.Item(strKey) = strValue
+                    Else
+                        ' Non-switch parameter since strSwitchParameterChar was not found
+
+                        ' Remove any starting and ending quotation marks
+                        strKey = strKey.Trim(""""c)
+
+                        If intNonSwitchParameterCount >= mNonSwitchParameters.Length Then
+                            ReDim Preserve mNonSwitchParameters(mNonSwitchParameters.Length * 2 - 1)
+                        End If
+                        mNonSwitchParameters(intNonSwitchParameterCount) = String.Copy(strKey)
+                        intNonSwitchParameterCount += 1
                     End If
 
-                    If strKey.Substring(0, 1) = "-" Or strKey.Substring(0, 1) = "/" Then
-                        strKey = strKey.Substring(1)
-                    End If
-                    strKey = strKey.Trim
-
-                    ' Note: .Item() will add strKey if it doesn't exist (which is normally the case)
-                    htSwitches.Item(strKey) = strValue
                 End If
             Next intIndex
 
-            If htSwitches.Count > 0 Then
-                Return True
-            Else
-                Return False
-            End If
-        Catch ex As Exception
+        Catch ex As System.Exception
             Throw New System.Exception("Error in ParseCommandLine", ex)
+        Finally
+            If intNonSwitchParameterCount < 0 Then intNonSwitchParameterCount = 0
+            ReDim Preserve mNonSwitchParameters(intNonSwitchParameterCount - 1)
         End Try
+
+        If mSwitches.Count + intNonSwitchParameterCount > 0 Then
+            Return True
+        Else
+            Return False
+        End If
+
+    End Function
+
+    Public Function RetrieveNonSwitchParameter(ByVal intParameterIndex As Integer) As String
+        Dim strValue As String
+
+        If Not mNonSwitchParameters Is Nothing Then
+            If intParameterIndex < mNonSwitchParameters.Length Then
+                strValue = mNonSwitchParameters(intParameterIndex)
+            End If
+        End If
+
+        If strValue Is Nothing Then
+            strValue = String.Empty
+        End If
+
+        Return strValue
 
     End Function
 
@@ -149,8 +215,8 @@ Friend Class clsParseCommandLine
         Try
             strKey = ""
             strValue = ""
-            If intParameterIndex < htSwitches.Count Then
-                Dim iEnum As System.Collections.IDictionaryEnumerator = htSwitches.GetEnumerator()
+            If intParameterIndex < mSwitches.Count Then
+                Dim iEnum As System.Collections.IDictionaryEnumerator = mSwitches.GetEnumerator()
 
                 intIndex = 0
                 Do While iEnum.MoveNext()
@@ -164,7 +230,7 @@ Friend Class clsParseCommandLine
             Else
                 Return False
             End If
-        Catch ex As Exception
+        Catch ex As System.Exception
             Throw New System.Exception("Error in RetrieveParameter", ex)
         End Try
 
@@ -176,24 +242,24 @@ Friend Class clsParseCommandLine
         Try
             strValue = ""
             If blnCaseSensitive Then
-                If htSwitches.ContainsKey(strKey) Then
-                    strValue = CStr(htSwitches(strKey))
+                If mSwitches.ContainsKey(strKey) Then
+                    strValue = CStr(mSwitches(strKey))
                     Return True
                 Else
                     Return False
                 End If
             Else
-                Dim iEnum As System.Collections.IDictionaryEnumerator = htSwitches.GetEnumerator()
+                Dim iEnum As System.Collections.IDictionaryEnumerator = mSwitches.GetEnumerator()
 
                 Do While iEnum.MoveNext()
                     If CStr(iEnum.Key).ToUpper = strKey.ToUpper Then
-                        strValue = CStr(htSwitches(iEnum.Key))
+                        strValue = CStr(mSwitches(iEnum.Key))
                         Return True
                     End If
                 Loop
                 Return False
             End If
-        Catch ex As Exception
+        Catch ex As System.Exception
             Throw New System.Exception("Error in RetrieveValueForParameter", ex)
         End Try
 

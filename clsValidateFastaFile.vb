@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "June 5, 2006"
+        MyBase.mFileDate = "May 7, 2007"
         InitializeLocalVariables()
     End Sub
 
@@ -90,6 +90,7 @@ Public Class clsValidateFastaFile
         '        ProteinDescriptionWithUndesirableCharacter = 28
         ResiduesLineTooLong = 17
         '        ResiduesLineContainsU = 30
+        DuplicateProteinSequence = 18
     End Enum
 
 #End Region
@@ -118,12 +119,19 @@ Public Class clsValidateFastaFile
         Public CustomRuleID As Integer              ' This value is auto-assigned
     End Structure
 
-    Private Structure udtRuleDefinitionExtendedType
+    Protected Structure udtRuleDefinitionExtendedType
         Public RuleDefinition As udtRuleDefinitionType
         Public reRule As System.Text.RegularExpressions.Regex
         Public Valid As Boolean
     End Structure
 
+    Protected Structure udtProteinHashInfoType
+        Public SequenceHash As String
+        Public SequenceLength As Integer
+        Public SequenceStart As String          ' The first 20 residues of the protein sequence
+        Public ProteinNameList As String
+        Public ProteinCount As Integer
+    End Structure
 #End Region
 
 #Region "Classwide Variables"
@@ -155,6 +163,7 @@ Public Class clsValidateFastaFile
 
     Protected mAddMissingLinefeedAtEOF As Boolean
     Protected mCheckForDuplicateProteinNames As Boolean
+    Protected mCheckForDuplicateProteinSequences As Boolean
 
     Protected mMaximumFileErrorsToTrack As Integer        ' This is the maximum # of errors per type to track
     Protected mMinimumProteinNameLength As Integer
@@ -214,6 +223,8 @@ Public Class clsValidateFastaFile
                 Me.mWarnLineStartsWithSpace = State
             Case IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters
                 Me.mNormalizeFileLineEndCharacters = State
+            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
+                Me.mCheckForDuplicateProteinSequences = State
         End Select
 
     End Sub
@@ -238,6 +249,8 @@ Public Class clsValidateFastaFile
                 Return Me.mWarnBlankLinesBetweenProteins
             Case IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace
                 Return Me.mWarnLineStartsWithSpace
+            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
+                Return Me.mCheckForDuplicateProteinSequences
         End Select
 
     End Function
@@ -250,6 +263,7 @@ Public Class clsValidateFastaFile
     'Public Property WarnBlankLinesBetweenProteins() As Boolean
     'Public Property WarnLineStartsWithSpace() As Boolean
     'Public Property OutputToStatsfile() As Boolean
+    'Public Property CheckForDuplicateProteinSequences() As Boolean
 
     Public ReadOnly Property ErrorWarningCounts( _
         ByVal messageType As IValidateFastaFile.eMsgTypeConstants, _
@@ -553,7 +567,9 @@ Public Class clsValidateFastaFile
 
         Dim strFastaFilePathOut As String
         Dim strLineIn As String
-        Dim strLineOut As String
+        Dim strResiduesClean As String
+
+        Dim sbCurrentResidues As System.Text.StringBuilder
 
         Dim intSpaceLoc As Integer
         Dim intTabLoc As Integer
@@ -561,6 +577,8 @@ Public Class clsValidateFastaFile
         Dim intMinCharLoc As Integer
 
         Dim intNewResidueCount As Integer
+
+        Dim intIndex As Integer
 
         Dim strProteinName As String
         Dim strNewProteinName As String
@@ -582,6 +600,13 @@ Public Class clsValidateFastaFile
 
         ' Note that text is stored in the string dictionary lowercase, and searches are thus case-insensitive
         Dim htProteinNames As System.Collections.Specialized.StringDictionary
+
+        ' This hashtable provides a quick lookup for existing protein hashes
+        Dim htProteinSequenceHashes As Hashtable
+
+        ' This array tracks protein hash details
+        Dim intProteinSequenceHashCount As Integer
+        Dim udtProteinSeqHashInfo() As udtProteinHashInfoType
 
         Dim chFirstRefSeparator() As Char = New Char() {":"c, "|"c}
         Dim chSubsequentRefSeparator() As Char = New Char() {":"c, "|"c, ";"c}
@@ -625,6 +650,7 @@ Public Class clsValidateFastaFile
 
             strProteinName = String.Empty
             strProteinDescription = String.Empty
+            sbCurrentResidues = New System.Text.StringBuilder
 
             ' Initialize the RegEx objects
 
@@ -690,6 +716,13 @@ Public Class clsValidateFastaFile
                 htProteinNames = New System.Collections.Specialized.StringDictionary
             End If
 
+            ' Optionally, initialize the protein sequence hash objects
+            If mCheckForDuplicateProteinSequences Then
+                htProteinSequenceHashes = New Hashtable
+                intProteinSequenceHashCount = 0
+                ReDim udtProteinSeqHashInfo(99)
+            End If
+
             ' Parse each line in the file
             Do While srInFile.Peek() >= 0
                 strLineIn = srInFile.ReadLine()
@@ -722,6 +755,14 @@ Public Class clsValidateFastaFile
 
                         If strLineIn.Chars(0) = mProteinLineStartChar Then
                             ' Protein entry
+
+                            If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
+                                ' Process the previous protein entry
+                                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
+                                sbCurrentResidues.Length = 0
+                            End If
+
+                            ' Now process this protein entry
                             mProteinCount += 1
                             blnProteinHeaderFound = True
                             blnProcessingResidueBlock = False
@@ -950,12 +991,19 @@ Public Class clsValidateFastaFile
                             ' Test the protein sequence rules
                             EvaluateRules(udtProteinSequenceRuleDetails, strProteinName, strLineIn, 0, strLineIn, 5)
 
-                            If Not srOutFile Is Nothing AndAlso Not blnProcessingDuplicateOrInvalidProtein Then
+                            If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences Then
                                 ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
-                                strLineOut = reNonLetterResidues.Replace(strLineIn, String.Empty)
+                                strResiduesClean = reNonLetterResidues.Replace(strLineIn, String.Empty)
 
-                                If strLineOut <> strLineIn Then mFixedFastaUpdatedResidueLines += 1
-                                srOutFile.WriteLine(strLineOut)
+                                If Not srOutFile Is Nothing AndAlso Not blnProcessingDuplicateOrInvalidProtein Then
+                                    If strResiduesClean <> strLineIn Then mFixedFastaUpdatedResidueLines += 1
+                                    srOutFile.WriteLine(strResiduesClean)
+                                End If
+
+                                If mCheckForDuplicateProteinSequences Then
+                                    sbCurrentResidues.Append(strResiduesClean)
+                                End If
+
                             End If
 
                             ' Reset the blank line tracking variable
@@ -965,6 +1013,23 @@ Public Class clsValidateFastaFile
                     End If
                 End If
             Loop
+
+            If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
+                ' Process the previous protein entry
+                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
+                sbCurrentResidues.Length = 0
+            End If
+
+            If mCheckForDuplicateProteinSequences Then
+                ' Step through udtProteinSeqHashInfo and look for duplicate sequences
+                For intIndex = 0 To intProteinSequenceHashCount - 1
+                    If udtProteinSeqHashInfo(intIndex).ProteinCount > 1 Then
+                        With udtProteinSeqHashInfo(intIndex)
+                            RecordFastaFileError(mLineCount, 0, ExtractListItem(.ProteinNameList, 1), eMessageCodeConstants.DuplicateProteinSequence, .ProteinNameList, .SequenceStart)
+                        End With
+                    End If
+                Next intIndex
+            End If
 
             If mProteinCount = 0 Then
                 RecordFastaFileError(mLineCount, 0, String.Empty, eMessageCodeConstants.ProteinEntriesNotFound)
@@ -1180,6 +1245,22 @@ Public Class clsValidateFastaFile
         End Try
 
         Return endCharacterType
+
+    End Function
+
+    Protected Function ExtractListItem(ByVal strList As String, ByVal intItem As Integer) As String
+        Dim strItems() As String
+        Dim strItem As String
+
+        strItem = String.Empty
+        If intItem >= 1 And Not strList Is Nothing Then
+            strItems = strList.Split(","c)
+            If strItems.Length >= intItem Then
+                strItem = strItems(intItem - 1)
+            End If
+        End If
+
+        Return strItem
 
     End Function
 
@@ -1526,6 +1607,7 @@ Public Class clsValidateFastaFile
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace) = True
 
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames) = True
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = True
 
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = False
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName) = False
@@ -1615,6 +1697,9 @@ Public Class clsValidateFastaFile
                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames) = _
                         objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", _
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
+                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = _
+                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", _
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
 
                     Me.MaximumFileErrorsToTrack = objSettingsFile.GetParam(XML_SECTION_OPTIONS, _
                         "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
@@ -1757,6 +1842,9 @@ Public Class clsValidateFastaFile
                 'Case eMessageCodeConstants.ResiduesLineContainsU
                 '    strMessage = "Residues line contains U (selenocysteine); this residue is unsupported by Sequest"
 
+            Case eMessageCodeConstants.DuplicateProteinSequence
+                strMessage = "Duplicate protein sequences found"
+
             Case eMessageCodeConstants.UnspecifiedError
                 strMessage = "Unspecified error"
             Case Else
@@ -1891,6 +1979,55 @@ Public Class clsValidateFastaFile
         Return blnSuccess
 
     End Function
+
+    Private Sub ProcessSequenceHashInfo(ByVal strProteinName As String, ByRef sbCurrentResidues As Text.StringBuilder, ByRef htProteinSequenceHashes As Hashtable, ByRef intProteinSequenceHashCount As Integer, ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType)
+        Static objHashGenerator As clsHashGenerator
+
+        Dim objHashtableValue As Object
+        Dim strComputedHash As String
+
+        If objHashGenerator Is Nothing Then
+            objHashGenerator = New clsHashGenerator
+        End If
+
+        Try
+            If sbCurrentResidues.Length > 0 Then
+                ' Compute the hash value for sbCurrentResidues
+                strComputedHash = objHashGenerator.GenerateHash(sbCurrentResidues.ToString)
+
+                ' See if htProteinSequenceHashes contains strHash
+                objHashtableValue = htProteinSequenceHashes(strComputedHash)
+                If Not objHashtableValue Is Nothing Then
+                    ' Value exists; update the entry in udtProteinSeqHashInfo
+                    With udtProteinSeqHashInfo(CInt(objHashtableValue))
+                        .ProteinCount += 1
+                        .ProteinNameList &= ", " & strProteinName
+                    End With
+                Else
+                    ' Value not yet present; add it
+                    If intProteinSequenceHashCount >= udtProteinSeqHashInfo.Length Then
+                        ReDim Preserve udtProteinSeqHashInfo(udtProteinSeqHashInfo.Length * 2 - 1)
+                    End If
+
+                    With udtProteinSeqHashInfo(intProteinSequenceHashCount)
+                        .ProteinCount = 1
+                        .ProteinNameList = String.Copy(strProteinName)
+                        .SequenceHash = String.Copy(strComputedHash)
+                        .SequenceLength = sbCurrentResidues.Length
+                        .SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
+                    End With
+
+                    htProteinSequenceHashes.Add(strComputedHash, intProteinSequenceHashCount)
+                    intProteinSequenceHashCount += 1
+                End If
+            End If
+        Catch ex As Exception
+            'Error caught; throw it up one level
+            Throw ex
+        End Try
+
+
+    End Sub
 
     Private Function ReadRulesFromParameterFile( _
         ByRef objSettingsFile As PRISM.Files.XmlSettingsFileAccessor, _
@@ -2509,6 +2646,7 @@ Public Class clsValidateFastaFile
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
 
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", Me.MinimumProteinNameLength)
@@ -2740,7 +2878,6 @@ Public Class clsValidateFastaFile
         Return blnSuccess
 
     End Function
-
 
     ' IComparer class to allow comparison of udtMsgInfoType items
     Private Class ErrorInfoComparerClass

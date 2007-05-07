@@ -112,6 +112,7 @@ Public Interface IValidateFastaFile
         WarnBlankLinesBetweenProteins
         WarnLineStartsWithSpace
         NormalizeFileLineEndCharacters
+        CheckForDuplicateProteinSequences
     End Enum
 
     Enum FixedFASTAFileValues

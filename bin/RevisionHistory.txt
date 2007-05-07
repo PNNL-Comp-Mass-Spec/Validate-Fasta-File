@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.0.2683; May 7, 2007
+	 - Added new error that checks for duplicate protein sequences
+
 Version 2.0.2347; June 5, 2006
 	 - Added new warning that checks for protein descriptions over 900 characters long
 
