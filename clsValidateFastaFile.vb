@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "May 7, 2007"
+        MyBase.mFileDate = "May 8, 2007"
         InitializeLocalVariables()
     End Sub
 
@@ -1025,7 +1025,7 @@ Public Class clsValidateFastaFile
                 For intIndex = 0 To intProteinSequenceHashCount - 1
                     If udtProteinSeqHashInfo(intIndex).ProteinCount > 1 Then
                         With udtProteinSeqHashInfo(intIndex)
-                            RecordFastaFileError(mLineCount, 0, ExtractListItem(.ProteinNameList, 1), eMessageCodeConstants.DuplicateProteinSequence, .ProteinNameList, .SequenceStart)
+                            RecordFastaFileWarning(mLineCount, 0, ExtractListItem(.ProteinNameList, 1), eMessageCodeConstants.DuplicateProteinSequence, .ProteinNameList, .SequenceStart)
                         End With
                     End If
                 Next intIndex
@@ -2465,7 +2465,7 @@ Public Class clsValidateFastaFile
                         End If
 
                         ReportResultAddEntry(strSourceFile, _
-                                            IValidateFastaFile.eMsgTypeConstants.ErrorMsg, _
+                                            IValidateFastaFile.eMsgTypeConstants.WarningMsg, _
                                             .LineNumber, _
                                             .ColNumber, _
                                             strProteinName, _
