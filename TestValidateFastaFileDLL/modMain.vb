@@ -4,7 +4,7 @@ Option Strict On
 ' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
 ' This program can be used to test the use of the clsValidateFastaFiles in the ValidateFastaFiles.Dll file
-' Last modified May 1, 2005
+' Last modified May 8, 2007
 
 Module modMain
 

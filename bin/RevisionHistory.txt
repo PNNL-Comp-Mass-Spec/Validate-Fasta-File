@@ -2,6 +2,7 @@ Validate Fasta File Change Log
 
 Version 2.0.2684; May 8, 2007
 	- Added new warning that checks for duplicate protein sequences
+	- Now clearing the protein name and description each time a line that starts with > is encountered
 
 Version 2.0.2347; June 5, 2006
 	- Added new warning that checks for protein descriptions over 900 characters long

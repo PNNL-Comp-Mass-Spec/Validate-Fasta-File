@@ -768,6 +768,9 @@ Public Class clsValidateFastaFile
                             blnProcessingResidueBlock = False
                             blnProcessingDuplicateOrInvalidProtein = False
 
+                            strProteinName = String.Empty
+                            strProteinDescription = String.Empty
+
                             ' Make sure the protein name and description are valid
                             ' Find the first space and/or tab
                             intSpaceLoc = strLineIn.IndexOf(" "c)
@@ -932,12 +935,12 @@ Public Class clsValidateFastaFile
 
                                 ' Optionally, check for duplicate protein names
                                 If mCheckForDuplicateProteinNames Then
-                                    If htProteinNames.ContainsKey(strProteinName) Then
+                                    If htProteinNames.ContainsKey(strProteinName.ToLower) Then
                                         RecordFastaFileError(mLineCount, 1, strProteinName, eMessageCodeConstants.DuplicateProteinName)
                                         blnProcessingDuplicateOrInvalidProtein = True
                                         mFixedFastaDuplicateProteinsSkipped += 1
                                     Else
-                                        htProteinNames.Add(strProteinName, Nothing)
+                                        htProteinNames.Add(strProteinName.ToLower, Nothing)
                                         blnProcessingDuplicateOrInvalidProtein = False
                                     End If
                                 End If
@@ -2005,7 +2008,9 @@ Public Class clsValidateFastaFile
                     End With
                 Else
                     ' Value not yet present; add it
+
                     If intProteinSequenceHashCount >= udtProteinSeqHashInfo.Length Then
+                        ' Need to reserve more space in udtProteinSeqHashInfo
                         ReDim Preserve udtProteinSeqHashInfo(udtProteinSeqHashInfo.Length * 2 - 1)
                     End If
 
@@ -2022,7 +2027,7 @@ Public Class clsValidateFastaFile
                 End If
             End If
         Catch ex As Exception
-            'Error caught; throw it up one level
+            'Error caught; pass it up to the calling function
             Throw ex
         End Try
 
