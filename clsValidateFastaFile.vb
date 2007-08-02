@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "May 8, 2007"
+        MyBase.mFileDate = "August 1, 2007"
         InitializeLocalVariables()
     End Sub
 
@@ -91,6 +91,7 @@ Public Class clsValidateFastaFile
         ResiduesLineTooLong = 17
         '        ResiduesLineContainsU = 30
         DuplicateProteinSequence = 18
+        RenamedProtein = 19
     End Enum
 
 #End Region
@@ -144,7 +145,8 @@ Public Class clsValidateFastaFile
     Protected mFixedFastaUpdatedResidueLines As Integer
     Protected mFixedFastaProteinNamesInvalidCharsReplaced As Integer
     Protected mFixedFastaProteinNamesMultipleRefsRemoved As Integer
-    Protected mFixedFastaDuplicateProteinsSkipped As Integer
+    Protected mFixedFastaDuplicateNameProteinsSkipped As Integer
+    Protected mFixedFastaDuplicateNameProteinsRenamed As Integer
 
     Private mFileErrorCount As Integer
     Private mFileErrors() As IValidateFastaFile.udtMsgInfoType
@@ -170,8 +172,9 @@ Public Class clsValidateFastaFile
     Protected mMaximumProteinNameLength As Integer
     Protected mMaximumResiduesPerLine As Integer
 
-    Protected mLongProteinNameSplitChars As Char()            ' Used if mGenerateFixedFastaFile = True
-    Protected mProteinNameInvalidCharsToRemove As Char()      ' Used if mGenerateFixedFastaFile = True
+    Protected mLongProteinNameSplitChars As Char()                      ' Used if mGenerateFixedFastaFile = True
+    Protected mProteinNameInvalidCharsToRemove As Char()                ' Used if mGenerateFixedFastaFile = True
+    Protected mFixedFastaRenameProteinsWithDuplicateNames As Boolean    ' Used if mGenerateFixedFastaFile = True
 
     Protected mOutputToStatsFile As Boolean
     Protected mStatsFilePath As String
@@ -225,6 +228,8 @@ Public Class clsValidateFastaFile
                 Me.mNormalizeFileLineEndCharacters = State
             Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
                 Me.mCheckForDuplicateProteinSequences = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
+                Me.mFixedFastaRenameProteinsWithDuplicateNames = State
         End Select
 
     End Sub
@@ -251,6 +256,8 @@ Public Class clsValidateFastaFile
                 Return Me.mWarnLineStartsWithSpace
             Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
                 Return Me.mCheckForDuplicateProteinSequences
+            Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
+                Return Me.mFixedFastaRenameProteinsWithDuplicateNames
         End Select
 
     End Function
@@ -317,8 +324,8 @@ Public Class clsValidateFastaFile
         Get
             Dim tmpValue As Integer
             Select Case ValueType
-                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinsSkippedCount
-                    tmpValue = Me.mFixedFastaDuplicateProteinsSkipped
+                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
+                    tmpValue = Me.mFixedFastaDuplicateNameProteinsSkipped
                 Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
                     tmpValue = Me.mFixedFastaProteinNamesInvalidCharsReplaced
                 Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved
@@ -327,13 +334,15 @@ Public Class clsValidateFastaFile
                     tmpValue = Me.mFixedFastaTruncatedProteinNameCount
                 Case IValidateFastaFile.FixedFASTAFileValues.UpdatedResidueLines
                     tmpValue = Me.mFixedFastaUpdatedResidueLines
+                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesRenamedCount
+                    tmpValue = Me.mFixedFastaDuplicateNameProteinsRenamed
             End Select
             Return tmpValue
 
         End Get
     End Property
 
-    'Public ReadOnly Property FixedFastaDuplicateProteinsSkippedCount() As Integer
+    'Public ReadOnly Property FixedFastaDuplicateProteinNamesSkippedCount() As Integer
     'Protected ReadOnly Property FixedFastaProteinNamesInvalidCharsReplaced() As Integer
     'Public ReadOnly Property FixedFastaProteinNamesMultipleRefsRemoved() As Integer
     'Public ReadOnly Property FixedFastaTruncatedProteinNameCount() As Integer
@@ -592,6 +601,10 @@ Public Class clsValidateFastaFile
 
         Dim blnBlankLineProcessed As Boolean
 
+        Dim blnDuplicateName As Boolean
+        Dim chLetterToAppend As Char
+        Dim intNumberToAppend As Integer
+
         Dim blnListedValidProteinNameChars As Boolean = False
         Dim blnListedValidDescriptionChars As Boolean = False
         Dim blnListedValidResidues As Boolean = False
@@ -757,7 +770,7 @@ Public Class clsValidateFastaFile
                             ' Protein entry
 
                             If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
-                                ' Process the previous protein entry
+                                ' Process the previous protein entry to store a hash of the protein sequence
                                 ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
                                 sbCurrentResidues.Length = 0
                             End If
@@ -812,6 +825,11 @@ Public Class clsValidateFastaFile
                                         ' The line contains a protein name, but not a description
                                         strProteinName = strLineIn.Substring(1)
                                     End If
+                                Else
+                                    ' Space or tab found directly after the > symbol
+                                    ' The call to EvaluateRules below will report this error (since the function examines strLineIn)
+                                    strProteinName = String.Empty
+                                    blnProcessingDuplicateOrInvalidProtein = True
                                 End If
                             End If
 
@@ -935,10 +953,44 @@ Public Class clsValidateFastaFile
 
                                 ' Optionally, check for duplicate protein names
                                 If mCheckForDuplicateProteinNames Then
-                                    If htProteinNames.ContainsKey(strProteinName.ToLower) Then
+                                    blnDuplicateName = htProteinNames.ContainsKey(strProteinName.ToLower)
+
+                                    If blnDuplicateName AndAlso mFixedFastaRenameProteinsWithDuplicateNames Then
+                                        chLetterToAppend = "b"c
+                                        intNumberToAppend = 0
+                                        Do
+                                            strNewProteinName = strProteinName & "-"c & chLetterToAppend
+                                            If intNumberToAppend > 0 Then
+                                                strNewProteinName &= intNumberToAppend.ToString
+                                            End If
+
+                                            blnDuplicateName = htProteinNames.ContainsKey(strNewProteinName.ToLower)
+
+                                            If blnDuplicateName Then
+                                                ' Increment chLetterToAppend to the next letter and then try again to rename the protein
+                                                If chLetterToAppend = "z"c Then
+                                                    ' We've reached "z"
+                                                    ' Change back to "a" but increment intNumberToAppend
+                                                    chLetterToAppend = "a"c
+                                                    intNumberToAppend += 1
+                                                Else
+                                                    ' chLetterToAppend = Chr(Asc(chLetterToAppend) + 1)
+                                                    chLetterToAppend = System.Convert.ToChar(System.Convert.ToInt32(chLetterToAppend) + 1)
+                                                End If
+                                            End If
+                                        Loop While blnDuplicateName
+
+                                        RecordFastaFileWarning(mLineCount, 1, strProteinName, eMessageCodeConstants.RenamedProtein, "--> strNewProteinName", String.Empty)
+
+                                        strProteinName = String.Copy(strNewProteinName)
+                                        mFixedFastaDuplicateNameProteinsRenamed += 1
+
+                                    End If
+
+                                    If blnDuplicateName Then
                                         RecordFastaFileError(mLineCount, 1, strProteinName, eMessageCodeConstants.DuplicateProteinName)
                                         blnProcessingDuplicateOrInvalidProtein = True
-                                        mFixedFastaDuplicateProteinsSkipped += 1
+                                        mFixedFastaDuplicateNameProteinsSkipped += 1
                                     Else
                                         htProteinNames.Add(strProteinName.ToLower, Nothing)
                                         blnProcessingDuplicateOrInvalidProtein = False
@@ -1018,7 +1070,7 @@ Public Class clsValidateFastaFile
             Loop
 
             If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
-                ' Process the previous protein entry
+                ' Process the previous protein entry to store a hash of the protein sequence
                 ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
                 sbCurrentResidues.Length = 0
             End If
@@ -1848,6 +1900,9 @@ Public Class clsValidateFastaFile
             Case eMessageCodeConstants.DuplicateProteinSequence
                 strMessage = "Duplicate protein sequences found"
 
+            Case eMessageCodeConstants.RenamedProtein
+                strMessage = "Renamed protein because duplicate name"
+
             Case eMessageCodeConstants.UnspecifiedError
                 strMessage = "Unspecified error"
             Case Else
@@ -2563,7 +2618,8 @@ Public Class clsValidateFastaFile
         mFixedFastaUpdatedResidueLines = 0
         mFixedFastaProteinNamesInvalidCharsReplaced = 0
         mFixedFastaProteinNamesMultipleRefsRemoved = 0
-        mFixedFastaDuplicateProteinsSkipped = 0
+        mFixedFastaDuplicateNameProteinsSkipped = 0
+        mFixedFastaDuplicateNameProteinsRenamed = 0
 
         mFileErrorCount = 0
         ReDim mFileErrors(-1)

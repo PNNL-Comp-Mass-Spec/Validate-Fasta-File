@@ -113,14 +113,17 @@ Public Interface IValidateFastaFile
         WarnLineStartsWithSpace
         NormalizeFileLineEndCharacters
         CheckForDuplicateProteinSequences
+        FixedFastaRenameDuplicateNameProteins
     End Enum
 
     Enum FixedFASTAFileValues
-        DuplicateProteinsSkippedCount
+        DuplicateProteinNamesSkippedCount
         ProteinNamesInvalidCharsReplaced
         ProteinNamesMultipleRefsRemoved
         TruncatedProteinNameCount
         UpdatedResidueLines
+        DuplicateProteinNamesRenamedCount
+        DuplicateProteinSeqsSkippedCount
     End Enum
 
     Enum ErrorWarningCountTypes

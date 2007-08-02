@@ -21,7 +21,7 @@
                 OptionExplicit = "On"
                 OptionStrict = "Off"
                 RootNamespace = "ValidateFastaFile"
-                StartupObject = "ValidateFastaFile.modMain"
+                StartupObject = ""
             >
                 <Config
                     Name = "Debug"

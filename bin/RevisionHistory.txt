@@ -1,5 +1,11 @@
 Validate Fasta File Change Log
 
+Version 2.0.2769; August 1, 2007
+	- Added option to rename proteins with duplicate names rather than skipping them when generating a fixed fasta file
+		- When renaming, first tries appending "-b" to the original protein name, then checks if this new name matches any other protein names
+		- If the new name still results in a duplicate protein, then "-c", "-d", "-e", etc. are tried
+	- Fixed bug that incorrectly allowed residue lines to be written to a fixed fasta file when an invalid protein was encountered (having a duplicate name or a space after the > symbol)
+
 Version 2.0.2684; May 8, 2007
 	- Added new warning that checks for duplicate protein sequences
 	- Now clearing the protein name and description each time a line that starts with > is encountered
