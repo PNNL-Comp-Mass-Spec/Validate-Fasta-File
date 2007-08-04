@@ -114,6 +114,7 @@ Public Interface IValidateFastaFile
         NormalizeFileLineEndCharacters
         CheckForDuplicateProteinSequences
         FixedFastaRenameDuplicateNameProteins
+        SaveProteinSequenceHashInfoFiles
     End Enum
 
     Enum FixedFASTAFileValues

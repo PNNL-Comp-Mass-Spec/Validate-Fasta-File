@@ -70,16 +70,6 @@
                     AssemblyName = "System.Xml"
                 />
                 <Reference
-                    Name = "PRISM"
-                    AssemblyName = "PRISM"
-                    HintPath = "bin\PRISM.dll"
-                />
-                <Reference
-                    Name = "SharedVBNetRoutines"
-                    AssemblyName = "SharedVBNetRoutines"
-                    HintPath = "..\SharedVBNetRoutines\bin\SharedVBNetRoutines.dll"
-                />
-                <Reference
                     Name = "System.Windows.Forms"
                     AssemblyName = "System.Windows.Forms"
                     HintPath = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\System.Windows.Forms.dll"
@@ -111,12 +101,22 @@
                     BuildAction = "Compile"
                 />
                 <File
+                    RelPath = "clsParseCommandLine.vb"
+                    SubType = "Code"
+                    BuildAction = "Compile"
+                />
+                <File
                     RelPath = "clsProcessFilesBaseClass.vb"
                     SubType = "Code"
                     BuildAction = "Compile"
                 />
                 <File
                     RelPath = "clsValidateFastaFile.vb"
+                    SubType = "Code"
+                    BuildAction = "Compile"
+                />
+                <File
+                    RelPath = "clsXmlSettingsFileAccessor.vb"
                     SubType = "Code"
                     BuildAction = "Compile"
                 />

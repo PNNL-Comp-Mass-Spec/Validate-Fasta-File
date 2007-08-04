@@ -108,6 +108,8 @@ Public Class clsParseCommandLine
         Dim intIndex As Integer
         Dim strParameters() As String
 
+        Dim blnSwitchParam As Boolean
+
         mSwitches = New Hashtable
 
         intNonSwitchParameterCount = 0
@@ -151,8 +153,18 @@ Public Class clsParseCommandLine
                         strValue = strValue.Trim(""""c)
 
                         strKey = strKey.Substring(0, intCharLoc)
+                    End If
 
-                        If strKey.Substring(0, 1) = "-" Or strKey.Substring(0, 1) = "/" Then
+                    If intCharLoc > 0 OrElse strKey.StartsWith(strSwitchStartChar) Then
+                        blnSwitchParam = True
+                    ElseIf strKey.StartsWith("-"c) OrElse strKey.StartsWith("/"c) Then
+                        blnSwitchParam = True
+                    Else
+                        blnSwitchParam = False
+                    End If
+
+                    If blnSwitchParam Then
+                        If strKey.StartsWith("-"c) OrElse strKey.StartsWith("/"c) Then
                             strKey = strKey.Substring(1)
                         End If
                         strKey = strKey.Trim
@@ -160,7 +172,7 @@ Public Class clsParseCommandLine
                         ' Note: .Item() will add strKey if it doesn't exist (which is normally the case)
                         mSwitches.Item(strKey) = strValue
                     Else
-                        ' Non-switch parameter since strSwitchParameterChar was not found
+                        ' Non-switch parameter since strSwitchParameterChar was not found and does not start with strSwitchStartChar
 
                         ' Remove any starting and ending quotation marks
                         strKey = strKey.Trim(""""c)

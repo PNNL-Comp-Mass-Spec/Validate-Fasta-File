@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "August 1, 2007"
+        MyBase.mFileDate = "August 3, 2007"
         InitializeLocalVariables()
     End Sub
 
@@ -130,8 +130,9 @@ Public Class clsValidateFastaFile
         Public SequenceHash As String
         Public SequenceLength As Integer
         Public SequenceStart As String          ' The first 20 residues of the protein sequence
-        Public ProteinNameList As String
-        Public ProteinCount As Integer
+        Public ProteinNameFirst As String
+        Public AdditionalProteins() As String   ' Will contain .ProteinCount-1 items since .ProteinNameFirst is not stored here
+        Public ProteinCount As Integer          ' 1 if only one protein matches this sequence
     End Structure
 #End Region
 
@@ -165,7 +166,7 @@ Public Class clsValidateFastaFile
 
     Protected mAddMissingLinefeedAtEOF As Boolean
     Protected mCheckForDuplicateProteinNames As Boolean
-    Protected mCheckForDuplicateProteinSequences As Boolean
+    Protected mCheckForDuplicateProteinSequences As Boolean     ' This will be set to True if mSaveProteinSequenceHashInfoFiles = True
 
     Protected mMaximumFileErrorsToTrack As Integer        ' This is the maximum # of errors per type to track
     Protected mMinimumProteinNameLength As Integer
@@ -180,6 +181,7 @@ Public Class clsValidateFastaFile
     Protected mStatsFilePath As String
     Protected mGenerateFixedFastaFile As Boolean
     Protected mSplitOutMultipleRefsInProteinName As Boolean
+    Protected mSaveProteinSequenceHashInfoFiles As Boolean
 
     Protected mProteinLineStartChar As Char
 
@@ -230,6 +232,8 @@ Public Class clsValidateFastaFile
                 Me.mCheckForDuplicateProteinSequences = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
                 Me.mFixedFastaRenameProteinsWithDuplicateNames = State
+            Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
+                Me.mSaveProteinSequenceHashInfoFiles = State
         End Select
 
     End Sub
@@ -258,6 +262,8 @@ Public Class clsValidateFastaFile
                 Return Me.mCheckForDuplicateProteinSequences
             Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
                 Return Me.mFixedFastaRenameProteinsWithDuplicateNames
+            Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
+                Return Me.mSaveProteinSequenceHashInfoFiles
         End Select
 
     End Function
@@ -562,20 +568,26 @@ Public Class clsValidateFastaFile
         RaiseEvent WroteLineEndNormalizedFASTA(newFilePath)
     End Sub
 
-
-
     Protected Function AnalyzeFastaFile(ByVal strFastaFilePath As String) As Boolean
         ' This function assumes strFastaFilePath exists
         ' Returns True if the file was successfully analyzed (even if errors were found)
 
+        Dim fsInFile As System.IO.Stream
         Dim srInFile As System.IO.StreamReader
         Dim srOutFile As System.IO.StreamWriter
+        Dim srUniqueProteinSeqsOut As System.IO.StreamWriter
+        Dim srDuplicateProteinMapping As System.IO.StreamWriter
+
         Dim lngBytesRead As Long
         Dim intTerminatorSize As Integer
         Dim sngPercentComplete As Single
 
         Dim strFastaFilePathOut As String
+        Dim strUniqueProteinSeqsFileOut As String
+        Dim strDuplicateProteinMappingFileOut As String
+
         Dim strLineIn As String
+        Dim strLineOut As String
         Dim strResiduesClean As String
 
         Dim sbCurrentResidues As System.Text.StringBuilder
@@ -588,11 +600,15 @@ Public Class clsValidateFastaFile
         Dim intNewResidueCount As Integer
 
         Dim intIndex As Integer
+        Dim intDuplicateIndex As Integer
 
         Dim strProteinName As String
         Dim strNewProteinName As String
         Dim strExtraProteinNameText As String
         Dim strProteinDescription As String
+
+        Dim strDuplicateProteins() As String
+        Dim strDuplicateProtein As String
 
         Dim blnSuccess As Boolean
         Dim blnProteinHeaderFound As Boolean
@@ -708,7 +724,13 @@ Public Class clsValidateFastaFile
             intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
 
             ' Open the input file
-            srInFile = New System.IO.StreamReader(strFastaFilePath)
+            fsInFile = New System.IO.FileStream( _
+               strFastaFilePath, _
+               System.IO.FileMode.Open, _
+               System.IO.FileAccess.Read, _
+               IO.FileShare.ReadWrite)
+
+            srInFile = New System.IO.StreamReader(fsInFile)
 
             ' Optionally, open the output file
             If mGenerateFixedFastaFile Then
@@ -730,6 +752,7 @@ Public Class clsValidateFastaFile
             End If
 
             ' Optionally, initialize the protein sequence hash objects
+            If mSaveProteinSequenceHashInfoFiles Then mCheckForDuplicateProteinSequences = True
             If mCheckForDuplicateProteinSequences Then
                 htProteinSequenceHashes = New Hashtable
                 intProteinSequenceHashCount = 0
@@ -955,7 +978,10 @@ Public Class clsValidateFastaFile
                                 If mCheckForDuplicateProteinNames Then
                                     blnDuplicateName = htProteinNames.ContainsKey(strProteinName.ToLower)
 
-                                    If blnDuplicateName AndAlso mFixedFastaRenameProteinsWithDuplicateNames Then
+                                    If blnDuplicateName AndAlso _
+                                       mGenerateFixedFastaFile AndAlso _
+                                       mFixedFastaRenameProteinsWithDuplicateNames Then
+
                                         chLetterToAppend = "b"c
                                         intNumberToAppend = 0
                                         Do
@@ -980,7 +1006,7 @@ Public Class clsValidateFastaFile
                                             End If
                                         Loop While blnDuplicateName
 
-                                        RecordFastaFileWarning(mLineCount, 1, strProteinName, eMessageCodeConstants.RenamedProtein, "--> strNewProteinName", String.Empty)
+                                        RecordFastaFileWarning(mLineCount, 1, strProteinName, eMessageCodeConstants.RenamedProtein, "--> " & strNewProteinName, String.Empty)
 
                                         strProteinName = String.Copy(strNewProteinName)
                                         mFixedFastaDuplicateNameProteinsRenamed += 1
@@ -1058,7 +1084,6 @@ Public Class clsValidateFastaFile
                                 If mCheckForDuplicateProteinSequences Then
                                     sbCurrentResidues.Append(strResiduesClean)
                                 End If
-
                             End If
 
                             ' Reset the blank line tracking variable
@@ -1080,10 +1105,99 @@ Public Class clsValidateFastaFile
                 For intIndex = 0 To intProteinSequenceHashCount - 1
                     If udtProteinSeqHashInfo(intIndex).ProteinCount > 1 Then
                         With udtProteinSeqHashInfo(intIndex)
-                            RecordFastaFileWarning(mLineCount, 0, ExtractListItem(.ProteinNameList, 1), eMessageCodeConstants.DuplicateProteinSequence, .ProteinNameList, .SequenceStart)
+                            RecordFastaFileWarning(mLineCount, 0, .ProteinNameFirst, eMessageCodeConstants.DuplicateProteinSequence, .ProteinNameFirst & ", " & FlattenArray(.AdditionalProteins, .ProteinCount - 1, ","c), .SequenceStart)
                         End With
                     End If
                 Next intIndex
+            End If
+
+            If mSaveProteinSequenceHashInfoFiles Then
+                Try
+                    strUniqueProteinSeqsFileOut = _
+                        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
+                        System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqs.txt")
+
+                    ' Create srUniqueProteinSeqsOut
+                    srUniqueProteinSeqsOut = New System.IO.StreamWriter(strUniqueProteinSeqsFileOut, False)
+                Catch ex As Exception
+                    ' Error opening output file
+                    RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
+                        "Error creating output file: " & strUniqueProteinSeqsFileOut, String.Empty)
+                    strUniqueProteinSeqsFileOut = String.Empty
+                End Try
+
+                Try
+                    ' Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
+                    ' We'll only create it if a two or more proteins have the same protein sequence
+                    strDuplicateProteinMappingFileOut = _
+                                           System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
+                                           System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqDuplicates.txt")                    ' Look for strDuplicateProteinMappingFileOut and erase it if it exists
+
+                    If System.IO.File.Exists(strDuplicateProteinMappingFileOut) Then
+                        System.IO.File.Delete(strDuplicateProteinMappingFileOut)
+                    End If
+                Catch ex As Exception
+                    ' Error deleting output file
+                    RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
+                        "Error deleting output file: " & strUniqueProteinSeqsFileOut, String.Empty)
+                    strUniqueProteinSeqsFileOut = String.Empty
+
+                End Try
+
+                If Not srUniqueProteinSeqsOut Is Nothing Then
+                    strLineOut = "Sequence_Index" & ControlChars.Tab & _
+                                 "Protein_Name_First" & ControlChars.Tab & _
+                                 "Sequence_Length" & ControlChars.Tab & _
+                                 "Sequence_Hash" & ControlChars.Tab & _
+                                 "Protein_Count" & ControlChars.Tab & _
+                                 "Duplicate_Proteins"
+
+                    srUniqueProteinSeqsOut.WriteLine(strLineOut)
+
+                    For intIndex = 0 To intProteinSequenceHashCount - 1
+                        With udtProteinSeqHashInfo(intIndex)
+                            strLineOut = (intIndex + 1).ToString & ControlChars.Tab & _
+                                         .ProteinNameFirst & ControlChars.Tab & _
+                                         .SequenceLength & ControlChars.Tab & _
+                                         .SequenceHash & ControlChars.Tab & _
+                                         .ProteinCount & ControlChars.Tab & _
+                                         FlattenArray(.AdditionalProteins, .ProteinCount - 1, ","c)
+
+                            srUniqueProteinSeqsOut.WriteLine(strLineOut)
+
+                            If .ProteinCount > 1 Then
+                                If srDuplicateProteinMapping Is Nothing Then
+                                    ' Need to create srDuplicateProteinMapping
+                                    srDuplicateProteinMapping = New System.IO.StreamWriter(strDuplicateProteinMappingFileOut, False)
+
+                                    strLineOut = "Sequence_Index" & ControlChars.Tab & _
+                                                 "Protein_Name_First" & ControlChars.Tab & _
+                                                 "Sequence_Length" & ControlChars.Tab & _
+                                                 "Duplicate_Protein"
+
+                                    srDuplicateProteinMapping.WriteLine(strLineOut)
+                                End If
+
+                                For intDuplicateIndex = 0 To .ProteinCount - 2
+                                    If Not .AdditionalProteins(intDuplicateIndex) Is Nothing Then
+                                        strDuplicateProtein = .AdditionalProteins(intDuplicateIndex).Trim
+                                        If strDuplicateProtein.Length > 0 Then
+                                            strLineOut = (intIndex + 1).ToString & ControlChars.Tab & _
+                                                         .ProteinNameFirst & ControlChars.Tab & _
+                                                         .SequenceLength & ControlChars.Tab & _
+                                                         strDuplicateProtein
+                                            srDuplicateProteinMapping.WriteLine(strLineOut)
+                                        End If
+                                    End If
+                                Next intDuplicateIndex
+                            End If
+                        End With
+
+                    Next intIndex
+                    srUniqueProteinSeqsOut.Close()
+                    If Not srDuplicateProteinMapping Is Nothing Then srDuplicateProteinMapping.Close()
+                End If
+
             End If
 
             If mProteinCount = 0 Then
@@ -1303,21 +1417,22 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function ExtractListItem(ByVal strList As String, ByVal intItem As Integer) As String
-        Dim strItems() As String
-        Dim strItem As String
+    ' Unused function
+    ''Protected Function ExtractListItem(ByVal strList As String, ByVal intItem As Integer) As String
+    ''    Dim strItems() As String
+    ''    Dim strItem As String
 
-        strItem = String.Empty
-        If intItem >= 1 And Not strList Is Nothing Then
-            strItems = strList.Split(","c)
-            If strItems.Length >= intItem Then
-                strItem = strItems(intItem - 1)
-            End If
-        End If
+    ''    strItem = String.Empty
+    ''    If intItem >= 1 And Not strList Is Nothing Then
+    ''        strItems = strList.Split(","c)
+    ''        If strItems.Length >= intItem Then
+    ''            strItem = strItems(intItem - 1)
+    ''        End If
+    ''    End If
 
-        Return strItem
+    ''    Return strItem
 
-    End Function
+    ''End Function
 
     Protected Function NormalizeFileLineEndings( _
         ByVal pathOfFileToFix As String, _
@@ -1494,6 +1609,45 @@ Public Class clsValidateFastaFile
 
     End Function
 
+    Private Function FlattenArray(ByRef strArray() As String) As String
+        Return FlattenArray(strArray, ControlChars.Tab)
+    End Function
+
+    Private Function FlattenArray(ByRef strArray() As String, ByVal chSepChar As Char) As String
+        If strArray Is Nothing Then
+            Return String.Empty
+        Else
+            Return FlattenArray(strArray, strArray.Length, chSepChar)
+        End If
+    End Function
+
+    Private Function FlattenArray(ByRef strArray() As String, ByVal intDataCount As Integer, ByVal chSepChar As Char) As String
+        Dim intIndex As Integer
+        Dim strResult As String
+
+        If strArray Is Nothing Then
+            Return String.Empty
+        ElseIf strArray.Length = 0 OrElse intDataCount <= 0 Then
+            Return String.Empty
+        Else
+            If intDataCount > strArray.Length Then
+                intDataCount = strArray.Length
+            End If
+
+            strResult = strArray(0)
+            If strResult Is Nothing Then strResult = String.Empty
+
+            For intIndex = 1 To intDataCount - 1
+                If strArray(intIndex) Is Nothing Then
+                    strResult &= chSepChar
+                Else
+                    strResult &= chSepChar & strArray(intIndex)
+                End If
+            Next intIndex
+            Return strResult
+        End If
+    End Function
+
     Public Overrides Function GetErrorMessage() As String Implements IValidateFastaFile.GetCurrentErrorMessage
         ' Returns "" if no error
 
@@ -1667,6 +1821,9 @@ Public Class clsValidateFastaFile
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = False
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName) = False
 
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
+
+
         mLongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
         mProteinNameInvalidCharsToRemove = New Char() {}
 
@@ -1709,7 +1866,7 @@ Public Class clsValidateFastaFile
     Public Function LoadParameterFileSettings( _
         ByVal strParameterFilePath As String) As Boolean Implements IValidateFastaFile.LoadParameterFileSettings
 
-        Dim objSettingsFile As New PRISM.Files.XmlSettingsFileAccessor
+        Dim objSettingsFile As New XmlSettingsFileAccessor
 
         Dim blnCustomRulesLoaded As Boolean
         Dim blnSuccess As Boolean
@@ -1755,6 +1912,10 @@ Public Class clsValidateFastaFile
                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = _
                         objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", _
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
+
+                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = _
+                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", _
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
 
                     Me.MaximumFileErrorsToTrack = objSettingsFile.GetParam(XML_SECTION_OPTIONS, _
                         "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
@@ -2058,8 +2219,11 @@ Public Class clsValidateFastaFile
                 If Not objHashtableValue Is Nothing Then
                     ' Value exists; update the entry in udtProteinSeqHashInfo
                     With udtProteinSeqHashInfo(CInt(objHashtableValue))
+                        If .ProteinCount >= .AdditionalProteins.Length Then
+                            ReDim Preserve .AdditionalProteins(.AdditionalProteins.Length * 2 - 1)
+                        End If
+                        .AdditionalProteins(.ProteinCount - 1) = String.Copy(strProteinName)
                         .ProteinCount += 1
-                        .ProteinNameList &= ", " & strProteinName
                     End With
                 Else
                     ' Value not yet present; add it
@@ -2071,7 +2235,8 @@ Public Class clsValidateFastaFile
 
                     With udtProteinSeqHashInfo(intProteinSequenceHashCount)
                         .ProteinCount = 1
-                        .ProteinNameList = String.Copy(strProteinName)
+                        .ProteinNameFirst = String.Copy(strProteinName)
+                        ReDim .AdditionalProteins(4)
                         .SequenceHash = String.Copy(strComputedHash)
                         .SequenceLength = sbCurrentResidues.Length
                         .SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
@@ -2090,7 +2255,7 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function ReadRulesFromParameterFile( _
-        ByRef objSettingsFile As PRISM.Files.XmlSettingsFileAccessor, _
+        ByRef objSettingsFile As XmlSettingsFileAccessor, _
         ByVal strSectionName As String, _
         ByRef udtRules() As udtRuleDefinitionType) As Boolean
         ' Returns True if the section named strSectionName is present and if it contains an item with keyName = "RuleCount"
@@ -2645,7 +2810,7 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Private Sub SaveRulesToParameterFile(ByRef objSettingsFile As PRISM.Files.XmlSettingsFileAccessor, ByVal strSectionName As String, ByRef udtRules() As udtRuleDefinitionType)
+    Private Sub SaveRulesToParameterFile(ByRef objSettingsFile As XmlSettingsFileAccessor, ByVal strSectionName As String, ByRef udtRules() As udtRuleDefinitionType)
 
         Dim intRuleNumber As Integer
         Dim strRuleBase As String
@@ -2674,7 +2839,7 @@ Public Class clsValidateFastaFile
     Public Function SaveSettingsToParameterFile(ByVal strParameterFilePath As String) As Boolean Implements IValidateFastaFile.SaveParameterSettingsToParameterFile
 
         Dim srOutFile As System.IO.StreamWriter
-        Dim objSettingsFile As New PRISM.Files.XmlSettingsFileAccessor
+        Dim objSettingsFile As New XmlSettingsFileAccessor
 
         Dim blnCustomRulesLoaded As Boolean
         Dim blnSuccess As Boolean
@@ -2708,6 +2873,8 @@ Public Class clsValidateFastaFile
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
+
 
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", Me.MinimumProteinNameLength)

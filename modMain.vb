@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "August 1, 2007"
+    Public Const PROGRAM_DATE As String = "August 3, 2007"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -48,7 +48,7 @@ Module modMain
         Dim objValidateFastaFile As clsValidateFastaFile
 
         Dim intReturnCode As Integer
-        Dim objParseCommandLine As New SharedVBNetRoutines.clsParseCommandLine
+        Dim objParseCommandLine As New clsParseCommandLine
         Dim blnProceed As Boolean
 
         Dim strCmdLine As String
@@ -65,6 +65,7 @@ Module modMain
 
         mUseStatsFile = False
         mGenerateFixedFastaFile = False
+
         mGenerateFixedFastaRenameDuplicates = False
 
         mRecurseFolders = False
@@ -96,6 +97,10 @@ Module modMain
                     .ShowMessages = Not mQuietMode
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
+
+                    ' Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
+
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mGenerateFixedFastaRenameDuplicates)
                 End With
 
@@ -107,6 +112,8 @@ Module modMain
                 '    .MinimumProteinNameLength()
                 '    .MaximumProteinNameLength()
                 '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, )
+                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, )
+                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
                 'End With
 
                 If mOutputFolderPath Is Nothing OrElse mOutputFolderPath.Length = 0 Then
@@ -146,7 +153,7 @@ Module modMain
     End Function
 
 
-    Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As SharedVBNetRoutines.clsParseCommandLine) As Boolean
+    Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
         Dim strValue As String
@@ -204,7 +211,7 @@ Module modMain
             strSyntax &= "The input file path can contain the wildcard character * and should point to a fasta file." & ControlChars.NewLine
             strSyntax &= "The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file." & ControlChars.NewLine
             strSyntax &= "Use /C to specify that an output file should be created, rather than displaying the results on the screen." & ControlChars.NewLine
-            strSyntax &= "Use /F to shorten long protein names and remove invalid characters from the residues line, generating a new, fixed .Fasta file." & ControlChars.NewLine
+            strSyntax &= "Use /F to shorten long protein names and remove invalid characters from the residues line, generating a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)." & ControlChars.NewLine
             strSyntax &= "Use /R to rename duplicate proteins when using /F to generate a fixed fasta file." & ControlChars.NewLine
             strSyntax &= "The parameter file path is optional.  If included, it should point to a valid XML parameter file." & ControlChars.NewLine
             strSyntax &= "Use /X to specify that a model XML parameter file should be created." & ControlChars.NewLine

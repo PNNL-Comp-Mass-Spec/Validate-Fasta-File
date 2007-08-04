@@ -1,5 +1,11 @@
 Validate Fasta File Change Log
 
+Version 2.0.2771; August 3, 2007
+	- When generating a fixed fasta file, the program will also now create a text file that lists the hash value for each unique sequence found in the input file
+		- Also included is the first protein name with for each sequence, and details on the other proteins that have the same exact sequence 
+		- Additionally, if duplicate proteins are found, then a mapping file will be created that lists the first protein name, the sequence length, and each duplicate protein name
+	- Removed the dependence on PRISM.Dll and SharedVBNetRoutines.dll by adding files clsParseCommandLine.vb and clsXmlSettingsFileAccessor.vb to the project
+
 Version 2.0.2769; August 1, 2007
 	- Added option to rename proteins with duplicate names rather than skipping them when generating a fixed fasta file
 		- When renaming, first tries appending "-b" to the original protein name, then checks if this new name matches any other protein names
