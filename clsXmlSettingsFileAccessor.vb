@@ -133,7 +133,7 @@ Public Class XmlSettingsFileAccessor
         Try
             ' Grab the keys for sectionName
             strKeys = m_iniFileAccessor.AllKeysInSection(sectionNameInFile)
-        Catch ex As Exception
+        Catch ex As System.Exception
             ' Invalid section name; do not update anything
             Return False
         End Try
@@ -340,7 +340,7 @@ Public Class XmlSettingsFileAccessor
                     valueNotPresent = True
                     Return valueIfMissing
                 End If
-            Catch ex As Exception
+            Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
             End Try
@@ -377,7 +377,7 @@ Public Class XmlSettingsFileAccessor
                     valueNotPresent = True
                     Return valueIfMissing
                 End If
-            Catch ex As Exception
+            Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
             End Try
@@ -414,7 +414,7 @@ Public Class XmlSettingsFileAccessor
                     valueNotPresent = True
                     Return valueIfMissing
                 End If
-            Catch ex As Exception
+            Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
             End Try
@@ -451,7 +451,7 @@ Public Class XmlSettingsFileAccessor
                     valueNotPresent = True
                     Return valueIfMissing
                 End If
-            Catch ex As Exception
+            Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
             End Try
@@ -488,7 +488,7 @@ Public Class XmlSettingsFileAccessor
                     valueNotPresent = True
                     Return valueIfMissing
                 End If
-            Catch ex As Exception
+            Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
             End Try
@@ -702,9 +702,9 @@ Public Class XmlSettingsFileAccessor
                         m_IniFilename = IniFilename
                         m_initialized = True
                     End If
-                Catch e As Exception
+                Catch e As System.Exception
                     If NotifyOnException Then
-                        Throw New Exception("Failed to read INI file.")
+                        Throw New System.Exception("Failed to read INI file.")
                     End If
                 Finally
                     If (Not tr Is Nothing) Then
@@ -1120,9 +1120,9 @@ Public Class XmlSettingsFileAccessor
                             Return True
                         End If
 
-                    Catch e As Exception
+                    Catch e As System.Exception
                         If NotifyOnException Then
-                            Throw New Exception("Failed to create item.")
+                            Throw New System.Exception("Failed to create item.")
                         End If
                     End Try
                 End If
@@ -1145,9 +1145,9 @@ Public Class XmlSettingsFileAccessor
                     m_XmlDoc.DocumentElement.AppendChild(N)
                     sections.Add(Natt.Value)
                     Return True
-                Catch e As Exception
+                Catch e As System.Exception
                     If NotifyOnException Then
-                        Throw New Exception("Failed to create item.")
+                        Throw New System.Exception("Failed to create item.")
                     End If
                     Return False
                 End Try
@@ -1172,9 +1172,9 @@ Public Class XmlSettingsFileAccessor
                     Return True
                 End If
                 Return False
-            Catch e As Exception
+            Catch e As System.Exception
                 If NotifyOnException Then
-                    Throw New Exception("Failed to create item.")
+                    Throw New System.Exception("Failed to create item.")
                 End If
                 Return False
             End Try
@@ -1239,7 +1239,7 @@ Public Class XmlSettingsFileAccessor
                 fi = New System.IO.FileInfo(Value)
                 If Not fi.Directory.Exists Then
                     If NotifyOnException Then
-                        Throw New Exception("Invalid path for output file.")
+                        Throw New System.Exception("Invalid path for output file.")
                     End If
                 Else
                     m_SaveFilename = Value
@@ -1253,7 +1253,7 @@ Public Class XmlSettingsFileAccessor
                 Dim fi As System.IO.FileInfo = New System.IO.FileInfo(OutputFilename)
                 If Not fi.Directory.Exists Then
                     If NotifyOnException Then
-                        Throw New Exception("Invalid path.")
+                        Throw New System.Exception("Invalid path.")
                     End If
                     Return
                 End If
@@ -1268,7 +1268,7 @@ Public Class XmlSettingsFileAccessor
                 End If
             Else
                 If NotifyOnException Then
-                    Throw New Exception("Not Output File name specified.")
+                    Throw New System.Exception("Not Output File name specified.")
                 End If
             End If
         End Sub
@@ -1285,9 +1285,9 @@ Public Class XmlSettingsFileAccessor
                 xsl.Transform(m_XmlDoc, Nothing, sw, resolver)
                 sw.Close()
                 Return sb.ToString
-            Catch e As Exception
+            Catch e As System.Exception
                 If NotifyOnException Then
-                    Throw New Exception("Error transforming XML to INI file.")
+                    Throw New System.Exception("Error transforming XML to INI file.")
                 End If
                 Return Nothing
             End Try

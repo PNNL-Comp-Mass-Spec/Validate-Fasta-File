@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "August 3, 2007"
+    Public Const PROGRAM_DATE As String = "December 5, 2007"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -34,7 +34,9 @@ Module modMain
 
     Private mUseStatsFile As Boolean
     Private mGenerateFixedFastaFile As Boolean
-    Private mGenerateFixedFastaRenameDuplicates As Boolean
+    Private mFixedFastaRenameDuplicateNameProteins As Boolean
+    Private mFixedFastaConsolidateDuplicateProteinSeqs As Boolean
+
     Private mCreateModelXMLParameterFile As Boolean
 
     Private mRecurseFolders As Boolean
@@ -66,7 +68,8 @@ Module modMain
         mUseStatsFile = False
         mGenerateFixedFastaFile = False
 
-        mGenerateFixedFastaRenameDuplicates = False
+        mFixedFastaRenameDuplicateNameProteins = False
+        mFixedFastaConsolidateDuplicateProteinSeqs = False
 
         mRecurseFolders = False
         mRecurseFoldersMaxLevels = 0
@@ -101,7 +104,8 @@ Module modMain
                     ' Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mGenerateFixedFastaRenameDuplicates)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
                 End With
 
                 ''' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
@@ -157,7 +161,7 @@ Module modMain
         ' Returns True if no problems; otherwise, returns false
 
         Dim strValue As String
-        Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "X", "S", "Q"}
+        Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "X", "S", "Q"}
 
         Try
             ' Make sure no invalid parameters are present
@@ -166,12 +170,22 @@ Module modMain
             Else
                 With objParseCommandLine
                     ' Query objParseCommandLine to see if various parameters are present
-                    If .RetrieveValueForParameter("I", strValue) Then mInputFilePath = strValue
+                    If .RetrieveValueForParameter("I", strValue) Then
+                        mInputFilePath = strValue
+                    Else
+                        ' User didn't use /I:InputFile
+                        ' See if they simply provided the file name
+                        If .NonSwitchParameterCount > 0 Then
+                            mInputFilePath = .RetrieveNonSwitchParameter(0)
+                        End If
+                    End If
+
                     If .RetrieveValueForParameter("O", strValue) Then mOutputFolderPath = strValue
                     If .RetrieveValueForParameter("P", strValue) Then mParameterFilePath = strValue
                     If .RetrieveValueForParameter("C", strValue) Then mUseStatsFile = True
                     If .RetrieveValueForParameter("F", strValue) Then mGenerateFixedFastaFile = True
-                    If .RetrieveValueForParameter("R", strValue) Then mGenerateFixedFastaRenameDuplicates = True
+                    If .RetrieveValueForParameter("R", strValue) Then mFixedFastaRenameDuplicateNameProteins = True
+                    If .RetrieveValueForParameter("D", strValue) Then mFixedFastaConsolidateDuplicateProteinSeqs = True
                     If .RetrieveValueForParameter("X", strValue) Then mCreateModelXMLParameterFile = True
 
                     If .RetrieveValueForParameter("S", strValue) Then
@@ -206,13 +220,16 @@ Module modMain
 
             strSyntax = "This program will read a Fasta File and display statistics on the number of proteins and number of residues.  It will also check that the protein names, descriptions, and sequences are in the correct format." & ControlChars.NewLine
             strSyntax &= "Program syntax:" & ControlChars.NewLine & ioPath.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location)
-            strSyntax &= " /I:InputFilePath.fasta [/O:OutputFolderPath] [/P:ParameterFilePath] [/C] [/F] [/R] [/X] [/S:[MaxLevel]] [/Q]" & ControlChars.NewLine & ControlChars.NewLine
+            strSyntax &= " /I:InputFilePath.fasta [/O:OutputFolderPath] [/P:ParameterFilePath] [/C] [/F] [/R] [/D] [/X] [/S:[MaxLevel]] [/Q]" & ControlChars.NewLine & ControlChars.NewLine
 
             strSyntax &= "The input file path can contain the wildcard character * and should point to a fasta file." & ControlChars.NewLine
             strSyntax &= "The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file." & ControlChars.NewLine
-            strSyntax &= "Use /C to specify that an output file should be created, rather than displaying the results on the screen." & ControlChars.NewLine
+            strSyntax &= "Use /C to specify that an output file should be created, rather than displaying the results on the screen." & ControlChars.NewLine & ControlChars.NewLine
+
             strSyntax &= "Use /F to shorten long protein names and remove invalid characters from the residues line, generating a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)." & ControlChars.NewLine
             strSyntax &= "Use /R to rename duplicate proteins when using /F to generate a fixed fasta file." & ControlChars.NewLine
+            strSyntax &= "Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file." & ControlChars.NewLine & ControlChars.NewLine
+
             strSyntax &= "The parameter file path is optional.  If included, it should point to a valid XML parameter file." & ControlChars.NewLine
             strSyntax &= "Use /X to specify that a model XML parameter file should be created." & ControlChars.NewLine
             strSyntax &= "Use /S to process all valid files in the input folder and subfolders. Include a number after /S (like /S:2) to limit the level of subfolders to examine." & ControlChars.NewLine

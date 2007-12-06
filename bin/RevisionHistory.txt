@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.0.2895; December 5, 2007
+	- When generating a fixed fasta file, the program can now optionally consolidate proteins that have duplicate sequences
+		- Use /D on the command line
+
 Version 2.0.2771; August 3, 2007
 	- When generating a fixed fasta file, the program will also now create a text file that lists the hash value for each unique sequence found in the input file
 		- Also included is the first protein name with for each sequence, and details on the other proteins that have the same exact sequence 
