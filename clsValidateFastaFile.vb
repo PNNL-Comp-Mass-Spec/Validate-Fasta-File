@@ -765,7 +765,9 @@ Public Class clsValidateFastaFile
 
                     sngPercentComplete = CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
                     If blnConsolidatingProteinsWithDuplicateSeqs Then
-                        sngPercentComplete /= 2
+                        ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
+                        ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
+                        sngPercentComplete = sngPercentComplete * 3 / 4
                     End If
 
                     MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
@@ -924,7 +926,7 @@ Public Class clsValidateFastaFile
             If mSaveProteinSequenceHashInfoFiles Then
                 sngPercentComplete = 98
                 If blnConsolidatingProteinsWithDuplicateSeqs Then
-                    sngPercentComplete /= 2
+                    sngPercentComplete = sngPercentComplete * 3 / 4
                 End If
                 MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
 
@@ -1503,7 +1505,7 @@ Public Class clsValidateFastaFile
                 If intLineCount Mod 50 = 0 Then
                     If MyBase.AbortProcessing Then Exit Do
 
-                    sngPercentComplete = 50 + CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single) / 2
+                    sngPercentComplete = 75 + CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single) / 4
                     MyBase.UpdateProgress("Consolidating duplicate proteins to create a new FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
                 End If
 
