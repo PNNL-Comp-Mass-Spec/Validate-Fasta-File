@@ -92,6 +92,7 @@ Public Class clsValidateFastaFile
         '        ResiduesLineContainsU = 30
         DuplicateProteinSequence = 18
         RenamedProtein = 19
+        ProteinRemovedSinceDuplicateSequence = 20
     End Enum
 
 #End Region
@@ -725,7 +726,7 @@ Public Class clsValidateFastaFile
                 Catch ex As Exception
                     ' Error opening output file
                     RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                        "Error creating output file: " & strFastaFilePathOut, String.Empty)
+                        "Error creating output file " & strFastaFilePathOut & ": " & ex.message, String.Empty)
                 End Try
             End If
 
@@ -1191,7 +1192,7 @@ Public Class clsValidateFastaFile
 
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error parsing protein header line: " & strLineIn, String.Empty)
+                "Error parsing protein header line '" & strLineIn & "': " & ex.Message, String.Empty)
 
         End Try
 
@@ -1233,7 +1234,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             ' Error opening output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error creating output file: " & strUniqueProteinSeqsFileOut, String.Empty)
+                "Error creating output file " & strUniqueProteinSeqsFileOut & ": " & ex.message, String.Empty)
 
             Return False
         End Try
@@ -1251,7 +1252,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             ' Error deleting output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error deleting output file: " & strDuplicateProteinMappingFileOut, String.Empty)
+                "Error deleting output file " & strDuplicateProteinMappingFileOut & ": " & ex.message, String.Empty)
 
             Return False
         End Try
@@ -1317,7 +1318,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             ' Error writing results
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error writing results to: " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut, String.Empty)
+                "Error writing results to " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut & ": " & ex.message, String.Empty)
 
             blnSuccess = False
         End Try
@@ -1412,17 +1413,32 @@ Public Class clsValidateFastaFile
         Dim strProteinName As String
         Dim strProteinDescription As String
         Dim strDuplicateProteinList As String
+        Dim strMasterProteinInfo As String
 
-        ' This hashtable contains the protein names and the index values pointing into udtProteinSeqHashInfo
-        Dim htProteinNameLookup As Hashtable
+        ' This hashtable contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
+        Dim htProteinNameFirstList As Hashtable
+
+        ' This hashtable contains the names of dupliate proteins; the hash values are the protein names of the master protein that has the same sequence
+        Dim htDuplicateProteinList As Hashtable
         Dim objValue As Object
 
         Dim intDescriptionStartIndex As Integer
         Dim intIndex As Integer
+        Dim intDupIndex As Integer
+        Dim intDuplicateNameSkipCount As Integer
 
         Dim blnKeepProtein As Boolean
         Dim blnSuccess As Boolean
         blnSuccess = False
+
+        Dim blnSkipDupProtein As Boolean
+
+        Dim intAdditionalProteinCount As Integer
+        Dim strAdditionalProteinNames() As String
+
+        If intProteinSequenceHashCount <= 0 Then
+            Return True
+        End If
 
         Try
             strFixedFastaFilePathTemp = strFixedFastaFilePath & ".TempFixed"
@@ -1434,7 +1450,7 @@ Public Class clsValidateFastaFile
             System.IO.File.Move(strFixedFastaFilePath, strFixedFastaFilePathTemp)
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp, String.Empty)
+                "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp & ": " & ex.message, String.Empty)
 
             Return False
         End Try
@@ -1454,7 +1470,7 @@ Public Class clsValidateFastaFile
 
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error opening " & strFixedFastaFilePathTemp, String.Empty)
+                "Error opening " & strFixedFastaFilePathTemp & ": " & ex.message, String.Empty)
 
             Return False
         End Try
@@ -1464,34 +1480,45 @@ Public Class clsValidateFastaFile
             swConsolidatedFastaOut = New System.IO.StreamWriter(strFixedFastaFilePath, False)
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error creating consolidated fasta output file: " & strFixedFastaFilePath, String.Empty)
+                "Error creating consolidated fasta output file " & strFixedFastaFilePath & ": " & ex.message, String.Empty)
         End Try
 
         Try
-            ' Create sorted list of the of the protein names in udtProteinSeqHashInfo().ProteinNameFirst
-            htProteinNameLookup = New Hashtable
+            ' Populate htProteinNameFirstList with the protein names in udtProteinSeqHashInfo().ProteinNameFirst
+            htProteinNameFirstList = New Hashtable
+
+            ' Populate htDuplicateProteinList with the protein names in udtProteinSeqHashInfo().AdditionalProteins 
+            htDuplicateProteinList = New Hashtable
 
             For intIndex = 0 To intProteinSequenceHashCount - 1
                 With udtProteinSeqHashInfo(intIndex)
                     strProteinName = .ProteinNameFirst.ToLower
 
-                    objValue = htProteinNameLookup.Item(strProteinName)
+                    objValue = htProteinNameFirstList.Item(strProteinName)
                     If objValue Is Nothing Then
-                        htProteinNameLookup.Add(strProteinName, intIndex)
+                        htProteinNameFirstList.Add(strProteinName, intIndex)
                     Else
-                        ' strProteinName is already present in htProteinNameLookup
-                        ' We can't consolidate duplicate sequences when two entries have the same name
+                        ' strProteinName is already present in htProteinNameFirstList
+                        ' The fixed fasta file will only actually contain the first occurrence of strProteinName, so we can effectively ignore this entry
 
-                        If .ProteinCount > 1 Or udtProteinSeqHashInfo(CInt(objValue)).ProteinCount > 1 Then
-                            RecordFastaFileWarning(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                                "Cannot consolidate duplicate sequences for proteins with the same name: " & .ProteinNameFirst, String.Empty)
-                        End If
+                        intDuplicateNameSkipCount += 1
+                    End If
 
-                        ' Set the index value to -1
-                        htProteinNameLookup(strProteinName) = -1
+                    If .ProteinCount > 1 Then
+                        For intDupIndex = 0 To .ProteinCount - 2
+                            strProteinName = .AdditionalProteins(intDupIndex).ToLower
+                            objValue = htDuplicateProteinList.Item(strProteinName)
+                            If objValue Is Nothing Then
+                                htDuplicateProteinList.Add(.AdditionalProteins(intDupIndex).ToLower, .ProteinNameFirst)
+                            End If
+                        Next
                     End If
                 End With
             Next intIndex
+
+            ' Reserve space for 10 entries in strAdditionalProteinNames
+            intAdditionalProteinCount = 0
+            ReDim strAdditionalProteinNames(9)
 
             ' Parse each line in the file
             intLineCount = 0
@@ -1513,7 +1540,7 @@ Public Class clsValidateFastaFile
 
                 If Not strLineIn Is Nothing Then
                     If strLineIn.Trim.Length > 0 Then
-                        ' Note: Trim the start of the line (though, since this is a fixed fasta file it should not start with a space)
+                        ' Note: Trim the start of the line (however, since this is a fixed fasta file it should not start with a space)
                         strLineIn = strLineIn.TrimStart
 
                         If strLineIn.Chars(0) = mProteinLineStartChar Then
@@ -1522,9 +1549,9 @@ Public Class clsValidateFastaFile
 
                             SplitFastaProteinHeaderLine(strLineIn, strProteinName, strProteinDescription, intDescriptionStartIndex)
 
-                            objValue = htProteinNameLookup.Item(strProteinName.ToLower)
+                            objValue = htProteinNameFirstList.Item(strProteinName.ToLower)
                             If Not objValue Is Nothing Then
-                                ' strProteinName was found in htProteinNames
+                                ' strProteinName was found in htProteinNameFirstList
 
                                 blnKeepProtein = True
                                 intIndex = CInt(objValue)
@@ -1532,15 +1559,64 @@ Public Class clsValidateFastaFile
                                 If intIndex >= 0 Then
                                     If udtProteinSeqHashInfo(intIndex).ProteinCount > 1 Then
                                         ' The protein has duplicate proteins
-                                        ' Append them to the description
-                                        strLineIn = ConstructFastaHeaderLine( _
-                                                            strProteinName, _
-                                                            strProteinDescription & "; Duplicate proteins: " & FlattenAdditionalProteinList(udtProteinSeqHashInfo(intIndex), ","c))
+                                        ' Construct a list of the duplicate protein names
+
+                                        intAdditionalProteinCount = 0
+
+                                        For intDupIndex = 0 To udtProteinSeqHashInfo(intIndex).ProteinCount - 2
+                                            ' Add the additional protein name if it is not of the form "BaseName-b", "BaseName-c", etc.
+                                            blnSkipDupProtein = False
+
+                                            If udtProteinSeqHashInfo(intIndex).AdditionalProteins(intDupIndex) Is Nothing Then
+                                                blnSkipDupProtein = True
+                                            Else
+                                                If udtProteinSeqHashInfo(intIndex).AdditionalProteins(intDupIndex).ToLower = strProteinName.ToLower Then
+                                                    ' Names match; do not add to the list
+                                                    blnSkipDupProtein = True
+                                                Else
+                                                    With udtProteinSeqHashInfo(intIndex).AdditionalProteins(intDupIndex)
+                                                        If .Length > 2 AndAlso .Chars(.Length - 2) = "-"c Then
+                                                            If Char.IsLetter(.Chars(.Length - 1)) Then
+                                                                If strProteinName.ToLower = udtProteinSeqHashInfo(intIndex).AdditionalProteins(intDupIndex).Substring(0, .Length - 2).ToLower Then
+                                                                    ' Base names match; do not add to the list
+                                                                    ' For example, ProteinX and ProteinX-b
+                                                                    blnSkipDupProtein = True
+                                                                End If
+                                                            End If
+                                                        End If
+                                                    End With
+                                                End If
+                                            End If
+
+                                            If Not blnSkipDupProtein Then
+                                                If intAdditionalProteinCount >= strAdditionalProteinNames.Length Then
+                                                    ReDim Preserve strAdditionalProteinNames(strAdditionalProteinNames.Length * 2 - 1)
+                                                End If
+
+                                                strAdditionalProteinNames(intAdditionalProteinCount) = String.Copy(udtProteinSeqHashInfo(intIndex).AdditionalProteins(intDupIndex))
+                                                intAdditionalProteinCount += 1
+                                            End If
+                                        Next intDupIndex
+
+                                        If intAdditionalProteinCount > 0 Then
+                                            ' Append the duplicate protein names to the description
+                                            strLineIn = ConstructFastaHeaderLine( _
+                                                                strProteinName, _
+                                                                strProteinDescription & "; Duplicate proteins: " & FlattenArray(strAdditionalProteinNames, intAdditionalProteinCount, ","c))
+                                        End If
                                     End If
                                 End If
                             Else
                                 blnKeepProtein = False
                                 mFixedFastaDuplicateSequenceProteinsSkipped += 1
+
+                                objValue = htDuplicateProteinList.Item(strProteinName.ToLower)
+                                If objValue Is Nothing Then
+                                    strMasterProteinInfo = "same as ??"
+                                Else
+                                    strMasterProteinInfo = "same as " & CStr(objValue)
+                                End If
+                                RecordFastaFileWarning(intLineCount, 0, strProteinName, eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence, strMasterProteinInfo, String.Empty)
                             End If
 
                             If blnKeepProtein Then
@@ -1562,7 +1638,7 @@ Public Class clsValidateFastaFile
 
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
-                "Error opening " & strFixedFastaFilePathTemp, String.Empty)
+                "Error writing to consolidated fasta file " & strFixedFastaFilePath & ": " & ex.message, String.Empty)
 
             Return False
         Finally
@@ -2396,6 +2472,9 @@ Public Class clsValidateFastaFile
 
             Case eMessageCodeConstants.RenamedProtein
                 strMessage = "Renamed protein because duplicate name"
+
+            Case eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence
+                strMessage = "Removed protein since duplicate sequence"
 
             Case eMessageCodeConstants.UnspecifiedError
                 strMessage = "Unspecified error"

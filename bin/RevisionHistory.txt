@@ -1,6 +1,6 @@
 Validate Fasta File Change Log
 
-Version 2.0.2895; December 5, 2007
+Version 2.0.2896; December 6, 2007
 	- When generating a fixed fasta file, the program can now optionally consolidate proteins that have duplicate sequences
 		- Use /D on the command line
 

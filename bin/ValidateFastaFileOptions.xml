@@ -5,12 +5,19 @@
     <item key="AllowAsteriskInResidues" value="False" />
     <item key="CheckForDuplicateProteinNames" value="True" />
     <item key="CheckForDuplicateProteinSequences" value="True" />
+    <item key="SaveProteinSequenceHashInfoFiles
     <item key="MaximumFileErrorsToTrack" value="50" />
     <item key="MinimumProteinNameLength" value="3" />
     <item key="MaximumProteinNameLength" value="34" />
     <item key="MaximumResiduesPerLine" value="120" />
     <item key="WarnBlankLinesBetweenProteins" value="False" />
     <item key="WarnLineStartsWithSpace" value="True" />
+    <item key="OutputToStatsFile" value="False" />
+    <item key="NormalizeFileLineEndCharacters" value="False" />
+    <item key="GenerateFixedFASTAFile" value="False" />
+    <item key="SplitOutMultipleRefsinProteinName" value="False" />
+    <item key="FixedFastaRenameDuplicateNameProteins" value="False" />
+    <item key="FixedFastaConsolidateDuplicateProteinSeqs" value="False" />
   </section>
   <section name="ValidateFastaHeaderLineRules">
     <item key="RuleCount" value="4" />
