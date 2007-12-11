@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "December 5, 2007"
+        MyBase.mFileDate = "December 10, 2007"
         InitializeLocalVariables()
     End Sub
 
@@ -181,7 +181,8 @@ Public Class clsValidateFastaFile
     Protected mLongProteinNameSplitChars As Char()                              ' Used if mGenerateFixedFastaFile = True
     Protected mProteinNameInvalidCharsToRemove As Char()                        ' Used if mGenerateFixedFastaFile = True
     Protected mFixedFastaRenameProteinsWithDuplicateNames As Boolean            ' Used if mGenerateFixedFastaFile = True
-    Protected mFixedFastaConsolidateProteinsWithDuplicateSeqs As Boolean   ' Used if mGenerateFixedFastaFile = True
+    Protected mFixedFastaConsolidateProteinsWithDuplicateSeqs As Boolean        ' Used if mGenerateFixedFastaFile = True
+    Protected mFixedFastaConsolidateDupsIgnoreILDiff As Boolean                 ' Used if mGenerateFixedFastaFile = True
 
     Protected mOutputToStatsFile As Boolean
     Protected mStatsFilePath As String
@@ -242,6 +243,8 @@ Public Class clsValidateFastaFile
                 Me.mSaveProteinSequenceHashInfoFiles = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
                 Me.mFixedFastaConsolidateProteinsWithDuplicateSeqs = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
+                Me.mFixedFastaConsolidateDupsIgnoreILDiff = State
         End Select
 
     End Sub
@@ -276,6 +279,8 @@ Public Class clsValidateFastaFile
                 Return Me.mSaveProteinSequenceHashInfoFiles
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
                 Return Me.mFixedFastaConsolidateProteinsWithDuplicateSeqs
+            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
+                Return Me.mFixedFastaConsolidateDupsIgnoreILDiff
         End Select
 
     End Function
@@ -613,7 +618,9 @@ Public Class clsValidateFastaFile
         Dim blnProteinHeaderFound As Boolean
         Dim blnProcessingResidueBlock As Boolean
         Dim blnProcessingDuplicateOrInvalidProtein As Boolean
+
         Dim blnConsolidatingProteinsWithDuplicateSeqs As Boolean
+        Dim blnConsolidateDupsIgnoreILDiff As Boolean
 
         Dim blnBlankLineProcessed As Boolean
 
@@ -744,8 +751,10 @@ Public Class clsValidateFastaFile
                 mCheckForDuplicateProteinSequences = True
                 mSaveProteinSequenceHashInfoFiles = True
                 blnConsolidatingProteinsWithDuplicateSeqs = True
+                blnConsolidateDupsIgnoreILDiff = mFixedFastaConsolidateDupsIgnoreILDiff
             Else
                 blnConsolidatingProteinsWithDuplicateSeqs = False
+                blnConsolidateDupsIgnoreILDiff = False
             End If
 
             If mCheckForDuplicateProteinSequences Then
@@ -796,7 +805,7 @@ Public Class clsValidateFastaFile
 
                             If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
                                 ' Process the previous protein entry to store a hash of the protein sequence
-                                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
+                                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
                                 sbCurrentResidues.Length = 0
                             End If
 
@@ -886,7 +895,7 @@ Public Class clsValidateFastaFile
 
             If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
                 ' Process the previous protein entry to store a hash of the protein sequence
-                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo)
+                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
                 sbCurrentResidues.Length = 0
             End If
 
@@ -2202,10 +2211,12 @@ Public Class clsValidateFastaFile
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = True
 
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = False
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) = False
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = False
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = False
+
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName) = False
-
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
-
 
         mLongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
         mProteinNameInvalidCharsToRemove = New Char() {}
@@ -2611,7 +2622,14 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Sub ProcessSequenceHashInfo(ByVal strProteinName As String, ByRef sbCurrentResidues As Text.StringBuilder, ByRef htProteinSequenceHashes As Hashtable, ByRef intProteinSequenceHashCount As Integer, ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType)
+    Private Sub ProcessSequenceHashInfo( _
+                        ByVal strProteinName As String, _
+                        ByRef sbCurrentResidues As Text.StringBuilder, _
+                        ByRef htProteinSequenceHashes As Hashtable, _
+                        ByRef intProteinSequenceHashCount As Integer, _
+                        ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
+                        ByVal blnConsolidateDupsIgnoreILDiff As Boolean)
+
         Static objHashGenerator As clsHashGenerator
 
         Dim objHashtableValue As Object
@@ -2624,7 +2642,12 @@ Public Class clsValidateFastaFile
         Try
             If sbCurrentResidues.Length > 0 Then
                 ' Compute the hash value for sbCurrentResidues
-                strComputedHash = objHashGenerator.GenerateHash(sbCurrentResidues.ToString)
+                If blnConsolidateDupsIgnoreILDiff Then
+                    strComputedHash = objHashGenerator.GenerateHash(sbCurrentResidues.ToString.Replace("L"c, "I"c))
+                Else
+                    strComputedHash = objHashGenerator.GenerateHash(sbCurrentResidues.ToString)
+                End If
+
 
                 ' See if htProteinSequenceHashes contains strHash
                 objHashtableValue = htProteinSequenceHashes(strComputedHash)

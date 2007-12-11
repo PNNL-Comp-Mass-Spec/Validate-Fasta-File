@@ -1,8 +1,12 @@
 Validate Fasta File Change Log
 
+Version 2.0.2900; December 10, 2007
+	- When generating a fixed fasta file, the program can now ignore I and L residue differences when consolidating proteins that have duplicate sequences
+		- Use /L in the command line
+
 Version 2.0.2896; December 6, 2007
 	- When generating a fixed fasta file, the program can now optionally consolidate proteins that have duplicate sequences
-		- Use /D on the command line
+		- Use /D in the command line
 
 Version 2.0.2771; August 3, 2007
 	- When generating a fixed fasta file, the program will also now create a text file that lists the hash value for each unique sequence found in the input file
