@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "December 10, 2007"
+    Public Const PROGRAM_DATE As String = "May 2, 2008"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -231,7 +231,7 @@ Module modMain
             strSyntax &= "Use /C to specify that an output file should be created, rather than displaying the results on the screen." & ControlChars.NewLine & ControlChars.NewLine
 
             strSyntax &= "Use /F to shorten long protein names and remove invalid characters from the residues line, generating a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)." & ControlChars.NewLine
-            strSyntax &= "Use /R to rename duplicate proteins when using /F to generate a fixed fasta file." & ControlChars.NewLine
+            strSyntax &= "Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file." & ControlChars.NewLine
             strSyntax &= "Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file." & ControlChars.NewLine
             strSyntax &= "Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins with duplicate protein sequences while generating a fixed fasta file." & ControlChars.NewLine & ControlChars.NewLine
 

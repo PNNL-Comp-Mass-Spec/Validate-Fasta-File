@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "December 10, 2007"
+        MyBase.mFileDate = "May 2, 2008"
         InitializeLocalVariables()
     End Sub
 
@@ -43,14 +43,19 @@ Public Class clsValidateFastaFile
     Protected Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 34
     Protected Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
 
-    Private Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
+    Public Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
     Public Const DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR As Char = "|"c
+    Public Const DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS As String = ":|"
+    Public Const DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS As String = ":|;"
+
     Private Const INVALID_PROTEIN_NAME_CHAR_REPLACEMENT As Char = "_"c
 
     Private CUSTOM_RULE_ID_START As Integer = 1000
     Private DEFAULT_CONTEXT_LENGTH As Integer = 13
 
     Public Const XML_SECTION_OPTIONS As String = "ValidateFastaFileOptions"
+    Public Const XML_SECTION_FIXED_FASTA_FILE_OPTIONS As String = "ValidateFastaFixedFASTAFileOptions"
+
     Public Const XML_SECTION_FASTA_HEADER_LINE_RULES As String = "ValidateFastaHeaderLineRules"
     Public Const XML_SECTION_FASTA_PROTEIN_NAME_RULES As String = "ValidateFastaProteinNameRules"
     Public Const XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES As String = "ValidateFastaProteinDescriptionRules"
@@ -135,6 +140,39 @@ Public Class clsValidateFastaFile
         Public AdditionalProteins() As String   ' Will contain .ProteinCount-1 items since .ProteinNameFirst is not stored here
         Public ProteinCount As Integer          ' 1 if only one protein matches this sequence
     End Structure
+
+    Protected Structure udtFixedFastaOptionsType
+        Public SplitOutMultipleRefsInProteinName As Boolean
+        Public SplitOutMultipleRefsForKnownAccession As Boolean
+        Public LongProteinNameSplitChars As Char()
+        Public ProteinNameInvalidCharsToRemove As Char()
+        Public RenameProteinsWithDuplicateNames As Boolean
+        Public ConsolidateProteinsWithDuplicateSeqs As Boolean
+        Public ConsolidateDupsIgnoreILDiff As Boolean
+        Public TruncateLongProteinNames As Boolean
+        Public WrapLongResidueLines As Boolean
+        Public RemoveInvalidResidues As Boolean
+    End Structure
+
+    Protected Structure udtFixedFastaStatsType
+        Public TruncatedProteinNameCount As Integer
+        Public UpdatedResidueLines As Integer
+        Public ProteinNamesInvalidCharsReplaced As Integer
+        Public ProteinNamesMultipleRefsRemoved As Integer
+        Public DuplicateNameProteinsSkipped As Integer
+        Public DuplicateNameProteinsRenamed As Integer
+        Public DuplicateSequenceProteinsSkipped As Integer
+    End Structure
+
+    Protected Structure udtProteinNameTruncationRegex
+        Public reMatchIPI As System.Text.RegularExpressions.Regex
+        Public reMatchGI As System.Text.RegularExpressions.Regex
+        Public reMatchJGI As System.Text.RegularExpressions.Regex
+        Public reMatchJGIBaseAndID As System.Text.RegularExpressions.Regex
+        Public reMatchGeneric As System.Text.RegularExpressions.Regex
+        Public reMatchDoubleBarOrColonAndBar As System.Text.RegularExpressions.Regex
+    End Structure
+
 #End Region
 
 #Region "Classwide Variables"
@@ -143,13 +181,8 @@ Public Class clsValidateFastaFile
     Protected mLineCount As Integer
     Protected mProteinCount As Integer
     Protected mResidueCount As Long
-    Protected mFixedFastaTruncatedProteinNameCount As Integer
-    Protected mFixedFastaUpdatedResidueLines As Integer
-    Protected mFixedFastaProteinNamesInvalidCharsReplaced As Integer
-    Protected mFixedFastaProteinNamesMultipleRefsRemoved As Integer
-    Protected mFixedFastaDuplicateNameProteinsSkipped As Integer
-    Protected mFixedFastaDuplicateNameProteinsRenamed As Integer
-    Protected mFixedFastaDuplicateSequenceProteinsSkipped As Integer
+
+    Protected mFixedFastaStats As udtFixedFastaStatsType
 
     Private mFileErrorCount As Integer
     Private mFileErrors() As IValidateFastaFile.udtMsgInfoType
@@ -166,8 +199,8 @@ Public Class clsValidateFastaFile
     Private mProteinSequenceRules() As udtRuleDefinitionType
     Private mMasterCustomRuleID As Integer = CUSTOM_RULE_ID_START
 
-    Private mFirstRefSeparator() As Char = New Char() {":"c, "|"c}
-    Private mSubsequentRefSeparator() As Char = New Char() {":"c, "|"c, ";"c}
+    Private mProteinNameFirstRefSepChars() As Char
+    Private mProteinNameSubsequentRefSepChars() As Char
 
     Protected mAddMissingLinefeedAtEOF As Boolean
     Protected mCheckForDuplicateProteinNames As Boolean
@@ -178,16 +211,11 @@ Public Class clsValidateFastaFile
     Protected mMaximumProteinNameLength As Integer
     Protected mMaximumResiduesPerLine As Integer
 
-    Protected mLongProteinNameSplitChars As Char()                              ' Used if mGenerateFixedFastaFile = True
-    Protected mProteinNameInvalidCharsToRemove As Char()                        ' Used if mGenerateFixedFastaFile = True
-    Protected mFixedFastaRenameProteinsWithDuplicateNames As Boolean            ' Used if mGenerateFixedFastaFile = True
-    Protected mFixedFastaConsolidateProteinsWithDuplicateSeqs As Boolean        ' Used if mGenerateFixedFastaFile = True
-    Protected mFixedFastaConsolidateDupsIgnoreILDiff As Boolean                 ' Used if mGenerateFixedFastaFile = True
+    Protected mFixedFastaOptions As udtFixedFastaOptionsType     ' Used if mGenerateFixedFastaFile = True
 
     Protected mOutputToStatsFile As Boolean
     Protected mStatsFilePath As String
     Protected mGenerateFixedFastaFile As Boolean
-    Protected mSplitOutMultipleRefsInProteinName As Boolean
     Protected mSaveProteinSequenceHashInfoFiles As Boolean
 
     Protected mProteinLineStartChar As Char
@@ -227,8 +255,8 @@ Public Class clsValidateFastaFile
                 Me.mGenerateFixedFastaFile = State
             Case IValidateFastaFile.SwitchOptions.OutputToStatsFile
                 Me.mOutputToStatsFile = State
-            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName
-                Me.mSplitOutMultipleRefsInProteinName = State
+            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName
+                Me.mFixedFastaOptions.SplitOutMultipleRefsInProteinName = State
             Case IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins
                 Me.mWarnBlankLinesBetweenProteins = State
             Case IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace
@@ -238,13 +266,21 @@ Public Class clsValidateFastaFile
             Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
                 Me.mCheckForDuplicateProteinSequences = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
-                Me.mFixedFastaRenameProteinsWithDuplicateNames = State
+                Me.mFixedFastaOptions.RenameProteinsWithDuplicateNames = State
             Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
                 Me.mSaveProteinSequenceHashInfoFiles = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
-                Me.mFixedFastaConsolidateProteinsWithDuplicateSeqs = State
+                Me.mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
-                Me.mFixedFastaConsolidateDupsIgnoreILDiff = State
+                Me.mFixedFastaOptions.ConsolidateDupsIgnoreILDiff = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames
+                Me.mFixedFastaOptions.TruncateLongProteinNames = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
+                Me.mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines
+                Me.mFixedFastaOptions.WrapLongResidueLines = State
+            Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
+                Me.mFixedFastaOptions.RemoveInvalidResidues = State
         End Select
 
     End Sub
@@ -263,8 +299,8 @@ Public Class clsValidateFastaFile
                 Return Me.mGenerateFixedFastaFile
             Case IValidateFastaFile.SwitchOptions.OutputToStatsFile
                 Return Me.mOutputToStatsFile
-            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName
-                Return Me.mSplitOutMultipleRefsInProteinName
+            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName
+                Return Me.mFixedFastaOptions.SplitOutMultipleRefsInProteinName
             Case IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins
                 Return Me.mWarnBlankLinesBetweenProteins
             Case IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace
@@ -274,33 +310,28 @@ Public Class clsValidateFastaFile
             Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
                 Return Me.mCheckForDuplicateProteinSequences
             Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
-                Return Me.mFixedFastaRenameProteinsWithDuplicateNames
+                Return Me.mFixedFastaOptions.RenameProteinsWithDuplicateNames
             Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
                 Return Me.mSaveProteinSequenceHashInfoFiles
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
-                Return Me.mFixedFastaConsolidateProteinsWithDuplicateSeqs
+                Return Me.mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs
             Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
-                Return Me.mFixedFastaConsolidateDupsIgnoreILDiff
+                Return Me.mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
+            Case IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames
+                Return Me.mFixedFastaOptions.TruncateLongProteinNames
+            Case IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
+                Return Me.mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession
+            Case IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines
+                Return Me.mFixedFastaOptions.WrapLongResidueLines
+            Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
+                Return Me.mFixedFastaOptions.RemoveInvalidResidues
         End Select
 
     End Function
 
-    'Public Property AddMissingLinefeedAtEOF() As Boolean
-    'Public Property AllowAsteriskInResidues() As Boolean
-    'Public Property CheckForDuplicateProteinNames() As Boolean
-    'Public Property GenerateFixedFastaFile() As Boolean
-    'Public Property SplitOutMultipleRefsInProteinName() As Boolean
-    'Public Property WarnBlankLinesBetweenProteins() As Boolean
-    'Public Property WarnLineStartsWithSpace() As Boolean
-    'Public Property OutputToStatsfile() As Boolean
-    'Public Property CheckForDuplicateProteinSequences() As Boolean
-    'Public Property FixedFastaRenameProteinsWithDuplicateNames() As Boolean
-    'Public Property SaveProteinSequenceHashInfoFiles() As Boolean
-    'Public Property FixedFastaConsolidateDuplicateProteinSeqs() As Boolean
-
     Public ReadOnly Property ErrorWarningCounts( _
-        ByVal messageType As IValidateFastaFile.eMsgTypeConstants, _
-        ByVal CountType As IValidateFastaFile.ErrorWarningCountTypes) As Integer
+    ByVal messageType As IValidateFastaFile.eMsgTypeConstants, _
+    ByVal CountType As IValidateFastaFile.ErrorWarningCountTypes) As Integer
 
         Get
             Dim tmpValue As Integer
@@ -351,19 +382,19 @@ Public Class clsValidateFastaFile
             Dim tmpValue As Integer
             Select Case ValueType
                 Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
-                    tmpValue = Me.mFixedFastaDuplicateNameProteinsSkipped
+                    tmpValue = Me.mFixedFastaStats.DuplicateNameProteinsSkipped
                 Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
-                    tmpValue = Me.mFixedFastaProteinNamesInvalidCharsReplaced
+                    tmpValue = Me.mFixedFastaStats.ProteinNamesInvalidCharsReplaced
                 Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved
-                    tmpValue = Me.mFixedFastaProteinNamesMultipleRefsRemoved
+                    tmpValue = Me.mFixedFastaStats.ProteinNamesMultipleRefsRemoved
                 Case IValidateFastaFile.FixedFASTAFileValues.TruncatedProteinNameCount
-                    tmpValue = Me.mFixedFastaTruncatedProteinNameCount
+                    tmpValue = Me.mFixedFastaStats.TruncatedProteinNameCount
                 Case IValidateFastaFile.FixedFASTAFileValues.UpdatedResidueLines
-                    tmpValue = Me.mFixedFastaUpdatedResidueLines
+                    tmpValue = Me.mFixedFastaStats.UpdatedResidueLines
                 Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesRenamedCount
-                    tmpValue = Me.mFixedFastaDuplicateNameProteinsRenamed
+                    tmpValue = Me.mFixedFastaStats.DuplicateNameProteinsRenamed
                 Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount
-                    tmpValue = Me.mFixedFastaDuplicateSequenceProteinsSkipped
+                    tmpValue = Me.mFixedFastaStats.DuplicateSequenceProteinsSkipped
             End Select
             Return tmpValue
 
@@ -515,7 +546,7 @@ Public Class clsValidateFastaFile
     Public Property ProteinNameInvalidCharsToRemove() As String _
         Implements IValidateFastaFile.ProteinNameInvalidCharactersToRemove
         Get
-            Return CharArrayToString(mProteinNameInvalidCharsToRemove)
+            Return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
         End Get
         Set(ByVal Value As String)
             If Value Is Nothing Then
@@ -526,9 +557,51 @@ Public Class clsValidateFastaFile
             ' a space does not make sense for an invalid protein name character
             Value = Value.Replace(" "c, String.Empty)
             If Value.Length > 0 Then
-                mProteinNameInvalidCharsToRemove = Value.ToCharArray
+                mFixedFastaOptions.ProteinNameInvalidCharsToRemove = Value.ToCharArray
             Else
-                mProteinNameInvalidCharsToRemove = New Char() {}
+                mFixedFastaOptions.ProteinNameInvalidCharsToRemove = New Char() {}      ' Default to an empty character array if Value is empty
+            End If
+        End Set
+    End Property
+
+    Public Property ProteinNameFirstRefSepChars() As String _
+       Implements IValidateFastaFile.ProteinNameFirstRefSepChars
+        Get
+            Return CharArrayToString(mProteinNameFirstRefSepChars)
+        End Get
+        Set(ByVal Value As String)
+            If Value Is Nothing Then
+                Value = String.Empty
+            End If
+
+            ' Check for and remove any spaces from Value, since
+            ' a space does not make sense for a separation character
+            Value = Value.Replace(" "c, String.Empty)
+            If Value.Length > 0 Then
+                mProteinNameFirstRefSepChars = Value.ToCharArray
+            Else
+                mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray     ' Use the default if Value is empty
+            End If
+        End Set
+    End Property
+
+    Public Property ProteinNameSubsequentRefSepChars() As String _
+       Implements IValidateFastaFile.ProteinNameSubsequentRefSepChars
+        Get
+            Return CharArrayToString(mProteinNameSubsequentRefSepChars)
+        End Get
+        Set(ByVal Value As String)
+            If Value Is Nothing Then
+                Value = String.Empty
+            End If
+
+            ' Check for and remove any spaces from Value, since
+            ' a space does not make sense for a separation character
+            Value = Value.Replace(" "c, String.Empty)
+            If Value.Length > 0 Then
+                mProteinNameSubsequentRefSepChars = Value.ToCharArray
+            Else
+                mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray     ' Use the default if Value is empty
             End If
         End Set
     End Property
@@ -536,7 +609,7 @@ Public Class clsValidateFastaFile
     Public Property LongProteinNameSplitChars() As String _
         Implements IValidateFastaFile.LongProteinNameSplitChars
         Get
-            Return CharArrayToString(mLongProteinNameSplitChars)
+            Return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars)
         End Get
         Set(ByVal Value As String)
             If Not Value Is Nothing Then
@@ -544,7 +617,7 @@ Public Class clsValidateFastaFile
                 ' a space does not make sense for a protein name split char
                 Value = Value.Replace(" "c, String.Empty)
                 If Value.Length > 0 Then
-                    mLongProteinNameSplitChars = Value.ToCharArray
+                    mFixedFastaOptions.LongProteinNameSplitChars = Value.ToCharArray
                 End If
             End If
         End Set
@@ -609,6 +682,9 @@ Public Class clsValidateFastaFile
 
         Dim sbCurrentResidues As System.Text.StringBuilder
 
+        ' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
+        Dim intCurrentValidResidueLineLengthMax As Integer
+
         Dim intIndex As Integer
         Dim intNewResidueCount As Integer
 
@@ -639,8 +715,7 @@ Public Class clsValidateFastaFile
         Dim udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType
         Dim udtProteinSequenceRuleDetails() As udtRuleDefinitionExtendedType
 
-        Dim reProteinNameDoubleBarOrColonAndBar As System.Text.RegularExpressions.Regex
-        Dim reProteinNameValidForTruncation As System.Text.RegularExpressions.Regex
+        Dim reProteinNameTruncation As udtProteinNameTruncationRegex
 
         Dim reNonLetterResidues As System.Text.RegularExpressions.Regex
 
@@ -674,20 +749,47 @@ Public Class clsValidateFastaFile
 
             ' Initialize the RegEx objects
 
-            ' Note that this RegEx contains a group with captured text:
-            reProteinNameDoubleBarOrColonAndBar = _
-                New System.Text.RegularExpressions.Regex("[" & _
-                CharArrayToString(mFirstRefSeparator) & "][^" & _
-                CharArrayToString(mSubsequentRefSeparator) & "]*([" & _
-                CharArrayToString(mSubsequentRefSeparator) & "])", _
-                Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+            With reProteinNameTruncation
+                ' Note that each of these RegEx tests contain two groups with captured text:
 
-            ' Note that this RegEx contains two groups with captured text:
-            reProteinNameValidForTruncation = _
-                New System.Text.RegularExpressions.Regex("(\w{2,}[" & _
-                CharArrayToString(mFirstRefSeparator) & "][\w.]{2,})[" & _
-                CharArrayToString(mSubsequentRefSeparator) & "](.+)", _
-                Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                ' The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
+                .reMatchIPI = _
+                    New System.Text.RegularExpressions.Regex("^(IPI:IPI[\w.]{2,})\|(.+)", _
+                        Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+
+                ' The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
+                .reMatchGI = _
+                    New System.Text.RegularExpressions.Regex("^(gi\|\d+)\|(.+)", _
+                        Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+
+                ' The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
+                .reMatchJGI = _
+                    New System.Text.RegularExpressions.Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)", _
+                        Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+
+                ' The following will extract bob|234384 from  bob|234384|ref|483293
+                '                         or bob|845832 from  bob|845832;ref|384923
+                .reMatchGeneric = _
+                    New System.Text.RegularExpressions.Regex("^(\w{2,}[" & _
+                    CharArrayToString(mProteinNameFirstRefSepChars) & "][\w\d._]{2,})[" & _
+                    CharArrayToString(mProteinNameSubsequentRefSepChars) & "](.+)", _
+                    Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+            End With
+
+            With reProteinNameTruncation
+                ' The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
+                .reMatchJGIBaseAndID = _
+                    New System.Text.RegularExpressions.Regex("^jgi\|[^|]+\|\d+", _
+                            Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+
+                ' Note that this RegEx contains a group with captured text:
+                .reMatchDoubleBarOrColonAndBar = _
+                    New System.Text.RegularExpressions.Regex("[" & _
+                        CharArrayToString(mProteinNameFirstRefSepChars) & "][^" & _
+                        CharArrayToString(mProteinNameSubsequentRefSepChars) & "]*([" & _
+                        CharArrayToString(mProteinNameSubsequentRefSepChars) & "])", _
+                        Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+            End With
 
             ' Non-letter characters in residues
             If mAllowAsteriskInResidues Then
@@ -700,9 +802,9 @@ Public Class clsValidateFastaFile
                     Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
             End If
 
-            ' Make sure mLongProteinNameSplitChars contains at least one character
-            If mLongProteinNameSplitChars Is Nothing OrElse mLongProteinNameSplitChars.Length = 0 Then
-                mLongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
+            ' Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
+            If mFixedFastaOptions.LongProteinNameSplitChars Is Nothing OrElse mFixedFastaOptions.LongProteinNameSplitChars.Length = 0 Then
+                mFixedFastaOptions.LongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
             End If
 
             ' Initialize the rule details UDTs, which contain a RegEx object for each rule
@@ -747,11 +849,11 @@ Public Class clsValidateFastaFile
                 mCheckForDuplicateProteinSequences = True
             End If
 
-            If mGenerateFixedFastaFile And mFixedFastaConsolidateProteinsWithDuplicateSeqs Then
+            If mGenerateFixedFastaFile And mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs Then
                 mCheckForDuplicateProteinSequences = True
                 mSaveProteinSequenceHashInfoFiles = True
                 blnConsolidatingProteinsWithDuplicateSeqs = True
-                blnConsolidateDupsIgnoreILDiff = mFixedFastaConsolidateDupsIgnoreILDiff
+                blnConsolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
             Else
                 blnConsolidatingProteinsWithDuplicateSeqs = False
                 blnConsolidateDupsIgnoreILDiff = False
@@ -803,10 +905,14 @@ Public Class clsValidateFastaFile
                         If strLineIn.Chars(0) = mProteinLineStartChar Then
                             ' Protein entry
 
-                            If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
-                                ' Process the previous protein entry to store a hash of the protein sequence
-                                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
-                                sbCurrentResidues.Length = 0
+                            If sbCurrentResidues.Length > 0 Then
+                                ProcessResiduesForPreviousProtein( _
+                                                        strProteinName, sbCurrentResidues, _
+                                                        htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, _
+                                                        blnConsolidateDupsIgnoreILDiff, _
+                                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax)
+
+                                intCurrentValidResidueLineLengthMax = 0
                             End If
 
                             ' Now process this protein entry
@@ -827,8 +933,7 @@ Public Class clsValidateFastaFile
                                 udtProteinNameRuleDetails, _
                                 udtProteinDescriptionRuleDetails, _
                                 udtProteinSequenceRuleDetails, _
-                                reProteinNameDoubleBarOrColonAndBar, _
-                                reProteinNameValidForTruncation)
+                                reProteinNameTruncation)
 
 
                             If blnBlankLineProcessed Then
@@ -872,16 +977,30 @@ Public Class clsValidateFastaFile
                             EvaluateRules(udtProteinSequenceRuleDetails, strProteinName, strLineIn, 0, strLineIn, 5)
 
                             If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences Then
-                                ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
-                                strResiduesClean = reNonLetterResidues.Replace(strLineIn, String.Empty)
-
-                                If Not swFixedFastaOut Is Nothing AndAlso Not blnProcessingDuplicateOrInvalidProtein Then
-                                    If strResiduesClean <> strLineIn Then mFixedFastaUpdatedResidueLines += 1
-                                    swFixedFastaOut.WriteLine(strResiduesClean)
+                                If mFixedFastaOptions.RemoveInvalidResidues Then
+                                    ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
+                                    strResiduesClean = reNonLetterResidues.Replace(strLineIn, String.Empty)
+                                Else
+                                    strResiduesClean = String.Copy(strLineIn)
                                 End If
 
-                                If mCheckForDuplicateProteinSequences Then
+                                If Not swFixedFastaOut Is Nothing AndAlso Not blnProcessingDuplicateOrInvalidProtein Then
+                                    If strResiduesClean <> strLineIn Then
+                                        mFixedFastaStats.UpdatedResidueLines += 1
+                                    End If
+
+                                    If Not mFixedFastaOptions.WrapLongResidueLines Then
+                                        ' Only write out this line if not auto-wrapping long residue lines
+                                        ' If we are auto-wrapping, then the residues will be written out by the call to ProcessResiduesForPreviousProtein
+                                        swFixedFastaOut.WriteLine(strResiduesClean)
+                                    End If
+                                End If
+
+                                If mCheckForDuplicateProteinSequences OrElse mFixedFastaOptions.WrapLongResidueLines Then
                                     sbCurrentResidues.Append(strResiduesClean)
+                                    If strResiduesClean.Length > intCurrentValidResidueLineLengthMax Then
+                                        intCurrentValidResidueLineLengthMax = strResiduesClean.Length
+                                    End If
                                 End If
                             End If
 
@@ -893,10 +1012,12 @@ Public Class clsValidateFastaFile
                 End If
             Loop
 
-            If mCheckForDuplicateProteinSequences AndAlso sbCurrentResidues.Length > 0 Then
-                ' Process the previous protein entry to store a hash of the protein sequence
-                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
-                sbCurrentResidues.Length = 0
+            If sbCurrentResidues.Length > 0 Then
+                ProcessResiduesForPreviousProtein( _
+                                        strProteinName, sbCurrentResidues, _
+                                        htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, _
+                                        blnConsolidateDupsIgnoreILDiff, _
+                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax)
             End If
 
             If mCheckForDuplicateProteinSequences Then
@@ -990,12 +1111,11 @@ Public Class clsValidateFastaFile
                                 ByRef udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType, _
                                 ByRef udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType, _
                                 ByRef udtProteinSequenceRuleDetails() As udtRuleDefinitionExtendedType, _
-                                ByRef reProteinNameDoubleBarOrColonAndBar As System.Text.RegularExpressions.Regex, _
-                                ByRef reProteinNameValidForTruncation As System.Text.RegularExpressions.Regex)
+                                ByRef reProteinNameTruncation As udtProteinNameTruncationRegex)
 
         Dim intDescriptionStartIndex As Integer
-        Dim intCharLoc As Integer
-        Dim intMinCharLoc As Integer
+        Dim intCharIndex As Integer
+        Dim intMinCharIndex As Integer
 
         Dim strNewProteinName As String
         Dim strExtraProteinNameText As String
@@ -1007,9 +1127,10 @@ Public Class clsValidateFastaFile
         Dim chLetterToAppend As Char
         Dim intNumberToAppend As Integer
 
-        Dim blnListedValidProteinNameChars As Boolean = False
-        Dim blnListedValidDescriptionChars As Boolean = False
-        Dim blnListedValidResidues As Boolean = False
+        Dim blnMultipleRefsSplitOutFromKnownAccession As Boolean = False
+
+        Dim blnProteinNameTooLong As Boolean
+        Dim chInvalidChar As Char
 
         Try
             SplitFastaProteinHeaderLine(strLineIn, strProteinName, strProteinDescription, intDescriptionStartIndex)
@@ -1046,101 +1167,167 @@ Public Class clsValidateFastaFile
 
                 If mGenerateFixedFastaFile Then
                     ' Auto-fix potential errors in the protein name
-                    ' Future: possibly remove invalid characters
 
                     ' Possibly truncate to mMaximumProteinNameLength characters
                     If strProteinName.Length > mMaximumProteinNameLength Then
+                        blnProteinNameTooLong = True
+                    Else
+                        blnProteinNameTooLong = False
+                    End If
+
+                    If mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession OrElse _
+                      (mFixedFastaOptions.TruncateLongProteinNames And blnProteinNameTooLong) Then
+
                         ' First see if the name fits the pattern IPI:IPI00048500.11|
                         ' Next see if the name fits the pattern gi|7110699|
-                        ' Do not truncate an unknown pattern
+                        ' Next see if the name fits the pattern jgi
+                        ' Next see if the name fits the generic pattern defined by reProteinNameTruncation.reMatchGeneric
+                        ' Otherwise, use mFixedFastaOptions.LongProteinNameSplitChars to define where to truncate 
 
                         strNewProteinName = String.Copy(strProteinName)
                         strExtraProteinNameText = String.Empty
 
-                        reMatch = reProteinNameValidForTruncation.Match(strProteinName)
+                        reMatch = reProteinNameTruncation.reMatchIPI.Match(strProteinName)
+                        If reMatch.Success Then
+                            blnMultipleRefsSplitOutFromKnownAccession = True
+                        Else
+                            ' IPI didn't match; try gi
+                            reMatch = reProteinNameTruncation.reMatchGI.Match(strProteinName)
+                        End If
+
+                        If reMatch.Success Then
+                            blnMultipleRefsSplitOutFromKnownAccession = True
+                        Else
+                            ' GI didn't match; try jgi
+                            reMatch = reProteinNameTruncation.reMatchJGI.Match(strProteinName)
+                        End If
+
+                        If reMatch.Success Then
+                            blnMultipleRefsSplitOutFromKnownAccession = True
+                        Else
+                            ' jgi didn't match; try generic (text separated by a series of colons or bars),
+                            '  but only if the name is too long
+                            If mFixedFastaOptions.TruncateLongProteinNames And blnProteinNameTooLong Then
+                                reMatch = reProteinNameTruncation.reMatchGeneric.Match(strProteinName)
+                            End If
+                        End If
 
                         If reMatch.Success Then
                             ' Trunctate the protein name
                             ' Truncate the protein name, but move the truncated portion into the next group
                             strNewProteinName = reMatch.Groups(1).Value
                             strExtraProteinNameText = reMatch.Groups(2).Value
-                        Else
+
+                        ElseIf mFixedFastaOptions.TruncateLongProteinNames And blnProteinNameTooLong Then
 
                             ' Name is too long, but it didn't match the known patterns
-                            ' Find the last occurrence of a vertical bar and truncate the text following it
+                            ' Find the last occurrence of mFixedFastaOptions.LongProteinNameSplitChars (default is vertical bar)
+                            '   and truncate the text following the match
                             ' Repeat the process until the protein name length >= mMaximumProteinNameLength
 
                             ' See if any of the characters in chProteinNameSplitChars is present after 
                             ' character 6 but less than character mMaximumProteinNameLength
-                            intMinCharLoc = 6
+                            intMinCharIndex = 6
 
                             Do
-                                intCharLoc = strNewProteinName.LastIndexOfAny(mLongProteinNameSplitChars)
-                                If intCharLoc >= intMinCharLoc Then
+                                intCharIndex = strNewProteinName.LastIndexOfAny(mFixedFastaOptions.LongProteinNameSplitChars)
+                                If intCharIndex >= intMinCharIndex Then
                                     If strExtraProteinNameText.Length > 0 Then
                                         strExtraProteinNameText = "|" & strExtraProteinNameText
                                     End If
-                                    strExtraProteinNameText = strNewProteinName.Substring(intCharLoc + 1) & strExtraProteinNameText
-                                    strNewProteinName = strNewProteinName.Substring(0, intCharLoc)
+                                    strExtraProteinNameText = strNewProteinName.Substring(intCharIndex + 1) & strExtraProteinNameText
+                                    strNewProteinName = strNewProteinName.Substring(0, intCharIndex)
                                 Else
-                                    intCharLoc = -1
+                                    intCharIndex = -1
                                 End If
 
-                            Loop While intCharLoc > 0 And strNewProteinName.Length > mMaximumProteinNameLength
+                            Loop While intCharIndex > 0 And strNewProteinName.Length > mMaximumProteinNameLength
 
                         End If
 
-                        If strNewProteinName <> strProteinName Then
-                            mFixedFastaTruncatedProteinNameCount += 1
+                        If strExtraProteinNameText.Length > 0 Then
+                            If blnProteinNameTooLong Then
+                                mFixedFastaStats.TruncatedProteinNameCount += 1
+                            Else
+                                mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1
+                            End If
+
                             strProteinName = String.Copy(strNewProteinName)
 
-                            If strProteinDescription.Length > 0 Then
-                                ' If strExtraProteinNameText ends in a vertical bar, and strProteinDescription starts with a space or a vertical bar, 
-                                ' then remove the vertical bar from the end of strExtraProteinNameText
-                                If strExtraProteinNameText.EndsWith("|") Then
-                                    strExtraProteinNameText = _
-                                        strExtraProteinNameText.Substring(0, strExtraProteinNameText.Length - 1) & strProteinDescription
-                                End If
+                            PrependExtraTextToProteinDescription(strExtraProteinNameText, strProteinDescription)
+                        End If
 
-                                If strProteinDescription.Chars(0) = " " OrElse strProteinDescription.Chars(0) = "|" Then
-                                    strProteinDescription = strExtraProteinNameText & strProteinDescription
-                                Else
-                                    strProteinDescription = strExtraProteinNameText & " " & strProteinDescription
+                    End If
+
+                    If mFixedFastaOptions.ProteinNameInvalidCharsToRemove.Length > 0 Then
+                        strNewProteinName = String.Copy(strProteinName)
+
+                        ' First remove invalid characters from the beginning or end of the protein name
+                        strNewProteinName = strNewProteinName.Trim(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
+
+                        If strNewProteinName.Length >= 1 Then
+                            For Each chInvalidChar In mFixedFastaOptions.ProteinNameInvalidCharsToRemove
+                                ' Next, replace any remaining instances of the character with an underscore
+                                strNewProteinName = strNewProteinName.Replace(chInvalidChar, INVALID_PROTEIN_NAME_CHAR_REPLACEMENT)
+                            Next
+
+                            If strProteinName <> strNewProteinName Then
+                                If strNewProteinName.Length >= 3 Then
+                                    strProteinName = String.Copy(strNewProteinName)
+                                    mFixedFastaStats.ProteinNamesInvalidCharsReplaced += 1
                                 End If
-                            Else
-                                strProteinDescription = String.Copy(strExtraProteinNameText)
                             End If
                         End If
-
                     End If
 
-                    If mProteinNameInvalidCharsToRemove.Length > 0 Then
-                        strNewProteinName = strProteinName.Replace(mProteinNameInvalidCharsToRemove, INVALID_PROTEIN_NAME_CHAR_REPLACEMENT)
-                        If strProteinName <> strNewProteinName Then
-                            strProteinName = String.Copy(strNewProteinName)
-                            mFixedFastaProteinNamesInvalidCharsReplaced += 1
-                        End If
-                    End If
+                    If mFixedFastaOptions.SplitOutMultipleRefsInProteinName AndAlso Not blnMultipleRefsSplitOutFromKnownAccession Then
+                        ' Look for multiple refs in the protein name, but only if we didn't already split out multiple refs above
 
-                    If mSplitOutMultipleRefsInProteinName Then
-                        reMatch = reProteinNameDoubleBarOrColonAndBar.Match(strProteinName)
+                        reMatch = reProteinNameTruncation.reMatchDoubleBarOrColonAndBar.Match(strProteinName)
                         If reMatch.Success Then
                             ' Protein name contains 2 or more vertical bars, or a colon and a bar
                             ' Split out the multiple refs and place them in the description
-                            intCharLoc = strProteinName.IndexOfAny(mFirstRefSeparator)
+                            ' However, jgi names are supposed to have two vertical bars, so we need to treat that data differently
 
-                            If intCharLoc > 0 Then
-                                intCharLoc = strProteinName.IndexOfAny(mSubsequentRefSeparator, intCharLoc + 1)
+                            strExtraProteinNameText = String.Empty
 
-                                If intCharLoc > 0 Then
-                                    strProteinDescription = strProteinName.Substring(intCharLoc + 1) & " " & strProteinDescription
-                                    strProteinName = strProteinName.Substring(0, intCharLoc)
-
-                                    mFixedFastaProteinNamesMultipleRefsRemoved += 1
+                            reMatch = reProteinNameTruncation.reMatchJGIBaseAndID.Match(strProteinName)
+                            If reMatch.Success Then
+                                ' ProteinName is similar to jgi|Organism|00000
+                                ' Check whether there is any text following the match
+                                If reMatch.Length < strProteinName.Length Then
+                                    ' Extra text exists; populate strExtraProteinNameText
+                                    strExtraProteinNameText = strProteinName.Substring(reMatch.Length + 1)
+                                    strProteinName = reMatch.ToString
                                 End If
+                            Else
+                                ' Find the first vertical bar or colon
+                                intCharIndex = strProteinName.IndexOfAny(mProteinNameFirstRefSepChars)
+
+                                If intCharIndex > 0 Then
+                                    ' Find the second vertical bar, colon, or semicolon
+                                    intCharIndex = strProteinName.IndexOfAny(mProteinNameSubsequentRefSepChars, intCharIndex + 1)
+
+                                    If intCharIndex > 0 Then
+                                        ' Split the protein name
+                                        strExtraProteinNameText = strProteinName.Substring(intCharIndex + 1)
+                                        strProteinName = strProteinName.Substring(0, intCharIndex)
+                                    End If
+                                End If
+
+                            End If
+
+                            If strExtraProteinNameText.Length > 0 Then
+                                PrependExtraTextToProteinDescription(strExtraProteinNameText, strProteinDescription)
+                                mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1
                             End If
 
                         End If
+                    End If
+
+                    ' Make sure strProteinDescription doesn't start with a | or space
+                    If strProteinDescription.Length > 0 Then
+                        strProteinDescription = strProteinDescription.TrimStart(New Char() {"|"c, " "c})
                     End If
                 End If
 
@@ -1150,7 +1337,7 @@ Public Class clsValidateFastaFile
 
                     If blnDuplicateName AndAlso _
                        mGenerateFixedFastaFile AndAlso _
-                       mFixedFastaRenameProteinsWithDuplicateNames Then
+                       mFixedFastaOptions.RenameProteinsWithDuplicateNames Then
 
                         chLetterToAppend = "b"c
                         intNumberToAppend = 0
@@ -1179,14 +1366,14 @@ Public Class clsValidateFastaFile
                         RecordFastaFileWarning(mLineCount, 1, strProteinName, eMessageCodeConstants.RenamedProtein, "--> " & strNewProteinName, String.Empty)
 
                         strProteinName = String.Copy(strNewProteinName)
-                        mFixedFastaDuplicateNameProteinsRenamed += 1
+                        mFixedFastaStats.DuplicateNameProteinsRenamed += 1
 
                     End If
 
                     If blnDuplicateName Then
                         RecordFastaFileError(mLineCount, 1, strProteinName, eMessageCodeConstants.DuplicateProteinName)
                         blnProcessingDuplicateOrInvalidProtein = True
-                        mFixedFastaDuplicateNameProteinsSkipped += 1
+                        mFixedFastaStats.DuplicateNameProteinsSkipped += 1
                     Else
                         htProteinNames.Add(strProteinName.ToLower, Nothing)
                         blnProcessingDuplicateOrInvalidProtein = False
@@ -1532,7 +1719,7 @@ Public Class clsValidateFastaFile
             ' Parse each line in the file
             intLineCount = 0
             lngBytesRead = 0
-            mFixedFastaDuplicateSequenceProteinsSkipped = 0
+            mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0
 
             Do While srFastaInFile.Peek() >= 0
                 strLineIn = srFastaInFile.ReadLine()
@@ -1617,7 +1804,7 @@ Public Class clsValidateFastaFile
                                 End If
                             Else
                                 blnKeepProtein = False
-                                mFixedFastaDuplicateSequenceProteinsSkipped += 1
+                                mFixedFastaStats.DuplicateSequenceProteinsSkipped += 1
 
                                 objValue = htDuplicateProteinList.Item(strProteinName.ToLower)
                                 If objValue Is Nothing Then
@@ -2211,15 +2398,24 @@ Public Class clsValidateFastaFile
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = True
 
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = False
+
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) = True
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) = False
+
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) = False
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = False
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = False
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames) = True
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines) = True
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName) = False
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
 
-        mLongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
-        mProteinNameInvalidCharsToRemove = New Char() {}
+        mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray
+        mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray
+
+        mFixedFastaOptions.LongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
+        mFixedFastaOptions.ProteinNameInvalidCharsToRemove = New Char() {}          ' Default to an empty character array
 
         SetDefaultRules()
 
@@ -2264,6 +2460,10 @@ Public Class clsValidateFastaFile
 
         Dim blnCustomRulesLoaded As Boolean
         Dim blnSuccess As Boolean
+
+        Dim strCharacterList As String
+        Dim blnOption As Boolean
+        Dim blnValueNotPresent As Boolean
 
         Try
 
@@ -2336,21 +2536,84 @@ Public Class clsValidateFastaFile
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters))
 
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = _
-                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile", _
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
+                    If Not objSettingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS) Then
+                        ' "ValidateFastaFixedFASTAFileOptions" section not present
+                        ' Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName) = _
-                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsinProteinName", _
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsinProteinName))
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = _
+                            objSettingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) = _
-                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "FixedFastaRenameDuplicateNameProteins", _
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins))
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) = _
+                            objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = _
-                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "FixedFastaConsolidateDuplicateProteinSeqs", _
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
+                    Else
+                        ' "ValidateFastaFixedFASTAFileOptions" section is present
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines))
+
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues) = _
+                            objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", _
+                            Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues))
+
+                        ' Look for the special character lists
+                        ' If defined, then update the default values
+                        strCharacterList = objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", String.Empty)
+                        If Not strCharacterList Is Nothing AndAlso strCharacterList.Length > 0 Then
+                            ' Update mFixedFastaOptions.LongProteinNameSplitChars with strCharacterList
+                            Me.LongProteinNameSplitChars = strCharacterList
+                        End If
+
+                        strCharacterList = objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", String.Empty)
+                        If Not strCharacterList Is Nothing AndAlso strCharacterList.Length > 0 Then
+                            ' Update mFixedFastaOptions.ProteinNameInvalidCharsToRemove with strCharacterList
+                            Me.ProteinNameInvalidCharsToRemove = strCharacterList
+                        End If
+
+                        strCharacterList = objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", String.Empty)
+                        If Not strCharacterList Is Nothing AndAlso strCharacterList.Length > 0 Then
+                            ' Update mProteinNameFirstRefSepChars
+                            Me.ProteinNameFirstRefSepChars = strCharacterList.ToCharArray
+                        End If
+
+                        strCharacterList = objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", String.Empty)
+                        If Not strCharacterList Is Nothing AndAlso strCharacterList.Length > 0 Then
+                            ' Update mProteinNameSubsequentRefSepChars
+                            Me.ProteinNameSubsequentRefSepChars = strCharacterList.ToCharArray
+                        End If
+                    End If
+
 
 
                     ' Read the custom rules
@@ -2621,6 +2884,80 @@ Public Class clsValidateFastaFile
         Return blnSuccess
 
     End Function
+
+    Private Sub PrependExtraTextToProteinDescription(ByVal strExtraProteinNameText As String, ByRef strProteinDescription As String)
+        Static chExtraCharsToTrim As Char() = New Char() {"|"c, " "c}
+
+        If Not strExtraProteinNameText Is Nothing AndAlso strExtraProteinNameText.Length > 0 Then
+            ' If strExtraProteinNameText ends in a vertical bar and/or space, them remove them
+            strExtraProteinNameText = strExtraProteinNameText.TrimEnd(chExtraCharsToTrim)
+
+            If Not strProteinDescription Is Nothing AndAlso strProteinDescription.Length > 0 Then
+                If strProteinDescription.Chars(0) = " "c OrElse strProteinDescription.Chars(0) = "|"c Then
+                    strProteinDescription = strExtraProteinNameText & strProteinDescription
+                Else
+                    strProteinDescription = strExtraProteinNameText & " " & strProteinDescription
+                End If
+            Else
+                strProteinDescription = String.Copy(strExtraProteinNameText)
+            End If
+        End If
+
+
+    End Sub
+
+
+    Private Sub ProcessResiduesForPreviousProtein( _
+                        ByVal strProteinName As String, _
+                        ByRef sbCurrentResidues As Text.StringBuilder, _
+                        ByRef htProteinSequenceHashes As Hashtable, _
+                        ByRef intProteinSequenceHashCount As Integer, _
+                        ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
+                        ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
+                        ByRef swFixedFastaOut As System.IO.StreamWriter, _
+                        ByVal intCurrentValidResidueLineLengthMax As Integer)
+
+        Dim intWrapLength As Integer
+        Dim intResidueCount As Integer
+
+        Dim intIndex As Integer
+        Dim intLength As Integer
+
+        If sbCurrentResidues.Length > 0 Then
+            If mCheckForDuplicateProteinSequences Then
+                ' Process the previous protein entry to store a hash of the protein sequence
+                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
+            End If
+
+            If mGenerateFixedFastaFile AndAlso mFixedFastaOptions.WrapLongResidueLines Then
+                ' Write out the residues
+                ' Wrap the lines at intCurrentValidResidueLineLengthMax characters (but do not allow to be longer than mMaximumResiduesPerLine residues)
+
+                intWrapLength = intCurrentValidResidueLineLengthMax
+                If intWrapLength <= 0 OrElse intWrapLength > mMaximumResiduesPerLine Then
+                    intWrapLength = mMaximumResiduesPerLine
+                End If
+
+                If intWrapLength < 10 Then
+                    ' Do not allow intWrapLength to be less than 10
+                    intWrapLength = 10
+                End If
+
+                intIndex = 0
+                intResidueCount = sbCurrentResidues.Length
+                Do While intIndex < sbCurrentResidues.Length
+                    intLength = Math.Min(intWrapLength, intResidueCount - intIndex)
+                    swFixedFastaOut.WriteLine(sbCurrentResidues.ToString(intIndex, intLength))
+                    intIndex += intWrapLength
+                Loop
+
+            End If
+
+            sbCurrentResidues.Length = 0
+
+        End If
+
+    End Sub
 
     Private Sub ProcessSequenceHashInfo( _
                         ByVal strProteinName As String, _
@@ -3214,13 +3551,15 @@ Public Class clsValidateFastaFile
         mProteinCount = 0
         mResidueCount = 0
 
-        mFixedFastaTruncatedProteinNameCount = 0
-        mFixedFastaUpdatedResidueLines = 0
-        mFixedFastaProteinNamesInvalidCharsReplaced = 0
-        mFixedFastaProteinNamesMultipleRefsRemoved = 0
-        mFixedFastaDuplicateNameProteinsSkipped = 0
-        mFixedFastaDuplicateNameProteinsRenamed = 0
-        mFixedFastaDuplicateSequenceProteinsSkipped = 0
+        With mFixedFastaStats
+            .TruncatedProteinNameCount = 0
+            .UpdatedResidueLines = 0
+            .ProteinNamesInvalidCharsReplaced = 0
+            .ProteinNamesMultipleRefsRemoved = 0
+            .DuplicateNameProteinsSkipped = 0
+            .DuplicateNameProteinsRenamed = 0
+            .DuplicateSequenceProteinsSkipped = 0
+        End With
 
         mFileErrorCount = 0
         ReDim mFileErrors(-1)
@@ -3273,6 +3612,7 @@ Public Class clsValidateFastaFile
     End Sub
 
     Public Function SaveSettingsToParameterFile(ByVal strParameterFilePath As String) As Boolean Implements IValidateFastaFile.SaveParameterSettingsToParameterFile
+        ' Save a model parameter file
 
         Dim srOutFile As System.IO.StreamWriter
         Dim objSettingsFile As New XmlSettingsFileAccessor
@@ -3319,6 +3659,27 @@ Public Class clsValidateFastaFile
 
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters))
+
+
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
+
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues))
+
+
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", Me.LongProteinNameSplitChars)
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", Me.ProteinNameInvalidCharsToRemove)
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", Me.ProteinNameFirstRefSepChars)
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", Me.ProteinNameSubsequentRefSepChars)
+
 
             ' Save the rules
             SaveRulesToParameterFile(objSettingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules)
