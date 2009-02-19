@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.0.3131; July 28, 2008
+	- Added option SaveBasicProteinHashInfoFile
+		- Useful for parsing huge .Fasta files to look for duplicate protein sequences without storing the protein names and sequences in memory
+
 Version 2.0.3044; May 2, 2008
 	- Added a new section to the XML parameter file: ValidateFastaFixedFASTAFileOptions
 		- Moved parameters GenerateFixedFASTAFile and SplitOutMultipleRefsinProteinName into this new section

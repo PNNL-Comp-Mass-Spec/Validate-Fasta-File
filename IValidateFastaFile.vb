@@ -122,6 +122,7 @@ Public Interface IValidateFastaFile
         FixedFastaSplitOutMultipleRefsForKnownAccession
         FixedFastaWrapLongResidueLines
         FixedFastaRemoveInvalidResidues
+        SaveBasicProteinHashInfoFile
     End Enum
 
     Enum FixedFASTAFileValues

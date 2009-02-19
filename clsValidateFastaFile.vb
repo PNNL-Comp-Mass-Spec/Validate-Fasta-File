@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "May 2, 2008"
+        MyBase.mFileDate = "July 28, 2008"
         InitializeLocalVariables()
     End Sub
 
@@ -218,6 +218,11 @@ Public Class clsValidateFastaFile
     Protected mGenerateFixedFastaFile As Boolean
     Protected mSaveProteinSequenceHashInfoFiles As Boolean
 
+    ' When true, then creates a text file that will contain the protein name and sequence hash for each protein; 
+    '  this option will not store protein names and/or hashes in memory, and is thus useful for processing 
+    '  huge .Fasta files to determine duplicate proteins
+    Protected mSaveBasicProteinHashInfoFile As Boolean
+
     Protected mProteinLineStartChar As Char
 
     Protected mAllowAsteriskInResidues As Boolean
@@ -281,6 +286,8 @@ Public Class clsValidateFastaFile
                 Me.mFixedFastaOptions.WrapLongResidueLines = State
             Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
                 Me.mFixedFastaOptions.RemoveInvalidResidues = State
+            Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
+                Me.mSaveBasicProteinHashInfoFile = State
         End Select
 
     End Sub
@@ -325,6 +332,8 @@ Public Class clsValidateFastaFile
                 Return Me.mFixedFastaOptions.WrapLongResidueLines
             Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
                 Return Me.mFixedFastaOptions.RemoveInvalidResidues
+            Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
+                Return Me.mSaveBasicProteinHashInfoFile
         End Select
 
     End Function
@@ -670,12 +679,14 @@ Public Class clsValidateFastaFile
         Dim fsInFile As System.IO.Stream
         Dim srFastaInFile As System.IO.StreamReader
         Dim swFixedFastaOut As System.IO.StreamWriter
+        Dim swProteinSequenceHashBasic As System.IO.StreamWriter
 
         Dim lngBytesRead As Long
         Dim intTerminatorSize As Integer
         Dim sngPercentComplete As Single
 
         Dim strFastaFilePathOut As String
+        Dim strBasicProteinHashInfoFilePath As String
 
         Dim strLineIn As String
         Dim strResiduesClean As String
@@ -825,7 +836,7 @@ Public Class clsValidateFastaFile
 
             srFastaInFile = New System.IO.StreamReader(fsInFile)
 
-            ' Optionally, open the output file
+            ' Optionally, open the output fasta file
             If mGenerateFixedFastaFile Then
                 Try
                     strFastaFilePathOut = _
@@ -837,6 +848,27 @@ Public Class clsValidateFastaFile
                     RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
                         "Error creating output file " & strFastaFilePathOut & ": " & ex.message, String.Empty)
                 End Try
+            End If
+
+            ' Optionally, open the Sequence Hash file
+            If mSaveBasicProteinHashInfoFile Then
+                Try
+                    strBasicProteinHashInfoFilePath = _
+                        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
+                        System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_ProteinHashes.txt")
+                    swProteinSequenceHashBasic = New System.IO.StreamWriter(strBasicProteinHashInfoFilePath, False)
+
+                    swProteinSequenceHashBasic.WriteLine("Protein_ID" & ControlChars.Tab & _
+                                                         "Protein_Name" & ControlChars.Tab & _
+                                                         "Sequence_Length" & ControlChars.Tab & _
+                                                         "Sequence_Hash")
+
+                Catch ex As Exception
+                    ' Error opening output file
+                    RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
+                        "Error creating output file " & strBasicProteinHashInfoFilePath & ": " & ex.message, String.Empty)
+                End Try
+
             End If
 
             ' Optionally, initialize htProteinNames
@@ -910,7 +942,8 @@ Public Class clsValidateFastaFile
                                                         strProteinName, sbCurrentResidues, _
                                                         htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, _
                                                         blnConsolidateDupsIgnoreILDiff, _
-                                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax)
+                                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax, _
+                                                        swProteinSequenceHashBasic)
 
                                 intCurrentValidResidueLineLengthMax = 0
                             End If
@@ -976,7 +1009,7 @@ Public Class clsValidateFastaFile
                             ' Test the protein sequence rules
                             EvaluateRules(udtProteinSequenceRuleDetails, strProteinName, strLineIn, 0, strLineIn, 5)
 
-                            If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences Then
+                            If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences OrElse mSaveBasicProteinHashInfoFile Then
                                 If mFixedFastaOptions.RemoveInvalidResidues Then
                                     ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
                                     strResiduesClean = reNonLetterResidues.Replace(strLineIn, String.Empty)
@@ -1017,7 +1050,8 @@ Public Class clsValidateFastaFile
                                         strProteinName, sbCurrentResidues, _
                                         htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, _
                                         blnConsolidateDupsIgnoreILDiff, _
-                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax)
+                                        swFixedFastaOut, intCurrentValidResidueLineLengthMax, _
+                                        swProteinSequenceHashBasic)
             End If
 
             If mCheckForDuplicateProteinSequences Then
@@ -1039,6 +1073,10 @@ Public Class clsValidateFastaFile
 
             If Not swFixedFastaOut Is Nothing Then
                 swFixedFastaOut.Close()
+            End If
+
+            If Not swProteinSequenceHashBasic Is Nothing Then
+                swProteinSequenceHashBasic.Close()
             End If
 
             If mProteinCount = 0 Then
@@ -1095,6 +1133,11 @@ Public Class clsValidateFastaFile
             If Not swFixedFastaOut Is Nothing Then
                 swFixedFastaOut.Close()
             End If
+
+            If Not swProteinSequenceHashBasic Is Nothing Then
+                swProteinSequenceHashBasic.Close()
+            End If
+
         End Try
 
         Return blnSuccess
@@ -2411,6 +2454,9 @@ Public Class clsValidateFastaFile
 
         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
 
+        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile) = False
+
+
         mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray
         mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray
 
@@ -2510,6 +2556,10 @@ Public Class clsValidateFastaFile
                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = _
                         objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", _
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
+
+                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile) = _
+                        objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", _
+                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile))
 
                     Me.MaximumFileErrorsToTrack = objSettingsFile.GetParam(XML_SECTION_OPTIONS, _
                         "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
@@ -2915,7 +2965,8 @@ Public Class clsValidateFastaFile
                         ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
                         ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
                         ByRef swFixedFastaOut As System.IO.StreamWriter, _
-                        ByVal intCurrentValidResidueLineLengthMax As Integer)
+                        ByVal intCurrentValidResidueLineLengthMax As Integer, _
+                        ByRef swProteinSequenceHashBasic As System.IO.StreamWriter)
 
         Dim intWrapLength As Integer
         Dim intResidueCount As Integer
@@ -2924,9 +2975,9 @@ Public Class clsValidateFastaFile
         Dim intLength As Integer
 
         If sbCurrentResidues.Length > 0 Then
-            If mCheckForDuplicateProteinSequences Then
+            If mCheckForDuplicateProteinSequences OrElse mSaveBasicProteinHashInfoFile Then
                 ' Process the previous protein entry to store a hash of the protein sequence
-                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff)
+                ProcessSequenceHashInfo(strProteinName, sbCurrentResidues, htProteinSequenceHashes, intProteinSequenceHashCount, udtProteinSeqHashInfo, blnConsolidateDupsIgnoreILDiff, swProteinSequenceHashBasic)
             End If
 
             If mGenerateFixedFastaFile AndAlso mFixedFastaOptions.WrapLongResidueLines Then
@@ -2965,7 +3016,8 @@ Public Class clsValidateFastaFile
                         ByRef htProteinSequenceHashes As Hashtable, _
                         ByRef intProteinSequenceHashCount As Integer, _
                         ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
-                        ByVal blnConsolidateDupsIgnoreILDiff As Boolean)
+                        ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
+                        ByRef swProteinSequenceHashBasic As System.IO.StreamWriter)
 
         Static objHashGenerator As clsHashGenerator
 
@@ -2985,38 +3037,48 @@ Public Class clsValidateFastaFile
                     strComputedHash = objHashGenerator.GenerateHash(sbCurrentResidues.ToString)
                 End If
 
+                If Not swProteinSequenceHashBasic Is Nothing Then
+                    swProteinSequenceHashBasic.WriteLine(mProteinCount.ToString & ControlChars.Tab & _
+                                                         strProteinName & ControlChars.Tab & _
+                                                         sbCurrentResidues.Length.ToString & ControlChars.Tab & _
+                                                         strComputedHash)
+                End If
 
-                ' See if htProteinSequenceHashes contains strHash
-                objHashtableValue = htProteinSequenceHashes(strComputedHash)
-                If Not objHashtableValue Is Nothing Then
-                    ' Value exists; update the entry in udtProteinSeqHashInfo
-                    With udtProteinSeqHashInfo(CInt(objHashtableValue))
-                        If .ProteinCount >= .AdditionalProteins.Length Then
-                            ReDim Preserve .AdditionalProteins(.AdditionalProteins.Length * 2 - 1)
+                If mCheckForDuplicateProteinSequences AndAlso Not htProteinSequenceHashes Is Nothing Then
+                    ' See if htProteinSequenceHashes contains strHash
+                    objHashtableValue = htProteinSequenceHashes(strComputedHash)
+                    If Not objHashtableValue Is Nothing Then
+                        ' Value exists; update the entry in udtProteinSeqHashInfo
+                        With udtProteinSeqHashInfo(CInt(objHashtableValue))
+                            If .ProteinCount >= .AdditionalProteins.Length Then
+                                ReDim Preserve .AdditionalProteins(.AdditionalProteins.Length * 2 - 1)
+                            End If
+                            .AdditionalProteins(.ProteinCount - 1) = String.Copy(strProteinName)
+                            .ProteinCount += 1
+                        End With
+                    Else
+                        ' Value not yet present; add it
+
+                        If intProteinSequenceHashCount >= udtProteinSeqHashInfo.Length Then
+                            ' Need to reserve more space in udtProteinSeqHashInfo
+                            ReDim Preserve udtProteinSeqHashInfo(udtProteinSeqHashInfo.Length * 2 - 1)
                         End If
-                        .AdditionalProteins(.ProteinCount - 1) = String.Copy(strProteinName)
-                        .ProteinCount += 1
-                    End With
-                Else
-                    ' Value not yet present; add it
 
-                    If intProteinSequenceHashCount >= udtProteinSeqHashInfo.Length Then
-                        ' Need to reserve more space in udtProteinSeqHashInfo
-                        ReDim Preserve udtProteinSeqHashInfo(udtProteinSeqHashInfo.Length * 2 - 1)
+                        With udtProteinSeqHashInfo(intProteinSequenceHashCount)
+                            .ProteinCount = 1
+                            .ProteinNameFirst = String.Copy(strProteinName)
+                            ReDim .AdditionalProteins(4)
+                            .SequenceHash = String.Copy(strComputedHash)
+                            .SequenceLength = sbCurrentResidues.Length
+                            .SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
+                        End With
+
+                        htProteinSequenceHashes.Add(strComputedHash, intProteinSequenceHashCount)
+                        intProteinSequenceHashCount += 1
                     End If
 
-                    With udtProteinSeqHashInfo(intProteinSequenceHashCount)
-                        .ProteinCount = 1
-                        .ProteinNameFirst = String.Copy(strProteinName)
-                        ReDim .AdditionalProteins(4)
-                        .SequenceHash = String.Copy(strComputedHash)
-                        .SequenceLength = sbCurrentResidues.Length
-                        .SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
-                    End With
-
-                    htProteinSequenceHashes.Add(strComputedHash, intProteinSequenceHashCount)
-                    intProteinSequenceHashCount += 1
                 End If
+
             End If
         Catch ex As Exception
             'Error caught; pass it up to the calling function
@@ -3650,7 +3712,7 @@ Public Class clsValidateFastaFile
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
-
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile))
 
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", Me.MinimumProteinNameLength)

@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "May 2, 2008"
+    Public Const PROGRAM_DATE As String = "July 28, 2008"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -37,6 +37,7 @@ Module modMain
     Private mFixedFastaRenameDuplicateNameProteins As Boolean
     Private mFixedFastaConsolidateDuplicateProteinSeqs As Boolean
     Private mFixedFastaConsolidateDupsIgnoreILDiff As Boolean
+    Private mSaveBasicProteinHashInfoFile As Boolean
 
     Private mCreateModelXMLParameterFile As Boolean
 
@@ -72,6 +73,7 @@ Module modMain
         mFixedFastaRenameDuplicateNameProteins = False
         mFixedFastaConsolidateDuplicateProteinSeqs = False
         mFixedFastaConsolidateDupsIgnoreILDiff = False
+        mSaveBasicProteinHashInfoFile = False
 
         mRecurseFolders = False
         mRecurseFoldersMaxLevels = 0
@@ -109,6 +111,7 @@ Module modMain
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
                 End With
 
                 ''' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
@@ -164,7 +167,7 @@ Module modMain
         ' Returns True if no problems; otherwise, returns false
 
         Dim strValue As String
-        Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "X", "S", "Q"}
+        Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "B", "X", "S", "Q"}
 
         Try
             ' Make sure no invalid parameters are present
@@ -190,6 +193,7 @@ Module modMain
                     If .RetrieveValueForParameter("R", strValue) Then mFixedFastaRenameDuplicateNameProteins = True
                     If .RetrieveValueForParameter("D", strValue) Then mFixedFastaConsolidateDuplicateProteinSeqs = True
                     If .RetrieveValueForParameter("L", strValue) Then mFixedFastaConsolidateDupsIgnoreILDiff = True
+                    If .RetrieveValueForParameter("B", strValue) Then mSaveBasicProteinHashInfoFile = True
                     If .RetrieveValueForParameter("X", strValue) Then mCreateModelXMLParameterFile = True
 
                     If .RetrieveValueForParameter("S", strValue) Then
@@ -224,7 +228,7 @@ Module modMain
 
             strSyntax = "This program will read a Fasta File and display statistics on the number of proteins and number of residues.  It will also check that the protein names, descriptions, and sequences are in the correct format." & ControlChars.NewLine
             strSyntax &= "Program syntax:" & ControlChars.NewLine & ioPath.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location)
-            strSyntax &= " /I:InputFilePath.fasta [/O:OutputFolderPath] [/P:ParameterFilePath] [/C] [/F] [/R] [/D] [/L] [/X] [/S:[MaxLevel]] [/Q]" & ControlChars.NewLine & ControlChars.NewLine
+            strSyntax &= " /I:InputFilePath.fasta [/O:OutputFolderPath] [/P:ParameterFilePath] [/C] [/F] [/R] [/D] [/L] [/B] [/X] [/S:[MaxLevel]] [/Q]" & ControlChars.NewLine & ControlChars.NewLine
 
             strSyntax &= "The input file path can contain the wildcard character * and should point to a fasta file." & ControlChars.NewLine
             strSyntax &= "The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file." & ControlChars.NewLine
