@@ -86,6 +86,7 @@ Public Interface IValidateFastaFile
     Property ProteinNameFirstRefSepChars() As String
     Property ProteinNameSubsequentRefSepChars() As String
 
+    Property ShowMessages() As Boolean
 
     Structure udtMsgInfoType
         Public LineNumber As Integer

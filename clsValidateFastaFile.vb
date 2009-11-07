@@ -53,6 +53,11 @@ Public Class clsValidateFastaFile
     Private CUSTOM_RULE_ID_START As Integer = 1000
     Private DEFAULT_CONTEXT_LENGTH As Integer = 13
 
+    Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING As String = "Line contains a protein name, but not a description"
+    Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG As String = "Protein description is over 900 characters long"
+    Public Const MESSAGE_TEXT_ASTERISK_IN_RESIDUES As String = "An asterisk was found in the residues"
+    Public Const MESSAGE_TEXT_DASH_IN_RESIDUES As String = "A dash was found in the residues"
+
     Public Const XML_SECTION_OPTIONS As String = "ValidateFastaFileOptions"
     Public Const XML_SECTION_FIXED_FASTA_FILE_OPTIONS As String = "ValidateFastaFixedFASTAFileOptions"
 
@@ -649,6 +654,16 @@ Public Class clsValidateFastaFile
         Get
             Return Me.GetFileErrors()
         End Get
+    End Property
+
+
+    Public Shadows Property ShowMessages() As Boolean Implements IValidateFastaFile.ShowMessages
+        Get
+            Return MyBase.ShowMessages
+        End Get
+        Set(ByVal Value As Boolean)
+            MyBase.ShowMessages = Value
+        End Set
     End Property
 
 #End Region
@@ -2554,7 +2569,6 @@ Public Class clsValidateFastaFile
                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues) = _
                         objSettingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", _
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues))
-
                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames) = _
                         objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", _
                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
@@ -2852,6 +2866,7 @@ Public Class clsValidateFastaFile
     End Function
 
     Protected Function SimpleProcessFile(ByVal strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
+        ' Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
         Return Me.ProcessFile(strInputFilePath, Nothing, Nothing, False)
     End Function
 
@@ -3807,7 +3822,7 @@ Public Class clsValidateFastaFile
         Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", 7)
 
         ' Header line warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, "Line contains a protein name, but not a description", 3)
+        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, 3)
         Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", 3)
 
         ' Protein Name error characters
@@ -3822,17 +3837,17 @@ Public Class clsValidateFastaFile
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", 3)
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", 3)
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", 7)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, ".{900,}", True, "Protein description is over 900 characters long", 4, False)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, 4, False)
 
         ' Protein sequence errors
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", 7)
 
         If Not mAllowAsteriskInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\*", True, "An asterisk was found in the residues", 7)
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, 7)
         End If
 
         If Not mAllowDashInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\-", True, "A dash was found in the residues", 7)
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, 7)
         End If
 
         ' Note: we look for a space, tab, asterisk, and dash with separate rules (defined above), so we
