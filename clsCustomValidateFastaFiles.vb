@@ -3,6 +3,7 @@ Public Interface ICustomValidation
 
     Enum eValidationOptionConstants As Integer
         AllowAsterisksInResidues = 0
+        AllowDashInResidues = 1
     End Enum
 
     Enum eValidationMessageTypes As Integer
@@ -258,6 +259,12 @@ Public Class clsCustomValidateFastaFiles
                                 If mValidationOptions(ICustomValidation.eValidationOptionConstants.AllowAsterisksInResidues) Then
                                     blnIgnoreError = True
                                 End If
+
+                            Case ValidateFastaFile.clsValidateFastaFile.MESSAGE_TEXT_DASH_IN_RESIDUES
+                                If mValidationOptions(ICustomValidation.eValidationOptionConstants.AllowDashInResidues) Then
+                                    blnIgnoreError = True
+                                End If
+
                         End Select
 
                         If Not blnIgnoreError Then
