@@ -123,6 +123,7 @@ Public Interface IValidateFastaFile
         FixedFastaWrapLongResidueLines
         FixedFastaRemoveInvalidResidues
         SaveBasicProteinHashInfoFile
+        AllowDashInResidues
     End Enum
 
     Enum FixedFASTAFileValues

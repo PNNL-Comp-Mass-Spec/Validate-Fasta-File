@@ -6,6 +6,8 @@ Public Interface ICustomValidation
     ReadOnly Property FASTAFileValid(ByVal FASTAFilePath As String) As Boolean
     ReadOnly Property NumberOfFilesWithErrors() As Integer
 
+    Sub ClearErrorList()
+
     Structure udtErrorInfoExtended
         Sub New( _
             ByVal LineNumber As Integer, _
@@ -44,6 +46,12 @@ Public Class clsCustomValidateFastaFiles
         MyBase.New()
         Me.m_FileErrorList = New Hashtable  'key is fasta filename, value is currentfileerrors hashtable for that file
 
+    End Sub
+
+    Public Sub ClearErrorList() Implements ICustomValidation.ClearErrorList
+        If Not Me.m_FileErrorList Is Nothing Then
+            Me.m_FileErrorList.Clear()
+        End If
     End Sub
 
     Public ReadOnly Property FullErrorCollection() As Hashtable _
