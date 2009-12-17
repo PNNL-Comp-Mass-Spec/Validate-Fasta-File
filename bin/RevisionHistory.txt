@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.0.3637; December 16, 2009
+	- Fixed bug that failed to output the column number to the FastaFileStats text file
+
 Version 2.0.3597; November 6, 2009
 	- Added option AllowDashInResidues
 

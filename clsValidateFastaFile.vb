@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "November 6, 2009"
+        MyBase.mFileDate = "December 16, 2009"
         InitializeLocalVariables()
     End Sub
 
@@ -3583,7 +3583,8 @@ Public Class clsValidateFastaFile
         ByVal strSourceFile As String, _
         ByVal EntryType As IValidateFastaFile.eMsgTypeConstants, _
         ByVal strDescriptionOrProteinName As String, _
-        ByVal strInfo As String, ByVal strContext As String, _
+        ByVal strInfo As String, _
+        ByVal strContext As String, _
         ByVal blnOutputToStatsFile As Boolean, _
         ByVal srOutFile As System.IO.StreamWriter, _
         ByVal strSepChar As String)
@@ -3615,6 +3616,7 @@ Public Class clsValidateFastaFile
         strMessage = strSourceFile & strSepChar & _
             LookupMessageType(EntryType) & strSepChar & _
             intLineNumber.ToString & strSepChar & _
+            intColNumber.ToString & strSepChar & _
             strDescriptionOrProteinName & strSepChar & _
             strInfo
 

@@ -12,8 +12,10 @@
     <item key="MaximumResiduesPerLine" value="120" />
     <item key="WarnBlankLinesBetweenProteins" value="False" />
     <item key="WarnLineStartsWithSpace" value="True" />
-    <item key="OutputToStatsFile" value="False" />
+    <item key="OutputToStatsFile" value="True" />
     <item key="NormalizeFileLineEndCharacters" value="False" />
+    <item key="AllowDashInResidues" value="False" />
+    <item key="SaveBasicProteinHashInfoFile" value="False" />
   </section>
   <section name="ValidateFastaFixedFASTAFileOptions">
     <item key="GenerateFixedFASTAFile" value="False" />
@@ -100,7 +102,7 @@
     <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
   </section>
   <section name="ValidateFastaProteinSequenceRules">
-    <item key="RuleCount" value="4" />
+    <item key="RuleCount" value="5" />
     <item key="Rule1MatchRegEx" value="[ \t]" />
     <item key="Rule1MatchIndicatesProblem" value="True" />
     <item key="Rule1MessageWhenProblem" value="A space or tab was found in the residues" />
@@ -111,15 +113,20 @@
     <item key="Rule2MessageWhenProblem" value="An asterisk was found in the residues" />
     <item key="Rule2Severity" value="7" />
     <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
-    <item key="Rule3MatchRegEx" value="[^A-IK-Z \t*]" />
+    <item key="Rule3MatchRegEx" value="\-" />
     <item key="Rule3MatchIndicatesProblem" value="True" />
-    <item key="Rule3MessageWhenProblem" value="Invalid residues found" />
+    <item key="Rule3MessageWhenProblem" value="A dash was found in the residues" />
     <item key="Rule3Severity" value="7" />
-    <item key="Rule3DisplayMatchAsExtraInfo" value="True" />
-    <item key="Rule4MatchRegEx" value="U" />
+    <item key="Rule3DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule4MatchRegEx" value="[^A-IK-Z \t\*\-]" />
     <item key="Rule4MatchIndicatesProblem" value="True" />
-    <item key="Rule4MessageWhenProblem" value="Residues line contains U (selenocysteine); this residue is unsupported by Sequest" />
-    <item key="Rule4Severity" value="3" />
-    <item key="Rule4DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule4MessageWhenProblem" value="Invalid residues found" />
+    <item key="Rule4Severity" value="7" />
+    <item key="Rule4DisplayMatchAsExtraInfo" value="True" />
+    <item key="Rule5MatchRegEx" value="U" />
+    <item key="Rule5MatchIndicatesProblem" value="True" />
+    <item key="Rule5MessageWhenProblem" value="Residues line contains U (selenocysteine); this residue is unsupported by Sequest" />
+    <item key="Rule5Severity" value="3" />
+    <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
   </section>
 </sections>
