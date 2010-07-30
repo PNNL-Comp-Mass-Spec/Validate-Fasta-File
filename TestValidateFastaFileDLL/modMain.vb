@@ -75,10 +75,10 @@ Module modMain
                         Console.WriteLine(" " & intCount.ToString & " warnings were found")
                     End If
 
-                    ''' Could enumerate the errors using the following
-                    ''For intIndex = 0 To .FileErrorCountSpecified - 1
-                    ''    Console.WriteLine(.GetFileErrorTextByIndex(intIndex, ControlChars.Tab))
-                    ''Next intIndex
+                    '' Could enumerate the errors using the following
+                    'For intIndex = 0 To .FileErrorCountSpecified - 1
+                    '    Console.WriteLine(.GetFileErrorTextByIndex(intIndex, ControlChars.Tab))
+                    'Next intIndex
 
                 End With
             Else

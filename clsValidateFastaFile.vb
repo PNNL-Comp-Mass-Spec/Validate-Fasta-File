@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "July 29, 2010"
+        MyBase.mFileDate = "July 30, 2010"
         InitializeLocalVariables()
     End Sub
 
@@ -705,8 +705,8 @@ Public Class clsValidateFastaFile
         Dim intTerminatorSize As Integer
         Dim sngPercentComplete As Single
 
-        Dim strFastaFilePathOut As String
-        Dim strBasicProteinHashInfoFilePath As String
+        Dim strFastaFilePathOut As String = String.Empty
+        Dim strBasicProteinHashInfoFilePath As String = String.Empty
 
         Dim strLineIn As String
         Dim strResiduesClean As String
@@ -1188,7 +1188,7 @@ Public Class clsValidateFastaFile
 
         Dim strNewProteinName As String
         Dim strExtraProteinNameText As String
-        Dim strProteinDescription As String
+        Dim strProteinDescription As String = String.Empty
 
         Dim reMatch As System.Text.RegularExpressions.Match
 
@@ -1474,8 +1474,8 @@ Public Class clsValidateFastaFile
         Dim swUniqueProteinSeqsOut As System.IO.StreamWriter
         Dim swDuplicateProteinMapping As System.IO.StreamWriter
 
-        Dim strUniqueProteinSeqsFileOut As String
-        Dim strDuplicateProteinMappingFileOut As String
+        Dim strUniqueProteinSeqsFileOut As String = String.Empty
+        Dim strDuplicateProteinMappingFileOut As String = String.Empty
         Dim strLineOut As String
 
         Dim intIndex As Integer
@@ -1672,12 +1672,11 @@ Public Class clsValidateFastaFile
         Dim sngPercentComplete As Single
         Dim intLineCount As Integer
 
-        Dim strFixedFastaFilePathTemp As String
+        Dim strFixedFastaFilePathTemp As String = String.Empty
         Dim strLineIn As String
 
-        Dim strProteinName As String
-        Dim strProteinDescription As String
-        Dim strDuplicateProteinList As String
+        Dim strProteinName As String = String.Empty
+        Dim strProteinDescription As String = String.Empty
         Dim strMasterProteinInfo As String
 
         ' This hashtable contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
@@ -1953,7 +1952,7 @@ Public Class clsValidateFastaFile
 
     Protected Function ConstructStatsFilePath(ByVal strOutputFolderPath As String) As String
 
-        Dim strStatsFilePath As String
+        Dim strStatsFilePath As String = String.Empty
         Dim dtNow As System.DateTime
 
         Try
@@ -2085,7 +2084,7 @@ Public Class clsValidateFastaFile
         ByVal newFileName As String, _
         ByVal desiredLineEndCharacterType As IValidateFastaFile.eLineEndingCharacters) As String
 
-        Dim newEndChar As String
+        Dim newEndChar As String = ControlChars.CrLf
 
         Dim endCharType As IValidateFastaFile.eLineEndingCharacters = _
             Me.DetermineLineTerminatorType(pathOfFileToFix)
@@ -2357,8 +2356,6 @@ Public Class clsValidateFastaFile
 
     Protected Function GetFileErrorByIndex(ByVal intFileErrorIndex As Integer) As IValidateFastaFile.udtMsgInfoType
 
-        Dim strProteinName As String
-
         If mFileErrorCount <= 0 Or intFileErrorIndex < 0 Or intFileErrorIndex >= mFileErrorCount Then
             Return New IValidateFastaFile.udtMsgInfoType
         Else
@@ -2409,8 +2406,6 @@ Public Class clsValidateFastaFile
     End Function
 
     Protected Function GetFileWarningByIndex(ByVal intFileWarningIndex As Integer) As IValidateFastaFile.udtMsgInfoType
-
-        Dim strProteinName As String
 
         If mFileWarningCount <= 0 Or intFileWarningIndex < 0 Or intFileWarningIndex >= mFileWarningCount Then
             Return New IValidateFastaFile.udtMsgInfoType
@@ -2537,8 +2532,6 @@ Public Class clsValidateFastaFile
         Dim blnSuccess As Boolean
 
         Dim strCharacterList As String
-        Dim blnOption As Boolean
-        Dim blnValueNotPresent As Boolean
 
         Try
 
@@ -2735,7 +2728,7 @@ Public Class clsValidateFastaFile
 
     Public Function LookupMessageDescription(ByVal intErrorMessageCode As Integer) As String _
         Implements IValidateFastaFile.LookupMessageDescription
-        Me.LookupMessageDescription(intErrorMessageCode, Nothing)
+        Return Me.LookupMessageDescription(intErrorMessageCode, Nothing)
     End Function
 
     Public Function LookupMessageDescription(ByVal intErrorMessageCode As Integer, ByVal strExtraInfo As String) As String _
@@ -3713,9 +3706,6 @@ Public Class clsValidateFastaFile
 
         Dim srOutFile As System.IO.StreamWriter
         Dim objSettingsFile As New XmlSettingsFileAccessor
-
-        Dim blnCustomRulesLoaded As Boolean
-        Dim blnSuccess As Boolean
 
         Try
 
