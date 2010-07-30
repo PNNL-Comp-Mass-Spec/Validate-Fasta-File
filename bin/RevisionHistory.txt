@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.0.3862; July 29, 2010
+	- Updated to Visual Studio 2008 (.NET 2.0)
+	- Now auto-enabling mCheckForDuplicateProteinNames if generating a fixed fasta and RenameProteinsWithDuplicateNames = True
+
 Version 2.0.3637; December 16, 2009
 	- Fixed bug that failed to output the column number to the FastaFileStats text file
 

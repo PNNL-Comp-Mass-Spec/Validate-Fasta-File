@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "December 16, 2009"
+        MyBase.mFileDate = "July 29, 2010"
         InitializeLocalVariables()
     End Sub
 
@@ -890,6 +890,11 @@ Public Class clsValidateFastaFile
 
             End If
 
+            If mGenerateFixedFastaFile And mFixedFastaOptions.RenameProteinsWithDuplicateNames Then
+                ' Make sure mCheckForDuplicateProteinNames is enabled
+                mCheckForDuplicateProteinNames = True
+            End If
+
             ' Optionally, initialize htProteinNames
             If mCheckForDuplicateProteinNames Then
                 htProteinNames = New System.Collections.Specialized.StringDictionary
@@ -987,7 +992,6 @@ Public Class clsValidateFastaFile
                                 udtProteinSequenceRuleDetails, _
                                 reProteinNameTruncation)
 
-
                             If blnBlankLineProcessed Then
                                 ' The previous line was blank; raise a warning
                                 If mWarnBlankLinesBetweenProteins Then
@@ -1049,9 +1053,12 @@ Public Class clsValidateFastaFile
                                 End If
 
                                 If mCheckForDuplicateProteinSequences OrElse mFixedFastaOptions.WrapLongResidueLines Then
-                                    sbCurrentResidues.Append(strResiduesClean)
-                                    If strResiduesClean.Length > intCurrentValidResidueLineLengthMax Then
-                                        intCurrentValidResidueLineLengthMax = strResiduesClean.Length
+                                    ' Only add the residues if this is not a duplicate/invalid protein
+                                    If Not blnProcessingDuplicateOrInvalidProtein Then
+                                        sbCurrentResidues.Append(strResiduesClean)
+                                        If strResiduesClean.Length > intCurrentValidResidueLineLengthMax Then
+                                            intCurrentValidResidueLineLengthMax = strResiduesClean.Length
+                                        End If
                                     End If
                                 End If
                             End If
@@ -1698,6 +1705,22 @@ Public Class clsValidateFastaFile
             Return True
         End If
 
+        ''''''''''''''''''''''
+        ' Processing Steps
+        ''''''''''''''''''''''
+        '
+        ' Open strFixedFastaFilePath with the fasta file reader
+        ' Create a new fasta file with a writer
+
+        ' For each protein, check whether it has duplicates
+        ' If not, just write it out to the new fasta file
+
+        ' If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
+        '  and write out the name, new description, and sequence to the new fasta file
+
+        ' Otherwise, check if it is a duplicate of a master protein
+        ' If it is, then do not write the name, description, or sequence to the new fasta file
+
         Try
             strFixedFastaFilePathTemp = strFixedFastaFilePath & ".TempFixed"
 
@@ -1911,20 +1934,6 @@ Public Class clsValidateFastaFile
                 ' Ignore errors here
             End Try
         End Try
-
-
-        ' Open strFixedFastaFilePath with the fasta file reader
-        ' Create a new fasta file with a writer
-
-        ' For each protein, check whether it has duplicates
-        ' If not, just write it out to the new fasta file
-
-        ' If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
-        '  and write out the name, new description, and sequence to the new fasta file
-
-        ' Otherwise, check if it is a duplicate of a master protein
-        ' If it is, then do not write the name, description, or sequence to the new fasta file
-
 
         Return blnSuccess
 

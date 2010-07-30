@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "December 16, 2009"
+    Public Const PROGRAM_DATE As String = "July 29, 2010"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -46,18 +46,16 @@ Module modMain
 
     Private mQuietMode As Boolean
 
+    Private WithEvents mValidateFastaFile As clsValidateFastaFile
+    Private mLastProgressReportTime As System.DateTime
+    Private mLastProgressReportValue As Integer
+
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
-
-        Dim objValidateFastaFile As clsValidateFastaFile
 
         Dim intReturnCode As Integer
         Dim objParseCommandLine As New clsParseCommandLine
         Dim blnProceed As Boolean
-
-        Dim strCmdLine As String
-        Dim strParameters() As String
-        Dim intIndex As Integer
 
         Dim ProteinCount As Integer = 0
         Dim ResidueCount As Long = 0
@@ -80,8 +78,6 @@ Module modMain
 
         Try
             blnProceed = False
-
-            blnProceed = False
             If objParseCommandLine.ParseCommandLine Then
                 If SetOptionsUsingCommandLineParameters(objParseCommandLine) Then blnProceed = True
             End If
@@ -91,16 +87,16 @@ Module modMain
                     mParameterFilePath = System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetExecutingAssembly().Location) & "_ModelSettings.xml"
                 End If
 
-                objValidateFastaFile = New clsValidateFastaFile
-                objValidateFastaFile.SaveSettingsToParameterFile(mParameterFilePath)
+                mValidateFastaFile = New clsValidateFastaFile
+                mValidateFastaFile.SaveSettingsToParameterFile(mParameterFilePath)
 
             ElseIf Not blnProceed OrElse objParseCommandLine.NeedToShowHelp OrElse mInputFilePath.Length = 0 Then
                 ShowProgramHelp()
                 intReturnCode = -1
             Else
 
-                objValidateFastaFile = New clsValidateFastaFile
-                With objValidateFastaFile
+                mValidateFastaFile = New clsValidateFastaFile
+                With mValidateFastaFile
                     .ShowMessages = Not mQuietMode
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
@@ -114,7 +110,7 @@ Module modMain
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
                 End With
 
-                ''' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
+                ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
                 'With objValidateFastaFile
                 '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, )
                 '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, )
@@ -132,18 +128,18 @@ Module modMain
                 End If
 
                 If mRecurseFolders Then
-                    If objValidateFastaFile.ProcessFilesAndRecurseFolders(mInputFilePath, mOutputFolderPath, mOutputFolderPath, False, mParameterFilePath, mRecurseFoldersMaxLevels) Then
+                    If mValidateFastaFile.ProcessFilesAndRecurseFolders(mInputFilePath, mOutputFolderPath, mOutputFolderPath, False, mParameterFilePath, mRecurseFoldersMaxLevels) Then
                         intReturnCode = 0
                     Else
-                        intReturnCode = objValidateFastaFile.ErrorCode
+                        intReturnCode = mValidateFastaFile.ErrorCode
                     End If
                 Else
-                    If objValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputFolderPath, mParameterFilePath) Then
+                    If mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputFolderPath, mParameterFilePath) Then
                         intReturnCode = 0
                     Else
-                        intReturnCode = objValidateFastaFile.ErrorCode
+                        intReturnCode = mValidateFastaFile.ErrorCode
                         If intReturnCode <> 0 AndAlso Not mQuietMode Then
-                            MsgBox("Error while processing: " & objValidateFastaFile.GetErrorMessage(), MsgBoxStyle.Exclamation Or MsgBoxStyle.OKOnly, "Error")
+                            MsgBox("Error while processing: " & mValidateFastaFile.GetErrorMessage(), MsgBoxStyle.Exclamation Or MsgBoxStyle.OKOnly, "Error")
                         End If
                     End If
                 End If
@@ -152,11 +148,7 @@ Module modMain
             End If
 
         Catch ex As Exception
-            If mQuietMode Then
-                Throw ex
-            Else
-                Console.WriteLine("Error occurred in modMain->Main: " & ControlChars.NewLine & ex.Message)
-            End If
+            Console.WriteLine("Error occurred in modMain->Main: " & ControlChars.NewLine & ex.Message)
             intReturnCode = -1
         End Try
 
@@ -164,11 +156,27 @@ Module modMain
 
     End Function
 
+    Private Sub DisplayProgressPercent(ByVal intPercentComplete As Integer, ByVal blnAddCarriageReturn As Boolean)
+        If blnAddCarriageReturn Then
+            Console.WriteLine()
+        End If
+        If intPercentComplete > 100 Then intPercentComplete = 100
+        Console.Write("Processing: " & intPercentComplete.ToString & "% ")
+        If blnAddCarriageReturn Then
+            Console.WriteLine()
+        End If
+    End Sub
+
+    Private Function GetAppVersion() As String
+        'Return System.Windows.Forms.Application.ProductVersion & " (" & PROGRAM_DATE & ")"
+
+        Return System.Reflection.Assembly.GetExecutingAssembly.GetName.Version.ToString & " (" & PROGRAM_DATE & ")"
+    End Function
 
     Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim strValue As String
+        Dim strValue As String = String.Empty
         Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "B", "X", "S", "Q"}
 
         Try
@@ -212,25 +220,18 @@ Module modMain
             End If
 
         Catch ex As Exception
-            If mQuietMode Then
-                Throw New System.Exception("Error parsing the command line parameters", ex)
-            Else
-                Console.WriteLine("Error parsing the command line parameters: " & ControlChars.NewLine & ex.Message)
-            End If
+             Console.WriteLine("Error parsing the command line parameters: " & ControlChars.NewLine & ex.Message)
         End Try
 
     End Function
 
     Private Sub ShowProgramHelp()
 
-        Dim strSyntax As String
-        Dim ioPath As System.IO.Path
-
         Try
 
             Console.WriteLine("This program will read a Fasta File and display statistics on the number of proteins and number of residues.  It will also check that the protein names, descriptions, and sequences are in the correct format.")
             Console.WriteLine()
-            Console.WriteLine("Program syntax:" & ControlChars.NewLine & ioPath.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
+            Console.WriteLine("Program syntax:" & ControlChars.NewLine & IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
             Console.WriteLine("  /I:InputFilePath.fasta [/O:OutputFolderPath]")
             Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
             Console.WriteLine(" [/F] [/R] [/D] [/L] [/B]")
@@ -254,9 +255,7 @@ Module modMain
             Console.WriteLine()
 
             Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2005")
-            Console.WriteLine()
-
-            Console.WriteLine("This is version " & System.Windows.Forms.Application.ProductVersion & " (" & PROGRAM_DATE & ")")
+            Console.WriteLine("Version: " & GetAppVersion())
             Console.WriteLine()
 
             Console.WriteLine("E-mail: matthew.monroe@pnl.gov or matt@alchemistmatt.com")
@@ -285,4 +284,27 @@ Module modMain
 
     End Sub
 
+    Private Sub mValidateFastaFile_ProgressChanged(ByVal taskDescription As String, ByVal percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
+        Const PERCENT_REPORT_INTERVAL As Integer = 25
+        Const PROGRESS_DOT_INTERVAL_MSEC As Integer = 250
+
+        If percentComplete >= mLastProgressReportValue Then
+            If mLastProgressReportValue > 0 Then
+                Console.WriteLine()
+            End If
+            DisplayProgressPercent(mLastProgressReportValue, False)
+            mLastProgressReportValue += PERCENT_REPORT_INTERVAL
+            mLastProgressReportTime = DateTime.Now
+        Else
+            If DateTime.Now.Subtract(mLastProgressReportTime).TotalMilliseconds > PROGRESS_DOT_INTERVAL_MSEC Then
+                mLastProgressReportTime = DateTime.Now
+                Console.Write(".")
+            End If
+        End If
+    End Sub
+
+    Private Sub mValidateFastaFile_ProgressReset() Handles mValidateFastaFile.ProgressReset
+        mLastProgressReportTime = DateTime.Now
+        mLastProgressReportValue = 0
+    End Sub
 End Module
