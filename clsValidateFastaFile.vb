@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "July 30, 2010"
+		MyBase.mFileDate = "September 16, 2011"
         InitializeLocalVariables()
     End Sub
 
@@ -1953,13 +1953,10 @@ Public Class clsValidateFastaFile
     Protected Function ConstructStatsFilePath(ByVal strOutputFolderPath As String) As String
 
         Dim strStatsFilePath As String = String.Empty
-        Dim dtNow As System.DateTime
 
         Try
             ' Record the current time in dtNow
-            dtNow = System.DateTime.Now
-            strStatsFilePath = "FastaFileStats_" & dtNow.Year.ToString & "-" & _
-                dtNow.Month.ToString("00") & "-" & dtNow.Day.ToString("00") & ".txt"
+			strStatsFilePath = "FastaFileStats_" & System.DateTime.Now.ToString("yyyy-MM-dd") & ".txt"
 
             If Not strOutputFolderPath Is Nothing AndAlso strOutputFolderPath.Length > 0 Then
                 strStatsFilePath = System.IO.Path.Combine(strOutputFolderPath, strStatsFilePath)
@@ -2431,15 +2428,9 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Function GetTimeStamp() As String
-        Dim dtNow As System.DateTime
-
-        ' Record the current time in dtNow
-        dtNow = System.DateTime.Now
-        With dtNow
-            Return .ToShortDateString & " " & .ToLongTimeString
-        End With
-
-    End Function
+		' Record the current time
+		Return System.DateTime.Now.ToShortDateString & " " & System.DateTime.Now.ToLongTimeString
+	End Function
 
     Private Sub InitializeLocalVariables()
 

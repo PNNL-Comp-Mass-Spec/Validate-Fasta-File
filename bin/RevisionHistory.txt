@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.0.4276; September 16, 2011
+	- Updated to Visual Studio 2010
+	- Replaced .Now with .UtcNow
+
 Version 2.0.3863; July 30, 2010
 	- Updated to Visual Studio 2008 (.NET 2.0)
 	- Now auto-enabling mCheckForDuplicateProteinNames if generating a fixed fasta and RenameProteinsWithDuplicateNames = True
