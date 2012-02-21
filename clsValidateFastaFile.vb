@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-		MyBase.mFileDate = "September 16, 2011"
+		MyBase.mFileDate = "February 2, 2012"
         InitializeLocalVariables()
     End Sub
 
@@ -40,7 +40,7 @@ Public Class clsValidateFastaFile
 
 #Region "Constants and Enums"
     Protected Const DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH As Integer = 3
-    Protected Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 34
+	Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 34
     Protected Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
 
     Public Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
