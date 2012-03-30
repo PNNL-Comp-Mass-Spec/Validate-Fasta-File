@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.0.4472; March 30, 2012
+	- Allow equals and plus signs in protein names
+
 Version 2.0.4415; February 2, 2012
 	- Changed DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH to a public constant
 

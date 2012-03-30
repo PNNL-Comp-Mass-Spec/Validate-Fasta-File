@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-		MyBase.mFileDate = "February 2, 2012"
+		MyBase.mFileDate = "March 30, 2012"
         InitializeLocalVariables()
     End Sub
 
@@ -230,7 +230,7 @@ Public Class clsValidateFastaFile
 
     Protected mProteinLineStartChar As Char
 
-    Protected mAllowAsteriskInResidues As Boolean
+	Protected mAllowAsteriskInResidues As Boolean
     Protected mAllowDashInResidues As Boolean
     Protected mWarnBlankLinesBetweenProteins As Boolean
     Protected mWarnLineStartsWithSpace As Boolean
@@ -295,8 +295,8 @@ Public Class clsValidateFastaFile
             Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
                 Me.mSaveBasicProteinHashInfoFile = State
             Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
-                Me.mAllowDashInResidues = State
-        End Select
+				Me.mAllowDashInResidues = State
+		End Select
 
     End Sub
 
@@ -343,8 +343,8 @@ Public Class clsValidateFastaFile
             Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
                 Return Me.mSaveBasicProteinHashInfoFile
             Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
-                Return Me.mAllowDashInResidues
-        End Select
+				Return Me.mAllowDashInResidues
+		End Select
 
     End Function
 
@@ -3818,7 +3818,7 @@ Public Class clsValidateFastaFile
         Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", 3)
 
         ' Protein Name error characters
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[^A-Za-z0-9.\-_:,\|/()\[\]]", True, "Protein name contains invalid characters", 7, True)
+		Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[^A-Za-z0-9.\-_:,\|/()\[\]\=\+]", True, "Protein name contains invalid characters", 7, True)
 
         ' Protein name warnings
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|][^:|;]*[:|;]", True, "Protein name contains two or more vertical bars", 4, True)
