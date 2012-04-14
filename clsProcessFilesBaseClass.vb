@@ -18,6 +18,20 @@ Public MustInherit Class clsProcessFilesBaseClass
 		mOutputFolderPath = String.Empty
 		mLogFolderPath = String.Empty
 		mLogFilePath = String.Empty
+
+		Dim bytTwoBytes() As Byte
+		ReDim bytTwoBytes(1)
+
+		bytTwoBytes(0) = 9
+		chTabChar = BitConverter.ToChar(bytTwoBytes, 0)
+
+		bytTwoBytes(0) = 13
+		chCr = BitConverter.ToChar(bytTwoBytes, 0)
+
+		bytTwoBytes(0) = 10
+		chLF = BitConverter.ToChar(bytTwoBytes, 0)
+
+		chCrLf = chCr & chLF
 	End Sub
 
 #Region "Constants and Enums"
@@ -56,6 +70,11 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 	Private mShowMessages As Boolean
 	Private mErrorCode As eProcessFilesErrorCodes
+
+	Protected chTabChar As Char
+	Protected chCrLf As String
+	Protected chCr As String
+	Protected chLF As String
 
 	Protected mFileDate As String
 	Protected mAbortProcessing As Boolean
@@ -401,8 +420,8 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 				If Not blnOpeningExistingFile Then
 					mLogFile.WriteLine("Date" & ControlChars.Tab & _
-									   "Type" & ControlChars.Tab & _
-									   "Message")
+						   "Type" & ControlChars.Tab & _
+						   "Message")
 				End If
 
 			Catch ex As Exception
@@ -426,8 +445,8 @@ Public MustInherit Class clsProcessFilesBaseClass
 			End Select
 
 			mLogFile.WriteLine(System.DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss tt") & ControlChars.Tab & _
-							   strMessageType & ControlChars.Tab & _
-							   strMessage)
+				   strMessageType & ControlChars.Tab & _
+			 strMessage)
 		End If
 
 		RaiseMessageEvent(strMessage, eMessageType)
@@ -645,10 +664,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 				' Call RecurseFoldersWork
 				Dim intRecursionLevel As Integer = 1
 				blnSuccess = RecurseFoldersWork(strInputFolderPath, strInputFilePathOrFolder, strOutputFolderName, _
-												strParameterFilePath, strOutputFolderAlternatePath, _
-												blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
-												intFileProcessCount, intFileProcessFailCount, _
-												intRecursionLevel, intRecurseFoldersMaxLevels)
+				  strParameterFilePath, strOutputFolderAlternatePath, _
+				  blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
+				  intFileProcessCount, intFileProcessFailCount, _
+				  intRecursionLevel, intRecurseFoldersMaxLevels)
 
 			Else
 				mErrorCode = clsProcessFilesBaseClass.eProcessFilesErrorCodes.InvalidInputFilePath
@@ -695,10 +714,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 	End Sub
 
 	Private Function RecurseFoldersWork(ByVal strInputFolderPath As String, ByVal strFileNameMatch As String, ByVal strOutputFolderName As String, _
-										ByVal strParameterFilePath As String, ByVal strOutputFolderAlternatePath As String, _
-										ByVal blnRecreateFolderHierarchyInAlternatePath As Boolean, ByVal strExtensionsToParse() As String, _
-										ByRef intFileProcessCount As Integer, ByRef intFileProcessFailCount As Integer, _
-										ByVal intRecursionLevel As Integer, ByVal intRecurseFoldersMaxLevels As Integer) As Boolean
+	   ByVal strParameterFilePath As String, ByVal strOutputFolderAlternatePath As String, _
+	   ByVal blnRecreateFolderHierarchyInAlternatePath As Boolean, ByVal strExtensionsToParse() As String, _
+	   ByRef intFileProcessCount As Integer, ByRef intFileProcessFailCount As Integer, _
+	   ByVal intRecursionLevel As Integer, ByVal intRecurseFoldersMaxLevels As Integer) As Boolean
 		' If intRecurseFoldersMaxLevels is <=0 then we recurse infinitely
 
 		Dim ioInputFolderInfo As System.IO.DirectoryInfo
@@ -799,10 +818,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 				' Call this function for each of the subfolders of ioInputFolderInfo
 				For Each ioSubFolderInfo As System.IO.DirectoryInfo In ioInputFolderInfo.GetDirectories()
 					blnSuccess = RecurseFoldersWork(ioSubFolderInfo.FullName, strFileNameMatch, strOutputFolderName, _
-													strParameterFilePath, strOutputFolderAlternatePath, _
-													blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
-													intFileProcessCount, intFileProcessFailCount, _
-													intRecursionLevel + 1, intRecurseFoldersMaxLevels)
+					  strParameterFilePath, strOutputFolderAlternatePath, _
+					  blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
+					  intFileProcessCount, intFileProcessFailCount, _
+					  intRecursionLevel + 1, intRecurseFoldersMaxLevels)
 
 					If Not blnSuccess Then Exit For
 				Next ioSubFolderInfo
@@ -898,9 +917,9 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 		If blnDescriptionChanged Then
 			If mProgressPercentComplete = 0 Then
-				LogMessage(mProgressStepDescription.Replace(ControlChars.NewLine, "; "))
+				LogMessage(mProgressStepDescription.Replace(System.Environment.NewLine, "; "))
 			Else
-				LogMessage(mProgressStepDescription & " (" & mProgressPercentComplete.ToString("0.0") & "% complete)".Replace(ControlChars.NewLine, "; "))
+				LogMessage(mProgressStepDescription & " (" & mProgressPercentComplete.ToString("0.0") & "% complete)".Replace(System.Environment.NewLine, "; "))
 			End If
 		End If
 

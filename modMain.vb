@@ -148,7 +148,7 @@ Module modMain
             End If
 
         Catch ex As Exception
-			ShowErrorMessage("Error occurred in modMain->Main: " & ControlChars.NewLine & ex.Message)
+			ShowErrorMessage("Error occurred in modMain->Main: " & System.Environment.NewLine & ex.Message)
 			intReturnCode = -1
 		End Try
 
@@ -220,7 +220,7 @@ Module modMain
 			End If
 
 		Catch ex As Exception
-			ShowErrorMessage("Error parsing the command line parameters: " & ControlChars.NewLine & ex.Message)
+			ShowErrorMessage("Error parsing the command line parameters: " & System.Environment.NewLine & ex.Message)
 		End Try
 
 	End Function
@@ -242,7 +242,7 @@ Module modMain
 
 			Console.WriteLine("This program will read a Fasta File and display statistics on the number of proteins and number of residues.  It will also check that the protein names, descriptions, and sequences are in the correct format.")
 			Console.WriteLine()
-			Console.WriteLine("Program syntax:" & ControlChars.NewLine & IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
+			Console.WriteLine("Program syntax:" & System.Environment.NewLine & IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
 			Console.WriteLine("  /I:InputFilePath.fasta [/O:OutputFolderPath]")
 			Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
 			Console.WriteLine(" [/F] [/R] [/D] [/L] [/B]")

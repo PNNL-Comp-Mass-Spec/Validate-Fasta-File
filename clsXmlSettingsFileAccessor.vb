@@ -346,6 +346,7 @@ Public Class XmlSettingsFileAccessor
     Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Short, Optional ByRef valueNotPresent As Boolean = False) As Short
         Dim strResult As String
         Dim blnNotFound As Boolean = False
+		Dim intValue As Short
 
         strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
         If strResult Is Nothing OrElse blnNotFound Then
@@ -354,16 +355,16 @@ Public Class XmlSettingsFileAccessor
         Else
             valueNotPresent = False
             Try
-                If IsNumeric(strResult) Then
-                    Return CShort(strResult)
-                ElseIf strResult.ToLower = "true" Then
-                    Return -1
-                ElseIf strResult.ToLower = "false" Then
-                    Return 0
-                Else
-                    valueNotPresent = True
-                    Return valueIfMissing
-                End If
+				If Short.TryParse(strResult, intValue) Then
+					Return intValue
+				ElseIf strResult.ToLower = "true" Then
+					Return -1
+				ElseIf strResult.ToLower = "false" Then
+					Return 0
+				Else
+					valueNotPresent = True
+					Return valueIfMissing
+				End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -383,6 +384,7 @@ Public Class XmlSettingsFileAccessor
     Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Integer, Optional ByRef valueNotPresent As Boolean = False) As Integer
         Dim strResult As String
         Dim blnNotFound As Boolean = False
+		Dim intValue As Integer
 
         strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
         If strResult Is Nothing OrElse blnNotFound Then
@@ -391,16 +393,16 @@ Public Class XmlSettingsFileAccessor
         Else
             valueNotPresent = False
             Try
-                If IsNumeric(strResult) Then
-                    Return CInt(strResult)
-                ElseIf strResult.ToLower = "true" Then
-                    Return -1
-                ElseIf strResult.ToLower = "false" Then
-                    Return 0
-                Else
-                    valueNotPresent = True
-                    Return valueIfMissing
-                End If
+				If Integer.TryParse(strResult, intValue) Then
+					Return intValue
+				ElseIf strResult.ToLower = "true" Then
+					Return -1
+				ElseIf strResult.ToLower = "false" Then
+					Return 0
+				Else
+					valueNotPresent = True
+					Return valueIfMissing
+				End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -417,34 +419,35 @@ Public Class XmlSettingsFileAccessor
     ''' <param name="valueIfMissing">Value to return if "sectionName" or "keyName" is missing.</param>
     ''' <param name="valueNotPresent">Set to True if "sectionName" or "keyName" is missing.  Returned ByRef.</param>
     ''' <return>The function returns the name of the "value" attribute as a Long.  If "value" is "true" returns -1.  If "value" is "false" returns 0.</return>
-    Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Long, Optional ByRef valueNotPresent As Boolean = False) As Long
-        Dim strResult As String
-        Dim blnNotFound As Boolean = False
+	Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Long, Optional ByRef valueNotPresent As Boolean = False) As Int64
+		Dim strResult As String
+		Dim blnNotFound As Boolean = False
+		Dim intValue As Int64
 
-        strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
-        If strResult Is Nothing OrElse blnNotFound Then
-            valueNotPresent = True
-            Return valueIfMissing
-        Else
-            valueNotPresent = False
-            Try
-                If IsNumeric(strResult) Then
-                    Return CLng(strResult)
-                ElseIf strResult.ToLower = "true" Then
-                    Return -1
-                ElseIf strResult.ToLower = "false" Then
-                    Return 0
-                Else
-                    valueNotPresent = True
-                    Return valueIfMissing
-                End If
-            Catch ex As System.Exception
-                valueNotPresent = True
-                Return valueIfMissing
-            End Try
-        End If
+		strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
+		If strResult Is Nothing OrElse blnNotFound Then
+			valueNotPresent = True
+			Return valueIfMissing
+		Else
+			valueNotPresent = False
+			Try
+				If Int64.TryParse(strResult, intValue) Then
+					Return intValue
+				ElseIf strResult.ToLower = "true" Then
+					Return -1
+				ElseIf strResult.ToLower = "false" Then
+					Return 0
+				Else
+					valueNotPresent = True
+					Return valueIfMissing
+				End If
+			Catch ex As System.Exception
+				valueNotPresent = True
+				Return valueIfMissing
+			End Try
+		End If
 
-    End Function
+	End Function
 
     ''' <summary>
     ''' The function gets the name of the "value" attribute in section "sectionName".
@@ -457,6 +460,7 @@ Public Class XmlSettingsFileAccessor
     Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Single, Optional ByRef valueNotPresent As Boolean = False) As Single
         Dim strResult As String
         Dim blnNotFound As Boolean = False
+		Dim sngValue As Single
 
         strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
         If strResult Is Nothing OrElse blnNotFound Then
@@ -465,16 +469,16 @@ Public Class XmlSettingsFileAccessor
         Else
             valueNotPresent = False
             Try
-                If IsNumeric(strResult) Then
-                    Return CSng(strResult)
-                ElseIf strResult.ToLower = "true" Then
-                    Return -1
-                ElseIf strResult.ToLower = "false" Then
-                    Return 0
-                Else
-                    valueNotPresent = True
-                    Return valueIfMissing
-                End If
+				If Single.TryParse(strResult, sngValue) Then
+					Return sngValue
+				ElseIf strResult.ToLower = "true" Then
+					Return -1
+				ElseIf strResult.ToLower = "false" Then
+					Return 0
+				Else
+					valueNotPresent = True
+					Return valueIfMissing
+				End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -494,6 +498,7 @@ Public Class XmlSettingsFileAccessor
     Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Double, Optional ByRef valueNotPresent As Boolean = False) As Double
         Dim strResult As String
         Dim blnNotFound As Boolean = False
+		Dim dblValue As Double
 
         strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
         If strResult Is Nothing OrElse blnNotFound Then
@@ -502,16 +507,16 @@ Public Class XmlSettingsFileAccessor
         Else
             valueNotPresent = False
             Try
-                If IsNumeric(strResult) Then
-                    Return CDbl(strResult)
-                ElseIf strResult.ToLower = "true" Then
-                    Return -1
-                ElseIf strResult.ToLower = "false" Then
-                    Return 0
-                Else
-                    valueNotPresent = True
-                    Return valueIfMissing
-                End If
+				If Double.TryParse(strResult, dblValue) Then
+					Return dblValue
+				ElseIf strResult.ToLower = "true" Then
+					Return -1
+				ElseIf strResult.ToLower = "false" Then
+					Return 0
+				Else
+					valueNotPresent = True
+					Return valueIfMissing
+				End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
