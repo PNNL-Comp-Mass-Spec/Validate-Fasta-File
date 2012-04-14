@@ -12,7 +12,7 @@
     <item key="MaximumResiduesPerLine" value="120" />
     <item key="WarnBlankLinesBetweenProteins" value="False" />
     <item key="WarnLineStartsWithSpace" value="True" />
-    <item key="OutputToStatsFile" value="True" />
+    <item key="OutputToStatsFile" value="False" />
     <item key="NormalizeFileLineEndCharacters" value="False" />
     <item key="AllowDashInResidues" value="False" />
     <item key="SaveBasicProteinHashInfoFile" value="False" />
@@ -57,7 +57,7 @@
   </section>
   <section name="ValidateFastaProteinNameRules">
     <item key="RuleCount" value="3" />
-    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]]" />
+    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]\=\+]" />
     <item key="Rule1MatchIndicatesProblem" value="True" />
     <item key="Rule1MessageWhenProblem" value="Protein name contains invalid characters" />
     <item key="Rule1Severity" value="7" />

@@ -10,9 +10,9 @@ look for proteins with duplicate sequences or duplicate names.   If you use
 the /R switch, then proteins with duplicate names (but differing sequences)
 will be renamed to assign a unique name to each protein.  Additionally,
 if you use the /D switch, then proteins with duplicate sequences will be
-consolidated to keep just one copy of each protein (and this the protein
+consolidated to keep just one copy of each protein (and the protein
 description for this master copy will include the protein names of all of 
-the duplciate proteins).  When looking for duplicate proteins, you can use
+the duplicate proteins).  When looking for duplicate proteins, you can use
 the /L switch to ignore I/L differences. in protein sequences
 
 You can provide an XML parameter file to the program using the /P switch.
@@ -30,14 +30,6 @@ Website: http://ncrr.pnl.gov/ or http://www.sysbio.org/resources/staff/
 Licensed under the Apache License, Version 2.0; you may not use this file except 
 in compliance with the License.  You may obtain a copy of the License at 
 http://www.apache.org/licenses/LICENSE-2.0
-
-All publications that result from the use of this software should include 
-the following acknowledgment statement:
- Portions of this research were supported by the W.R. Wiley Environmental 
- Molecular Science Laboratory, a national scientific user facility sponsored 
- by the U.S. Department of Energy's Office of Biological and Environmental 
- Research and located at PNNL.  PNNL is operated by Battelle Memorial Institute 
- for the U.S. Department of Energy under contract DE-AC05-76RL0 1830.
 
 Notice: This computer software was prepared by Battelle Memorial Institute, 
 hereinafter the Contractor, under Contract No. DE-AC05-76RL0 1830 with the 

@@ -1267,7 +1267,6 @@ Public Class XmlSettingsFileAccessor
             Try
                 Dim fi As System.IO.FileInfo
                 Dim s As String
-                Dim srInFile As System.IO.StreamReader
 
                 fi = New System.IO.FileInfo(strFilePath)
                 If (fi.Exists) Then
@@ -1283,25 +1282,26 @@ Public Class XmlSettingsFileAccessor
                     '     <item key="Setting1" value="ValueA" />
                     '   </section>
 
-                    srInFile = New System.IO.StreamReader(New System.IO.FileStream(fi.FullName, IO.FileMode.Open, IO.FileAccess.Read, IO.FileShare.ReadWrite))
+					Using srInFile As System.IO.StreamReader = New System.IO.StreamReader(New System.IO.FileStream(fi.FullName, IO.FileMode.Open, IO.FileAccess.Read, IO.FileShare.ReadWrite))
 
-                    Do While srInFile.Peek() >= 0
-                        s = srInFile.ReadLine()
+						Do While srInFile.Peek() > -1
+							s = srInFile.ReadLine()
 
-                        ' Try to manually parse this line
-                        ParseLineManual(s, m_XmlDoc)
-                    Loop
+							' Try to manually parse this line
+							ParseLineManual(s, m_XmlDoc)
+						Loop
 
-                    m_XmlFilename = strFilePath
-                    m_initialized = True
+						m_XmlFilename = strFilePath
+						m_initialized = True
 
-                    srInFile.Close()
-                Else
-                    ' File doesn't exist; create a new, blank .XML file
-                    m_XmlFilename = strFilePath
-                    m_XmlDoc.Save(m_XmlFilename)
-                    m_initialized = True
-                End If
+					End Using
+
+				Else
+					' File doesn't exist; create a new, blank .XML file
+					m_XmlFilename = strFilePath
+					m_XmlDoc.Save(m_XmlFilename)
+					m_initialized = True
+				End If
 
                 Return True
 
