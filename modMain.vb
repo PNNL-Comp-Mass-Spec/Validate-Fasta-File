@@ -26,17 +26,23 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "April 13, 2012"
+	Public Const PROGRAM_DATE As String = "September 20, 2012"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
     Private mParameterFilePath As String
 
     Private mUseStatsFile As Boolean
-    Private mGenerateFixedFastaFile As Boolean
-    Private mFixedFastaRenameDuplicateNameProteins As Boolean
+	Private mGenerateFixedFastaFile As Boolean
+
+	Private mFixedFastaRenameDuplicateNameProteins As Boolean
+	Private mFixedFastaKeepDuplicateNamedProteins As Boolean
+
     Private mFixedFastaConsolidateDuplicateProteinSeqs As Boolean
-    Private mFixedFastaConsolidateDupsIgnoreILDiff As Boolean
+	Private mFixedFastaConsolidateDupsIgnoreILDiff As Boolean
+
+	Private mFixedFastaRemoveInvalidResidues As Boolean
+
     Private mSaveBasicProteinHashInfoFile As Boolean
 
     Private mCreateModelXMLParameterFile As Boolean
@@ -68,9 +74,12 @@ Module modMain
         mUseStatsFile = False
         mGenerateFixedFastaFile = False
 
-        mFixedFastaRenameDuplicateNameProteins = False
+		mFixedFastaRenameDuplicateNameProteins = False
+		mFixedFastaKeepDuplicateNamedProteins = False
+
         mFixedFastaConsolidateDuplicateProteinSeqs = False
-        mFixedFastaConsolidateDupsIgnoreILDiff = False
+		mFixedFastaConsolidateDupsIgnoreILDiff = False
+
         mSaveBasicProteinHashInfoFile = False
 
         mRecurseFolders = False
@@ -105,14 +114,19 @@ Module modMain
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
 
-                    ' Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
+					' Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
-                End With
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins, mFixedFastaKeepDuplicateNamedProteins)
+
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff)
+
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues)
+
+					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
+				End With
 
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
                 'With objValidateFastaFile
@@ -177,7 +191,7 @@ Module modMain
 		' Returns True if no problems; otherwise, returns false
 
 		Dim strValue As String = String.Empty
-		Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "B", "X", "S", "Q"}
+		Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "V", "KeepSameName", "B", "X", "S", "Q"}
 
 		Try
 			' Make sure no invalid parameters are present
@@ -203,6 +217,9 @@ Module modMain
 					If .RetrieveValueForParameter("R", strValue) Then mFixedFastaRenameDuplicateNameProteins = True
 					If .RetrieveValueForParameter("D", strValue) Then mFixedFastaConsolidateDuplicateProteinSeqs = True
 					If .RetrieveValueForParameter("L", strValue) Then mFixedFastaConsolidateDupsIgnoreILDiff = True
+					If .RetrieveValueForParameter("V", strValue) Then mFixedFastaRemoveInvalidResidues = True
+
+					If .RetrieveValueForParameter("KeepSameName", strValue) Then mFixedFastaKeepDuplicateNamedProteins = True
 					If .RetrieveValueForParameter("B", strValue) Then mSaveBasicProteinHashInfoFile = True
 					If .RetrieveValueForParameter("X", strValue) Then mCreateModelXMLParameterFile = True
 
@@ -245,18 +262,22 @@ Module modMain
 			Console.WriteLine("Program syntax:" & System.Environment.NewLine & IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
 			Console.WriteLine("  /I:InputFilePath.fasta [/O:OutputFolderPath]")
 			Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
-			Console.WriteLine(" [/F] [/R] [/D] [/L] [/B]")
-			Console.WriteLine(" [/X] [/S:[MaxLevel]] [/Q]")
+			Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
+			Console.WriteLine(" [/B] [/X] [/S:[MaxLevel]] [/Q]")
 			Console.WriteLine()
 
 			Console.WriteLine("The input file path can contain the wildcard character * and should point to a fasta file.")
 			Console.WriteLine("The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file.")
 			Console.WriteLine("Use /C to specify that an output file should be created, rather than displaying the results on the screen.")
 			Console.WriteLine()
-			Console.WriteLine("Use /F to shorten long protein names and remove invalid characters from the residues line, generating a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
+			Console.WriteLine("Use /F to shorten long protein names and generate a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
 			Console.WriteLine("Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins with duplicate protein sequences while generating a fixed fasta file.")
+			Console.WriteLine("Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file.")
+			Console.WriteLine("Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file (if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used")
+			Console.WriteLine()
+			Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates)")
 			Console.WriteLine()
 
 			Console.WriteLine("The parameter file path is optional.  If included, it should point to a valid XML parameter file.")
@@ -269,8 +290,8 @@ Module modMain
 			Console.WriteLine("Version: " & GetAppVersion())
 			Console.WriteLine()
 
-			Console.WriteLine("E-mail: matthew.monroe@pnl.gov or matt@alchemistmatt.com")
-			Console.WriteLine("Website: http://ncrr.pnl.gov/ or http://omics.pnl.gov")
+			Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or matt@alchemistmatt.com")
+			Console.WriteLine("Website: http://panomics.pnnl.gov/ or http://omics.pnl.gov")
 			Console.WriteLine()
 
 			' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)

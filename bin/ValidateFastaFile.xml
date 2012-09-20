@@ -80,6 +80,18 @@ ValidateFastaFile
 	<param name="strValue">Value associated with the parameter; empty string if no value (output)</param>
 	<param name="blnCaseSensitive">True to perform case-sensitive matching of the parameter name</param>
 	<returns>True if present, otherwise false</returns>
+</member><member name="M:ValidateFastaFile.clsValidateFastaFile.CorrectForDuplicateProteinSeqsInFasta(System.Boolean,System.Boolean,System.String,System.Int32,ValidateFastaFile.clsValidateFastaFile.udtProteinHashInfoType[]@)">
+	<summary>
+ Looks for duplicate proteins in the Fasta file
+ Creates a new fasta file that has exact duplicates removed
+ Will consolidate proteins with the same sequence if blnConsolidateDuplicateProteinSeqsInFasta=True
+ </summary>
+	<param name="blnConsolidateDuplicateProteinSeqsInFasta"></param>
+	<param name="strFixedFastaFilePath"></param>
+	<param name="intProteinSequenceHashCount"></param>
+	<param name="udtProteinSeqHashInfo"></param>
+	<returns></returns>
+	<remarks></remarks>
 </member><member name="M:ValidateFastaFile.XmlSettingsFileAccessor.LoadSettings">
 	<summary>
  Loads the settings for the defined Xml Settings File.  Assumes names are not case sensitive
@@ -445,6 +457,7 @@ ValidateFastaFile
 	<param name="strLine">The name of the string to be parse.</param>
 	<param name="doc">The name of the System.Xml.XmlDocument.</param>
 	<returns>True if success, false if not a recognized line format</returns>
+	<remarks>Returns True for blank lines</remarks>
 </member><member name="P:ValidateFastaFile.XmlSettingsFileAccessor.XMLFileReader.OutputFilename">
 	<summary>It Sets or Gets the output file name.</summary>
 </member><member name="M:ValidateFastaFile.XmlSettingsFileAccessor.XMLFileReader.Save">

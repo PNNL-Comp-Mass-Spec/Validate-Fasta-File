@@ -1,5 +1,11 @@
 Validate Fasta File Change Log
 
+Version 2.1.4646; September 20, 2012
+	- Added option /KeepSameName
+	- Added option /V to indicate that invalid residues (non-letters) should be removed
+	- Updated to .NET 4
+		- Replaced several hashtable objects with generic lists
+
 Version 2.0.4486; April 13, 2012
 	- Now showing error messages at the console instead of as popup message boxes
 

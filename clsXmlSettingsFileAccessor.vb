@@ -357,14 +357,14 @@ Public Class XmlSettingsFileAccessor
             Try
 				If Short.TryParse(strResult, intValue) Then
 					Return intValue
-				ElseIf strResult.ToLower = "true" Then
-					Return -1
-				ElseIf strResult.ToLower = "false" Then
-					Return 0
-				Else
-					valueNotPresent = True
-					Return valueIfMissing
-				End If
+                ElseIf strResult.ToLower = "true" Then
+                    Return -1
+                ElseIf strResult.ToLower = "false" Then
+                    Return 0
+                Else
+                    valueNotPresent = True
+                    Return valueIfMissing
+                End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -395,14 +395,14 @@ Public Class XmlSettingsFileAccessor
             Try
 				If Integer.TryParse(strResult, intValue) Then
 					Return intValue
-				ElseIf strResult.ToLower = "true" Then
-					Return -1
-				ElseIf strResult.ToLower = "false" Then
-					Return 0
-				Else
-					valueNotPresent = True
-					Return valueIfMissing
-				End If
+                ElseIf strResult.ToLower = "true" Then
+                    Return -1
+                ElseIf strResult.ToLower = "false" Then
+                    Return 0
+                Else
+                    valueNotPresent = True
+                    Return valueIfMissing
+                End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -420,34 +420,34 @@ Public Class XmlSettingsFileAccessor
     ''' <param name="valueNotPresent">Set to True if "sectionName" or "keyName" is missing.  Returned ByRef.</param>
     ''' <return>The function returns the name of the "value" attribute as a Long.  If "value" is "true" returns -1.  If "value" is "false" returns 0.</return>
 	Public Function GetParam(ByVal sectionName As String, ByVal keyName As String, ByVal valueIfMissing As Long, Optional ByRef valueNotPresent As Boolean = False) As Int64
-		Dim strResult As String
-		Dim blnNotFound As Boolean = False
+        Dim strResult As String
+        Dim blnNotFound As Boolean = False
 		Dim intValue As Int64
 
-		strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
-		If strResult Is Nothing OrElse blnNotFound Then
-			valueNotPresent = True
-			Return valueIfMissing
-		Else
-			valueNotPresent = False
-			Try
+        strResult = Me.GetParam(sectionName, keyName, valueIfMissing.ToString, blnNotFound)
+        If strResult Is Nothing OrElse blnNotFound Then
+            valueNotPresent = True
+            Return valueIfMissing
+        Else
+            valueNotPresent = False
+            Try
 				If Int64.TryParse(strResult, intValue) Then
 					Return intValue
-				ElseIf strResult.ToLower = "true" Then
-					Return -1
-				ElseIf strResult.ToLower = "false" Then
-					Return 0
-				Else
-					valueNotPresent = True
-					Return valueIfMissing
-				End If
-			Catch ex As System.Exception
-				valueNotPresent = True
-				Return valueIfMissing
-			End Try
-		End If
+                ElseIf strResult.ToLower = "true" Then
+                    Return -1
+                ElseIf strResult.ToLower = "false" Then
+                    Return 0
+                Else
+                    valueNotPresent = True
+                    Return valueIfMissing
+                End If
+            Catch ex As System.Exception
+                valueNotPresent = True
+                Return valueIfMissing
+            End Try
+        End If
 
-	End Function
+    End Function
 
     ''' <summary>
     ''' The function gets the name of the "value" attribute in section "sectionName".
@@ -471,14 +471,14 @@ Public Class XmlSettingsFileAccessor
             Try
 				If Single.TryParse(strResult, sngValue) Then
 					Return sngValue
-				ElseIf strResult.ToLower = "true" Then
-					Return -1
-				ElseIf strResult.ToLower = "false" Then
-					Return 0
-				Else
-					valueNotPresent = True
-					Return valueIfMissing
-				End If
+                ElseIf strResult.ToLower = "true" Then
+                    Return -1
+                ElseIf strResult.ToLower = "false" Then
+                    Return 0
+                Else
+                    valueNotPresent = True
+                    Return valueIfMissing
+                End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -509,14 +509,14 @@ Public Class XmlSettingsFileAccessor
             Try
 				If Double.TryParse(strResult, dblValue) Then
 					Return dblValue
-				ElseIf strResult.ToLower = "true" Then
-					Return -1
-				ElseIf strResult.ToLower = "false" Then
-					Return 0
-				Else
-					valueNotPresent = True
-					Return valueIfMissing
-				End If
+                ElseIf strResult.ToLower = "true" Then
+                    Return -1
+                ElseIf strResult.ToLower = "false" Then
+                    Return 0
+                Else
+                    valueNotPresent = True
+                    Return valueIfMissing
+                End If
             Catch ex As System.Exception
                 valueNotPresent = True
                 Return valueIfMissing
@@ -1204,6 +1204,7 @@ Public Class XmlSettingsFileAccessor
                 End If
                 Return False
             End If
+            Return False
         End Function
 
         ''' <summary>The funtions creates a section name.</summary>
@@ -1327,6 +1328,7 @@ Public Class XmlSettingsFileAccessor
         ''' <param name="strLine">The name of the string to be parse.</param>
         ''' <param name="doc">The name of the System.Xml.XmlDocument.</param>
         ''' <returns>True if success, false if not a recognized line format</returns>
+        ''' <remarks>Returns True for blank lines</remarks>
         Private Function ParseLineManual(ByVal strLine As String, ByRef doc As System.Xml.XmlDocument) As Boolean
             Const SECTION_NAME_TAG As String = "<section name="
             Const KEY_TAG As String = "key="
@@ -1353,11 +1355,13 @@ Public Class XmlSettingsFileAccessor
                     strLine = strLine.TrimEnd("]"c)
                     ' create a new section element
                     CreateSection(strLine)
+                    Return True
                 Case ";"
                     ' new comment
                     N = doc.CreateElement("comment")
                     N.InnerText = strLine.Substring(1)
                     GetLastSection().AppendChild(N)
+                    Return True
                 Case Else
                     ' Look for typical XML settings file elements
 
@@ -1366,7 +1370,7 @@ Public Class XmlSettingsFileAccessor
 
                         ' Create a new section element
                         CreateSection(strKey)
-
+                        Return True
                     Else
                         If ParseLineManualCheckTag(strLine, KEY_TAG, strKey) Then
                             ' This is an XML-style key
@@ -1393,7 +1397,11 @@ Public Class XmlSettingsFileAccessor
                             strValue = String.Empty
                         End If
 
-                        If strKey.Length > 0 Then
+                        If strKey.Length = 0 Then
+                            Return False
+
+                        Else
+
                             blnAddSetting = True
 
                             Select Case strKey.ToLower().Trim()
@@ -1406,24 +1414,23 @@ Public Class XmlSettingsFileAccessor
 
                             End Select
 
-                        Else
-                            blnAddSetting = False
+                            If blnAddSetting Then
+                                N = doc.CreateElement("item")
+                                Natt = doc.CreateAttribute("key")
+                                Natt.Value = SetNameCase(strKey)
+                                N.Attributes.SetNamedItem(Natt)
+
+                                Natt = doc.CreateAttribute("value")
+                                Natt.Value = strValue
+                                N.Attributes.SetNamedItem(Natt)
+
+                                GetLastSection().AppendChild(N)
+
+                            End If
+
+                            Return True
                         End If
 
-                        If blnAddSetting Then
-                            N = doc.CreateElement("item")
-                            Natt = doc.CreateAttribute("key")
-                            Natt.Value = SetNameCase(strKey)
-                            N.Attributes.SetNamedItem(Natt)
-
-                            Natt = doc.CreateAttribute("value")
-                            Natt.Value = strValue
-                            N.Attributes.SetNamedItem(Natt)
-
-                            GetLastSection().AppendChild(N)
-
-                        End If
-                       
                     End If
 
             End Select

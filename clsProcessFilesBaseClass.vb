@@ -18,20 +18,6 @@ Public MustInherit Class clsProcessFilesBaseClass
 		mOutputFolderPath = String.Empty
 		mLogFolderPath = String.Empty
 		mLogFilePath = String.Empty
-
-		Dim bytTwoBytes() As Byte
-		ReDim bytTwoBytes(1)
-
-		bytTwoBytes(0) = 9
-		chTabChar = BitConverter.ToChar(bytTwoBytes, 0)
-
-		bytTwoBytes(0) = 13
-		chCr = BitConverter.ToChar(bytTwoBytes, 0)
-
-		bytTwoBytes(0) = 10
-		chLF = BitConverter.ToChar(bytTwoBytes, 0)
-
-		chCrLf = chCr & chLF
 	End Sub
 
 #Region "Constants and Enums"
@@ -70,11 +56,6 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 	Private mShowMessages As Boolean
 	Private mErrorCode As eProcessFilesErrorCodes
-
-	Protected chTabChar As Char
-	Protected chCrLf As String
-	Protected chCr As String
-	Protected chLF As String
 
 	Protected mFileDate As String
 	Protected mAbortProcessing As Boolean
@@ -232,17 +213,6 @@ Public MustInherit Class clsProcessFilesBaseClass
 		Return blnSuccess
 	End Function
 
-	Public Sub CloseLogFileNow()
-		If Not mLogFile Is Nothing Then
-			mLogFile.Close()
-			mLogFile = Nothing
-
-			GC.Collect()
-			GC.WaitForPendingFinalizers()
-			System.Threading.Thread.Sleep(100)
-		End If
-	End Sub
-
 	Protected Function CleanupInputFilePath(ByRef strInputFilePath As String) As Boolean
 		' Returns True if success, False if failure
 
@@ -272,6 +242,56 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 		Return blnSuccess
 	End Function
+
+	Public Sub CloseLogFileNow()
+		If Not mLogFile Is Nothing Then
+			mLogFile.Close()
+			mLogFile = Nothing
+
+			GarbageCollectNow()
+			System.Threading.Thread.Sleep(100)
+		End If
+	End Sub
+
+	Public Shared Sub GarbageCollectNow()
+		Dim intMaxWaitTimeMSec As Integer = 1000
+		GarbageCollectNow(intMaxWaitTimeMSec)
+	End Sub
+
+	Public Shared Sub GarbageCollectNow(ByVal intMaxWaitTimeMSec As Integer)
+		Const THREAD_SLEEP_TIME_MSEC As Integer = 100
+
+		Dim intTotalThreadWaitTimeMsec As Integer
+		If intMaxWaitTimeMSec < 100 Then intMaxWaitTimeMSec = 100
+		If intMaxWaitTimeMSec > 5000 Then intMaxWaitTimeMSec = 5000
+
+		System.Threading.Thread.Sleep(100)
+
+		Try
+			Dim gcThread As New Threading.Thread(AddressOf GarbageCollectWaitForGC)
+			gcThread.Start()
+
+			intTotalThreadWaitTimeMsec = 0
+			While gcThread.IsAlive AndAlso intTotalThreadWaitTimeMsec < intMaxWaitTimeMSec
+				Threading.Thread.Sleep(THREAD_SLEEP_TIME_MSEC)
+				intTotalThreadWaitTimeMsec += THREAD_SLEEP_TIME_MSEC
+			End While
+			If gcThread.IsAlive Then gcThread.Abort()
+
+		Catch ex As Exception
+			' Ignore errors here
+		End Try
+
+	End Sub
+
+	Protected Shared Sub GarbageCollectWaitForGC()
+		Try
+			GC.Collect()
+			GC.WaitForPendingFinalizers()
+		Catch
+			' Ignore errors here
+		End Try
+	End Sub
 
 	Protected Function GetAppDataFolderPath(ByVal strAppName As String) As String
 		Dim strAppDataFolder As String = String.Empty
@@ -420,8 +440,8 @@ Public MustInherit Class clsProcessFilesBaseClass
 
 				If Not blnOpeningExistingFile Then
 					mLogFile.WriteLine("Date" & ControlChars.Tab & _
-						   "Type" & ControlChars.Tab & _
-						   "Message")
+									   "Type" & ControlChars.Tab & _
+									   "Message")
 				End If
 
 			Catch ex As Exception
@@ -445,8 +465,8 @@ Public MustInherit Class clsProcessFilesBaseClass
 			End Select
 
 			mLogFile.WriteLine(System.DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss tt") & ControlChars.Tab & _
-				   strMessageType & ControlChars.Tab & _
-			 strMessage)
+							   strMessageType & ControlChars.Tab & _
+							   strMessage)
 		End If
 
 		RaiseMessageEvent(strMessage, eMessageType)
@@ -664,10 +684,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 				' Call RecurseFoldersWork
 				Dim intRecursionLevel As Integer = 1
 				blnSuccess = RecurseFoldersWork(strInputFolderPath, strInputFilePathOrFolder, strOutputFolderName, _
-				  strParameterFilePath, strOutputFolderAlternatePath, _
-				  blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
-				  intFileProcessCount, intFileProcessFailCount, _
-				  intRecursionLevel, intRecurseFoldersMaxLevels)
+												strParameterFilePath, strOutputFolderAlternatePath, _
+												blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
+												intFileProcessCount, intFileProcessFailCount, _
+												intRecursionLevel, intRecurseFoldersMaxLevels)
 
 			Else
 				mErrorCode = clsProcessFilesBaseClass.eProcessFilesErrorCodes.InvalidInputFilePath
@@ -714,10 +734,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 	End Sub
 
 	Private Function RecurseFoldersWork(ByVal strInputFolderPath As String, ByVal strFileNameMatch As String, ByVal strOutputFolderName As String, _
-	   ByVal strParameterFilePath As String, ByVal strOutputFolderAlternatePath As String, _
-	   ByVal blnRecreateFolderHierarchyInAlternatePath As Boolean, ByVal strExtensionsToParse() As String, _
-	   ByRef intFileProcessCount As Integer, ByRef intFileProcessFailCount As Integer, _
-	   ByVal intRecursionLevel As Integer, ByVal intRecurseFoldersMaxLevels As Integer) As Boolean
+										ByVal strParameterFilePath As String, ByVal strOutputFolderAlternatePath As String, _
+										ByVal blnRecreateFolderHierarchyInAlternatePath As Boolean, ByVal strExtensionsToParse() As String, _
+										ByRef intFileProcessCount As Integer, ByRef intFileProcessFailCount As Integer, _
+										ByVal intRecursionLevel As Integer, ByVal intRecurseFoldersMaxLevels As Integer) As Boolean
 		' If intRecurseFoldersMaxLevels is <=0 then we recurse infinitely
 
 		Dim ioInputFolderInfo As System.IO.DirectoryInfo
@@ -818,10 +838,10 @@ Public MustInherit Class clsProcessFilesBaseClass
 				' Call this function for each of the subfolders of ioInputFolderInfo
 				For Each ioSubFolderInfo As System.IO.DirectoryInfo In ioInputFolderInfo.GetDirectories()
 					blnSuccess = RecurseFoldersWork(ioSubFolderInfo.FullName, strFileNameMatch, strOutputFolderName, _
-					  strParameterFilePath, strOutputFolderAlternatePath, _
-					  blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
-					  intFileProcessCount, intFileProcessFailCount, _
-					  intRecursionLevel + 1, intRecurseFoldersMaxLevels)
+													strParameterFilePath, strOutputFolderAlternatePath, _
+													blnRecreateFolderHierarchyInAlternatePath, strExtensionsToParse, _
+													intFileProcessCount, intFileProcessFailCount, _
+													intRecursionLevel + 1, intRecurseFoldersMaxLevels)
 
 					If Not blnSuccess Then Exit For
 				Next ioSubFolderInfo
