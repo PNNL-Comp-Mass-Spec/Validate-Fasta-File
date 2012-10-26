@@ -744,8 +744,11 @@ Public Class XmlSettingsFileAccessor
         ''' <return>The function returns the name of ini file.</return>
         Public ReadOnly Property XmlFilename() As String
             Get
-                If Not Initialized Then Throw New XMLFileReaderNotInitializedException
-                Return (m_XmlFilename)
+				If Not Initialized Then
+					Return String.Empty
+				Else
+					Return (m_XmlFilename)
+				End If
             End Get
         End Property
 
@@ -1093,9 +1096,10 @@ Public Class XmlSettingsFileAccessor
         Public ReadOnly Property AllSections() As System.Collections.Specialized.StringCollection
             Get
                 If Not Initialized Then
-                    Throw New XMLFileReaderNotInitializedException
-                End If
-                Return sections
+					Return New Collections.Specialized.StringCollection()
+				Else
+					Return sections
+				End If
             End Get
         End Property
 
@@ -1470,8 +1474,11 @@ Public Class XmlSettingsFileAccessor
         ''' <summary>It Sets or Gets the output file name.</summary>
         Public Property OutputFilename() As String
             Get
-                If Not Initialized Then Throw New XMLFileReaderNotInitializedException
-                Return m_SaveFilename
+				If Not Initialized Then
+					Return String.Empty
+				Else
+					Return m_SaveFilename
+				End If
             End Get
             Set(ByVal Value As String)
                 Dim fi As System.IO.FileInfo
@@ -1516,8 +1523,11 @@ Public Class XmlSettingsFileAccessor
         ''' <summary>It gets the System.Xml.XmlDocument.</summary>
         Public ReadOnly Property XmlDoc() As System.Xml.XmlDocument
             Get
-                If Not Initialized Then Throw New XMLFileReaderNotInitializedException
-                Return m_XmlDoc
+				If Not Initialized Then
+					Return New System.Xml.XmlDocument
+				Else
+					Return m_XmlDoc
+				End If
             End Get
         End Property
 
@@ -1525,17 +1535,21 @@ Public Class XmlSettingsFileAccessor
         ''' <return>It returns the XML document formatted as a string.</return>
         Public ReadOnly Property XML() As String
             Get
-                If Not Initialized Then Throw New XMLFileReaderNotInitializedException
-                Dim sb As System.Text.StringBuilder = New System.Text.StringBuilder
-                Dim sw As System.IO.StringWriter = New System.IO.StringWriter(sb)
-                Dim xw As System.Xml.XmlTextWriter = New System.Xml.XmlTextWriter(sw)
-                xw.Indentation = 3
-                xw.Formatting = System.Xml.Formatting.Indented
-                m_XmlDoc.WriteContentTo(xw)
-                xw.Close()
-                sw.Close()
-                Return sb.ToString()
-            End Get
+				If Not Initialized Then
+					Return String.Empty
+				End If
+
+				Dim sb As System.Text.StringBuilder = New System.Text.StringBuilder
+				Using sw As System.IO.StringWriter = New System.IO.StringWriter(sb)
+					Using xw As System.Xml.XmlTextWriter = New System.Xml.XmlTextWriter(sw)
+						xw.Indentation = 3
+						xw.Formatting = System.Xml.Formatting.Indented
+						m_XmlDoc.WriteContentTo(xw)
+					End Using
+				End Using
+
+				Return sb.ToString()
+			End Get
         End Property
 
     End Class
