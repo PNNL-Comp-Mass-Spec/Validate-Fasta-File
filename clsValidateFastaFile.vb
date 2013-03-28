@@ -143,7 +143,7 @@ Public Class clsValidateFastaFile
 		Public SequenceLength As Integer
 		Public SequenceStart As String					' The first 20 residues of the protein sequence
 		Public ProteinNameFirst As String
-		Public AdditionalProteins As System.Collections.Generic.List(Of String)			' .ProteinNameFirst is not stored here; only additional proteins
+		Public AdditionalProteins As Generic.List(Of String)			' .ProteinNameFirst is not stored here; only additional proteins
 		Public DuplicateProteinNameCount As Integer		' > 0 if multiple entries have the same name and same sequence
 	End Structure
 
@@ -742,10 +742,10 @@ Public Class clsValidateFastaFile
 		Dim blnBlankLineProcessed As Boolean
 
 		' Note that the dictionary is case-insensitive
-		Dim htProteinNames As System.Collections.Generic.Dictionary(Of String, String)
+		Dim htProteinNames As Generic.Dictionary(Of String, String)
 
 		' This dictionary provides a quick lookup for existing protein hashes
-		Dim lstProteinSequenceHashes As System.Collections.Generic.Dictionary(Of String, Integer)
+		Dim lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer)
 
 		' This array tracks protein hash details
 		Dim intProteinSequenceHashCount As Integer
@@ -763,6 +763,14 @@ Public Class clsValidateFastaFile
 		Try
 			' Reset the data structures and variables
 			ResetStructures()
+			ReDim udtProteinSeqHashInfo(1)
+
+			ReDim udtHeaderLineRuleDetails(1)
+			ReDim udtProteinNameRuleDetails(1)
+			ReDim udtProteinDescriptionRuleDetails(1)
+			ReDim udtProteinSequenceRuleDetails(1)
+
+			lstProteinSequenceHashes = New Generic.Dictionary(Of String, Integer)
 
 			If mNormalizeFileLineEndCharacters Then
 				mFastaFilePath = Me.NormalizeFileLineEndings( _
@@ -905,7 +913,7 @@ Public Class clsValidateFastaFile
 				End If
 
 				' Initialize htProteinNames
-				htProteinNames = New System.Collections.Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+				htProteinNames = New Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
 
 				' Optionally, initialize the protein sequence hash objects
 				If mSaveProteinSequenceHashInfoFiles Then
@@ -931,7 +939,7 @@ Public Class clsValidateFastaFile
 				End If
 
 				If mCheckForDuplicateProteinSequences Then
-					lstProteinSequenceHashes = New System.Collections.Generic.Dictionary(Of String, Integer)
+					lstProteinSequenceHashes.Clear()
 					intProteinSequenceHashCount = 0
 					ReDim udtProteinSeqHashInfo(99)
 				End If
@@ -1186,7 +1194,7 @@ Public Class clsValidateFastaFile
 	 ByRef strLineIn As String, _
 	 ByRef strProteinName As String, _
 	 ByRef blnProcessingDuplicateOrInvalidProtein As Boolean, _
-	 ByRef htProteinNames As System.Collections.Generic.Dictionary(Of String, String), _
+	 ByRef htProteinNames As Generic.Dictionary(Of String, String), _
 	 ByRef udtHeaderLineRuleDetails() As udtRuleDefinitionExtendedType, _
 	 ByRef udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType, _
 	 ByRef udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType, _
@@ -1501,7 +1509,7 @@ Public Class clsValidateFastaFile
 	 ByVal strFastaFilePathOut As String) As Boolean
 
 		Dim swUniqueProteinSeqsOut As System.IO.StreamWriter
-		Dim swDuplicateProteinMapping As System.IO.StreamWriter
+		Dim swDuplicateProteinMapping As System.IO.StreamWriter = Nothing
 
 		Dim strUniqueProteinSeqsFileOut As String = String.Empty
 		Dim strDuplicateProteinMappingFileOut As String = String.Empty
@@ -1746,14 +1754,14 @@ Public Class clsValidateFastaFile
 		' This list contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
 		' If blnConsolidateDuplicateProteinSeqsInFasta=False then this will contain all protein names
 		' If blnConsolidateDuplicateProteinSeqsInFasta=True then we only keep the first name found for a given sequence
-		Dim lstProteinNameFirst As System.Collections.Generic.Dictionary(Of String, Integer)
+		Dim lstProteinNameFirst As Generic.Dictionary(Of String, Integer)
 
 		' This list keeps track of the protein names that have been written out to the new fasta file
 		' Keys are the protein names; values are the protein hash values
-		Dim lstProteinsWritten As System.Collections.Generic.Dictionary(Of String, String)
+		Dim lstProteinsWritten As Generic.Dictionary(Of String, String)
 
 		' This list contains the names of duplicate proteins; the hash values are the protein names of the master protein that has the same sequence
-		Dim lstDuplicateProteinList As System.Collections.Generic.Dictionary(Of String, String)
+		Dim lstDuplicateProteinList As Generic.Dictionary(Of String, String)
 
 		Dim intDescriptionStartIndex As Integer
 		Dim intDuplicateNameSkipCount As Integer
@@ -1826,10 +1834,10 @@ Public Class clsValidateFastaFile
 
 		Try
 			' Populate lstProteinNameFirst with the protein names in udtProteinSeqHashInfo().ProteinNameFirst
-			lstProteinNameFirst = New System.Collections.Generic.Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
+			lstProteinNameFirst = New Generic.Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
 
 			' Populate htDuplicateProteinList with the protein names in udtProteinSeqHashInfo().AdditionalProteins 
-			lstDuplicateProteinList = New System.Collections.Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+			lstDuplicateProteinList = New Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
 
 			For intIndex As Integer = 0 To intProteinSequenceHashCount - 1
 				With udtProteinSeqHashInfo(intIndex)
@@ -1872,7 +1880,7 @@ Public Class clsValidateFastaFile
 				End With
 			Next intIndex
 
-			lstProteinsWritten = New System.Collections.Generic.Dictionary(Of String, String)
+			lstProteinsWritten = New Generic.Dictionary(Of String, String)
 
 			' Parse each line in the file
 			intLineCount = 0
@@ -2310,7 +2318,7 @@ Public Class clsValidateFastaFile
 		End If
 	End Function
 
-	Private Function FlattenArray(ByRef lstArray As System.Collections.Generic.List(Of String), ByVal chSepChar As Char) As String
+	Private Function FlattenArray(ByRef lstArray As Generic.List(Of String), ByVal chSepChar As Char) As String
 		Dim intIndex As Integer
 		Dim strResult As String
 
@@ -3021,7 +3029,7 @@ Public Class clsValidateFastaFile
 	Private Sub ProcessResiduesForPreviousProtein( _
 	  ByVal strProteinName As String, _
 	  ByRef sbCurrentResidues As Text.StringBuilder, _
-	  ByRef lstProteinSequenceHashes As System.Collections.Generic.Dictionary(Of String, Integer), _
+	  ByRef lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer), _
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
@@ -3035,9 +3043,9 @@ Public Class clsValidateFastaFile
 		Dim intIndex As Integer
 		Dim intLength As Integer
 
-		If strProteinName = "ECSE_P5-0001" Then
-			Console.WriteLine("here")
-		End If
+		'If strProteinName = "ECSE_P5-0001" Then
+		'	Console.WriteLine("Found ECSE_P5-0001")
+		'End If
 
 		If sbCurrentResidues.Length > 0 Then
 			' Remove any spaces from the residues
@@ -3080,7 +3088,7 @@ Public Class clsValidateFastaFile
 	Private Sub ProcessSequenceHashInfo( _
 	  ByVal strProteinName As String, _
 	  ByRef sbCurrentResidues As Text.StringBuilder, _
-	  ByRef lstProteinSequenceHashes As System.Collections.Generic.Dictionary(Of String, Integer), _
+	  ByRef lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer), _
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
@@ -3125,7 +3133,7 @@ Public Class clsValidateFastaFile
 
 						With udtProteinSeqHashInfo(intProteinSequenceHashCount)
 							.ProteinNameFirst = String.Copy(strProteinName)
-							.AdditionalProteins = New System.Collections.Generic.List(Of String)
+							.AdditionalProteins = New Generic.List(Of String)
 							.SequenceHash = String.Copy(strComputedHash)
 							.SequenceLength = sbCurrentResidues.Length
 							.SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
@@ -4083,10 +4091,10 @@ Public Class clsValidateFastaFile
 	  ByRef sbCachedProteinResidues As System.Text.StringBuilder, _
 	  ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
-	  ByRef lstProteinNameFirst As System.Collections.Generic.Dictionary(Of String, Integer), _
-	  ByRef lstDuplicateProteinList As System.Collections.Generic.Dictionary(Of String, String), _
+	  ByRef lstProteinNameFirst As Generic.Dictionary(Of String, Integer), _
+	  ByRef lstDuplicateProteinList As Generic.Dictionary(Of String, String), _
 	  ByVal intLineCount As Integer,
-	  ByRef lstProteinsWritten As System.Collections.Generic.Dictionary(Of String, String))
+	  ByRef lstProteinsWritten As Generic.Dictionary(Of String, String))
 
 		Static reAdditionalProtein As System.Text.RegularExpressions.Regex = New System.Text.RegularExpressions.Regex("(.+)-[a-z]\d*", Text.RegularExpressions.RegexOptions.Compiled)
 
@@ -4102,8 +4110,8 @@ Public Class clsValidateFastaFile
 		Dim blnKeepProtein As Boolean
 		Dim blnSkipDupProtein As Boolean
 
-		Dim lstAdditionalProteinNames As System.Collections.Generic.List(Of String)
-		lstAdditionalProteinNames = New System.Collections.Generic.List(Of String)
+		Dim lstAdditionalProteinNames As Generic.List(Of String)
+		lstAdditionalProteinNames = New Generic.List(Of String)
 
 		Dim intSeqIndex As Integer
 		If lstProteinNameFirst.TryGetValue(strCachedProteinName, intSeqIndex) Then

@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-	Public Const PROGRAM_DATE As String = "September 20, 2012"
+	Public Const PROGRAM_DATE As String = "March 27, 2013"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -158,10 +158,10 @@ Module modMain
                     End If
                 End If
 
+				DisplayProgressPercent(mLastProgressReportValue, True)
+			End If
 
-            End If
-
-        Catch ex As Exception
+		Catch ex As Exception
 			ShowErrorMessage("Error occurred in modMain->Main: " & System.Environment.NewLine & ex.Message)
 			intReturnCode = -1
 		End Try
@@ -182,32 +182,29 @@ Module modMain
 	End Sub
 
 	Private Function GetAppVersion() As String
-		'Return System.Windows.Forms.Application.ProductVersion & " (" & PROGRAM_DATE & ")"
-
-		Return System.Reflection.Assembly.GetExecutingAssembly.GetName.Version.ToString & " (" & PROGRAM_DATE & ")"
+		Return clsProcessFilesBaseClass.GetAppVersion(PROGRAM_DATE)
 	End Function
 
 	Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
 		' Returns True if no problems; otherwise, returns false
 
 		Dim strValue As String = String.Empty
-		Dim strValidParameters() As String = New String() {"I", "O", "P", "C", "F", "R", "D", "L", "V", "KeepSameName", "B", "X", "S", "Q"}
+		Dim lstValidParameters As Generic.List(Of String) = New Generic.List(Of String) From {"I", "O", "P", "C", "F", "R", "D", "L", "V", "KeepSameName", "AllowDash", "AllowAsterisk", "B", "X", "S", "Q"}
+		Dim intValue As Integer
 
 		Try
 			' Make sure no invalid parameters are present
-			If objParseCommandLine.InvalidParametersPresent(strValidParameters) Then
+			If objParseCommandLine.InvalidParametersPresent(lstValidParameters) Then
+				ShowErrorMessage("Invalid commmand line parameters",
+				  (From item In objParseCommandLine.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
 				Return False
 			Else
 				With objParseCommandLine
 					' Query objParseCommandLine to see if various parameters are present
 					If .RetrieveValueForParameter("I", strValue) Then
 						mInputFilePath = strValue
-					Else
-						' User didn't use /I:InputFile
-						' See if they simply provided the file name
-						If .NonSwitchParameterCount > 0 Then
-							mInputFilePath = .RetrieveNonSwitchParameter(0)
-						End If
+					ElseIf .NonSwitchParameterCount > 0 Then
+						mInputFilePath = .RetrieveNonSwitchParameter(0)
 					End If
 
 					If .RetrieveValueForParameter("O", strValue) Then mOutputFolderPath = strValue
@@ -225,8 +222,8 @@ Module modMain
 
 					If .RetrieveValueForParameter("S", strValue) Then
 						mRecurseFolders = True
-						If Not Integer.TryParse(strValue, mRecurseFoldersMaxLevels) Then
-							mRecurseFoldersMaxLevels = 0
+						If Integer.TryParse(strValue, intValue) Then
+							mRecurseFoldersMaxLevels = intValue
 						End If
 					End If
 
@@ -239,6 +236,7 @@ Module modMain
 		Catch ex As Exception
 			ShowErrorMessage("Error parsing the command line parameters: " & System.Environment.NewLine & ex.Message)
 		End Try
+		Return False
 
 	End Function
 
@@ -251,6 +249,26 @@ Module modMain
 		Console.WriteLine(strSeparator)
 		Console.WriteLine()
 
+		WriteToErrorStream(strMessage)
+	End Sub
+
+	Private Sub ShowErrorMessage(ByVal strTitle As String, ByVal items As List(Of String))
+		Dim strSeparator As String = "------------------------------------------------------------------------------"
+		Dim strMessage As String
+
+		Console.WriteLine()
+		Console.WriteLine(strSeparator)
+		Console.WriteLine(strTitle)
+		strMessage = strTitle & ":"
+
+		For Each item As String In items
+			Console.WriteLine("   " + item)
+			strMessage &= " " & item
+		Next
+		Console.WriteLine(strSeparator)
+		Console.WriteLine()
+
+		WriteToErrorStream(strMessage)
 	End Sub
 
 	Private Sub ShowProgramHelp()
@@ -263,6 +281,7 @@ Module modMain
 			Console.WriteLine("  /I:InputFilePath.fasta [/O:OutputFolderPath]")
 			Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
 			Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
+			Console.WriteLine(" [/AllowDash] [/AllowAsterisk]")
 			Console.WriteLine(" [/B] [/X] [/S:[MaxLevel]] [/Q]")
 			Console.WriteLine()
 
@@ -276,6 +295,7 @@ Module modMain
 			Console.WriteLine("Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins with duplicate protein sequences while generating a fixed fasta file.")
 			Console.WriteLine("Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file (if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used")
+			Console.WriteLine("Use /AllowDash to allow a - in residues; use /AllowAsterisk to allow * in residues")
 			Console.WriteLine()
 			Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates)")
 			Console.WriteLine()
@@ -301,6 +321,16 @@ Module modMain
 			ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
 		End Try
 
+	End Sub
+
+	Private Sub WriteToErrorStream(strErrorMessage As String)
+		Try
+			Using swErrorStream As System.IO.StreamWriter = New System.IO.StreamWriter(Console.OpenStandardError())
+				swErrorStream.WriteLine(strErrorMessage)
+			End Using
+		Catch ex As Exception
+			' Ignore errors here
+		End Try
 	End Sub
 
     Private Sub mValidateFastaFile_ProgressChanged(ByVal taskDescription As String, ByVal percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
