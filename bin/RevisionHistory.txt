@@ -1,6 +1,7 @@
 Validate Fasta File Change Log
 
 Version 2.1.4808; March 27, 2013
+	- Switched to AnyCPU
 	- Removed debug statement
 
 Version 2.1.4808; March 1, 2013
