@@ -2,10 +2,12 @@
 <sections>
   <section name="ValidateFastaFileOptions">
     <item key="AddMissingLinefeedAtEOF" value="False" />
-    <item key="AllowAsteriskInResidues" value="False" />
+    <item key="AllowAsteriskInResidues" value="True" />
+    <item key="AllowDashInResidues" value="True" />
     <item key="CheckForDuplicateProteinNames" value="True" />
     <item key="CheckForDuplicateProteinSequences" value="True" />
     <item key="SaveProteinSequenceHashInfoFiles" value="False" />
+    <item key="SaveBasicProteinHashInfoFile" value="False" />
     <item key="MaximumFileErrorsToTrack" value="50" />
     <item key="MinimumProteinNameLength" value="3" />
     <item key="MaximumProteinNameLength" value="34" />
@@ -19,18 +21,18 @@
   <section name="ValidateFastaFixedFASTAFileOptions">
     <item key="GenerateFixedFASTAFile" value="True" />
     <item key="SplitOutMultipleRefsInProteinName" value="False" />
-    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
-    <item key="RenameDuplicateNameProteins" value="False" />
+    <item key="RenameDuplicateNameProteins" value="True" />
+    <item key="KeepDuplicateNamedProteins" value="False" />
     <item key="ConsolidateDuplicateProteinSeqs" value="False" />
     <item key="ConsolidateDupsIgnoreILDiff" value="False" />
     <item key="TruncateLongProteinNames" value="True" />
+    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
     <item key="WrapLongResidueLines" value="True" />
-    
+    <item key="RemoveInvalidResidues" value="False" />
     <item key="LongProteinNameSplitChars" value="|" />
-    <item key="ProteinNameInvalidCharsToRemove" value="()" />
+    <item key="ProteinNameInvalidCharsToRemove" value="" />
     <item key="ProteinNameFirstRefSepChars" value=":|" />
     <item key="ProteinNameSubsequentRefSepChars" value=":|;" />
-    <item key="RemoveInvalidResidues" value="False" />
   </section>
   
   <section name="ValidateFastaHeaderLineRules">
@@ -58,7 +60,7 @@
   </section>
   <section name="ValidateFastaProteinNameRules">
     <item key="RuleCount" value="3" />
-    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]]" />
+    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]\=\+]" />
     <item key="Rule1MatchIndicatesProblem" value="True" />
     <item key="Rule1MessageWhenProblem" value="Protein name contains invalid characters" />
     <item key="Rule1Severity" value="7" />
@@ -114,7 +116,7 @@
     <item key="Rule2MessageWhenProblem" value="An asterisk was found in the residues" />
     <item key="Rule2Severity" value="7" />
     <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
-    <item key="Rule3MatchRegEx" value="[^A-IK-Z \t*]" />
+    <item key="Rule3MatchRegEx" value="[^A-IK-Z \t\*]" />
     <item key="Rule3MatchIndicatesProblem" value="True" />
     <item key="Rule3MessageWhenProblem" value="Invalid residues found" />
     <item key="Rule3Severity" value="7" />

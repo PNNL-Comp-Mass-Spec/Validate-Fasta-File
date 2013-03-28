@@ -3,9 +3,11 @@
   <section name="ValidateFastaFileOptions">
     <item key="AddMissingLinefeedAtEOF" value="False" />
     <item key="AllowAsteriskInResidues" value="False" />
+    <item key="AllowDashInResidues" value="False" />
     <item key="CheckForDuplicateProteinNames" value="True" />
     <item key="CheckForDuplicateProteinSequences" value="True" />
     <item key="SaveProteinSequenceHashInfoFiles" value="False" />
+    <item key="SaveBasicProteinHashInfoFile" value="False" />
     <item key="MaximumFileErrorsToTrack" value="5" />
     <item key="MinimumProteinNameLength" value="3" />
     <item key="MaximumProteinNameLength" value="34" />
@@ -14,23 +16,22 @@
     <item key="WarnLineStartsWithSpace" value="True" />
     <item key="OutputToStatsFile" value="False" />
     <item key="NormalizeFileLineEndCharacters" value="False" />
-    <item key="AllowDashInResidues" value="False" />
-    <item key="SaveBasicProteinHashInfoFile" value="False" />
   </section>
   <section name="ValidateFastaFixedFASTAFileOptions">
     <item key="GenerateFixedFASTAFile" value="False" />
     <item key="SplitOutMultipleRefsInProteinName" value="False" />
-    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
     <item key="RenameDuplicateNameProteins" value="False" />
+    <item key="KeepDuplicateNamedProteins" value="False" />
     <item key="ConsolidateDuplicateProteinSeqs" value="False" />
     <item key="ConsolidateDupsIgnoreILDiff" value="False" />
     <item key="TruncateLongProteinNames" value="True" />
+    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
     <item key="WrapLongResidueLines" value="True" />
+    <item key="RemoveInvalidResidues" value="False" />
     <item key="LongProteinNameSplitChars" value="|" />
     <item key="ProteinNameInvalidCharsToRemove" value="" />
     <item key="ProteinNameFirstRefSepChars" value=":|" />
     <item key="ProteinNameSubsequentRefSepChars" value=":|;" />
-    <item key="RemoveInvalidResidues" value="False" />
   </section>
   <section name="ValidateFastaHeaderLineRules">
     <item key="RuleCount" value="4" />

@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.1.4808; March 1, 2013
+	- Updated ValidateFastaFile.dll to .NET 4
+	- New version of clsParseCommandLine.vb and clsProcessFilesBaseClass.vb
+
 Version 2.1.4646; September 20, 2012
 	- Added option /KeepSameName
 	- Added option /V to indicate that invalid residues (non-letters) should be removed
