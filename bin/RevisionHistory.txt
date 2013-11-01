@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.1.5053; November 1, 2013
+	- Added clsProcessFilesOrFoldersBase
+
 Version 2.1.4808; March 27, 2013
 	- Switched to AnyCPU
 	- Removed debug statement

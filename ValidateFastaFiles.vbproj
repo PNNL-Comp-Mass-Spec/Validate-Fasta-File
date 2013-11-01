@@ -91,6 +91,9 @@
     <DebugType>none</DebugType>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
   </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
       <Name>System</Name>
@@ -118,6 +121,7 @@
     <Compile Include="clsProcessFilesBaseClass.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsProcessFilesOrFoldersBase.vb" />
     <Compile Include="clsValidateFastaFile.vb">
       <SubType>Code</SubType>
     </Compile>

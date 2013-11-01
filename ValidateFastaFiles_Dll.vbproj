@@ -50,7 +50,7 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <OutputPath>bin\</OutputPath>
+    <OutputPath>bin\DLL\</OutputPath>
     <DocumentationFile>ValidateFastaFile.xml</DocumentationFile>
     <BaseAddress>285212672</BaseAddress>
     <ConfigurationOverrideFile>
@@ -71,7 +71,7 @@
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <OutputPath>bin\</OutputPath>
+    <OutputPath>bin\DLL\</OutputPath>
     <DocumentationFile>ValidateFastaFile.xml</DocumentationFile>
     <BaseAddress>285212672</BaseAddress>
     <ConfigurationOverrideFile>
@@ -90,6 +90,9 @@
     <DebugType>none</DebugType>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
   </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
       <Name>System</Name>
@@ -102,6 +105,7 @@
     <Import Include="Microsoft.VisualBasic" />
     <Import Include="System" />
     <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
     <Import Include="System.Diagnostics" />
     <Import Include="System.Linq" />
   </ItemGroup>
@@ -121,6 +125,7 @@
     <Compile Include="clsProcessFilesBaseClass.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsProcessFilesOrFoldersBase.vb" />
     <Compile Include="clsValidateFastaFile.vb">
       <SubType>Code</SubType>
     </Compile>

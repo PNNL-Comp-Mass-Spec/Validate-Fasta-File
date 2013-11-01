@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
 	Implements IValidateFastaFile
 
 	Public Sub New()
-		MyBase.mFileDate = "September 20, 2012"
+		MyBase.mFileDate = "November 1, 2013"
 		InitializeLocalVariables()
 	End Sub
 
@@ -50,8 +50,8 @@ Public Class clsValidateFastaFile
 
 	Private Const INVALID_PROTEIN_NAME_CHAR_REPLACEMENT As Char = "_"c
 
-	Private CUSTOM_RULE_ID_START As Integer = 1000
-	Private DEFAULT_CONTEXT_LENGTH As Integer = 13
+	Private Const CUSTOM_RULE_ID_START As Integer = 1000
+	Private Const DEFAULT_CONTEXT_LENGTH As Integer = 13
 
 	Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING As String = "Line contains a protein name, but not a description"
 	Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG As String = "Protein description is over 900 characters long"
@@ -134,7 +134,7 @@ Public Class clsValidateFastaFile
 
 	Protected Structure udtRuleDefinitionExtendedType
 		Public RuleDefinition As udtRuleDefinitionType
-		Public reRule As System.Text.RegularExpressions.Regex
+		Public reRule As Text.RegularExpressions.Regex
 		Public Valid As Boolean
 	End Structure
 
@@ -172,12 +172,12 @@ Public Class clsValidateFastaFile
 	End Structure
 
 	Protected Structure udtProteinNameTruncationRegex
-		Public reMatchIPI As System.Text.RegularExpressions.Regex
-		Public reMatchGI As System.Text.RegularExpressions.Regex
-		Public reMatchJGI As System.Text.RegularExpressions.Regex
-		Public reMatchJGIBaseAndID As System.Text.RegularExpressions.Regex
-		Public reMatchGeneric As System.Text.RegularExpressions.Regex
-		Public reMatchDoubleBarOrColonAndBar As System.Text.RegularExpressions.Regex
+		Public reMatchIPI As Text.RegularExpressions.Regex
+		Public reMatchGI As Text.RegularExpressions.Regex
+		Public reMatchJGI As Text.RegularExpressions.Regex
+		Public reMatchJGIBaseAndID As Text.RegularExpressions.Regex
+		Public reMatchGeneric As Text.RegularExpressions.Regex
+		Public reMatchDoubleBarOrColonAndBar As Text.RegularExpressions.Regex
 	End Structure
 
 #End Region
@@ -354,6 +354,8 @@ Public Class clsValidateFastaFile
 			Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
 				Return Me.mAllowDashInResidues
 		End Select
+
+		Return False
 
 	End Function
 
@@ -705,9 +707,9 @@ Public Class clsValidateFastaFile
 		' This function assumes strFastaFilePath exists
 		' Returns True if the file was successfully analyzed (even if errors were found)
 
-		Dim fsInFile As System.IO.Stream
-		Dim swFixedFastaOut As System.IO.StreamWriter = Nothing
-		Dim swProteinSequenceHashBasic As System.IO.StreamWriter = Nothing
+		Dim fsInFile As IO.Stream
+		Dim swFixedFastaOut As IO.StreamWriter = Nothing
+		Dim swProteinSequenceHashBasic As IO.StreamWriter = Nothing
 
 		Dim lngBytesRead As Long
 		Dim intTerminatorSize As Integer
@@ -720,7 +722,7 @@ Public Class clsValidateFastaFile
 		Dim strResiduesClean As String
 		Dim strNonLetterResidueSpec As String
 
-		Dim sbCurrentResidues As System.Text.StringBuilder
+		Dim sbCurrentResidues As Text.StringBuilder
 
 		' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
 		Dim intCurrentValidResidueLineLengthMax As Integer
@@ -758,7 +760,7 @@ Public Class clsValidateFastaFile
 
 		Dim reProteinNameTruncation As udtProteinNameTruncationRegex
 
-		Dim reNonLetterResidues As System.Text.RegularExpressions.Regex
+		Dim reNonLetterResidues As Text.RegularExpressions.Regex
 
 		Try
 			' Reset the data structures and variables
@@ -775,7 +777,7 @@ Public Class clsValidateFastaFile
 			If mNormalizeFileLineEndCharacters Then
 				mFastaFilePath = Me.NormalizeFileLineEndings( _
 				 strFastaFilePath, _
-				 "CRLF_" & System.IO.Path.GetFileName(strFastaFilePath), _
+				 "CRLF_" & IO.Path.GetFileName(strFastaFilePath), _
 				 IValidateFastaFile.eLineEndingCharacters.CRLF)
 
 				If mFastaFilePath <> strFastaFilePath Then
@@ -786,7 +788,7 @@ Public Class clsValidateFastaFile
 				mFastaFilePath = String.Copy(strFastaFilePath)
 			End If
 
-			Me.OnProgressUpdate("Parsing " & System.IO.Path.GetFileName(mFastaFilePath), 0)
+			Me.OnProgressUpdate("Parsing " & IO.Path.GetFileName(mFastaFilePath), 0)
 
 			blnSuccess = False
 			blnProteinHeaderFound = False
@@ -794,7 +796,7 @@ Public Class clsValidateFastaFile
 			blnBlankLineProcessed = False
 
 			strProteinName = String.Empty
-			sbCurrentResidues = New System.Text.StringBuilder
+			sbCurrentResidues = New Text.StringBuilder
 
 			' Initialize the RegEx objects
 
@@ -803,23 +805,23 @@ Public Class clsValidateFastaFile
 
 				' The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
 				.reMatchIPI = _
-				 New System.Text.RegularExpressions.Regex("^(IPI:IPI[\w.]{2,})\|(.+)", _
+				 New Text.RegularExpressions.Regex("^(IPI:IPI[\w.]{2,})\|(.+)", _
 				  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
 				' The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
 				.reMatchGI = _
-				 New System.Text.RegularExpressions.Regex("^(gi\|\d+)\|(.+)", _
+				 New Text.RegularExpressions.Regex("^(gi\|\d+)\|(.+)", _
 				  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
 				' The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
 				.reMatchJGI = _
-				 New System.Text.RegularExpressions.Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)", _
+				 New Text.RegularExpressions.Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)", _
 				  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
 				' The following will extract bob|234384 from  bob|234384|ref|483293
 				'                         or bob|845832 from  bob|845832;ref|384923
 				.reMatchGeneric = _
-				 New System.Text.RegularExpressions.Regex("^(\w{2,}[" & _
+				 New Text.RegularExpressions.Regex("^(\w{2,}[" & _
 				 CharArrayToString(mProteinNameFirstRefSepChars) & "][\w\d._]{2,})[" & _
 				 CharArrayToString(mProteinNameSubsequentRefSepChars) & "](.+)", _
 				 Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
@@ -828,12 +830,12 @@ Public Class clsValidateFastaFile
 			With reProteinNameTruncation
 				' The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
 				.reMatchJGIBaseAndID = _
-				 New System.Text.RegularExpressions.Regex("^jgi\|[^|]+\|\d+", _
+				 New Text.RegularExpressions.Regex("^jgi\|[^|]+\|\d+", _
 				   Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
 				' Note that this RegEx contains a group with captured text:
 				.reMatchDoubleBarOrColonAndBar = _
-				 New System.Text.RegularExpressions.Regex("[" & _
+				 New Text.RegularExpressions.Regex("[" & _
 				  CharArrayToString(mProteinNameFirstRefSepChars) & "][^" & _
 				  CharArrayToString(mProteinNameSubsequentRefSepChars) & "]*([" & _
 				  CharArrayToString(mProteinNameSubsequentRefSepChars) & "])", _
@@ -846,7 +848,7 @@ Public Class clsValidateFastaFile
 			If mAllowDashInResidues Then strNonLetterResidueSpec &= "-"
 
 			reNonLetterResidues = _
-			 New System.Text.RegularExpressions.Regex("[^" & strNonLetterResidueSpec & "]", _
+			 New Text.RegularExpressions.Regex("[^" & strNonLetterResidueSpec & "]", _
 			 Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
 			' Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
@@ -864,21 +866,21 @@ Public Class clsValidateFastaFile
 			intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
 
 			' Open the input file
-			fsInFile = New System.IO.FileStream( _
+			fsInFile = New IO.FileStream( _
 			   strFastaFilePath, _
-			   System.IO.FileMode.Open, _
-			   System.IO.FileAccess.Read, _
+			   IO.FileMode.Open, _
+			   IO.FileAccess.Read, _
 			   IO.FileShare.Read)
 
-			Using srFastaInFile As System.IO.StreamReader = New System.IO.StreamReader(fsInFile)
+			Using srFastaInFile As IO.StreamReader = New IO.StreamReader(fsInFile)
 
 				' Optionally, open the output fasta file
 				If mGenerateFixedFastaFile Then
 					Try
 						strFastaFilePathOut = _
-						 System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
-						 System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_new.fasta")
-						swFixedFastaOut = New System.IO.StreamWriter(strFastaFilePathOut, False)
+						 IO.Path.Combine(IO.Path.GetDirectoryName(strFastaFilePath), _
+						 IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_new.fasta")
+						swFixedFastaOut = New IO.StreamWriter(strFastaFilePathOut, False)
 					Catch ex As Exception
 						' Error opening output file
 						RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
@@ -890,9 +892,9 @@ Public Class clsValidateFastaFile
 				If mSaveBasicProteinHashInfoFile Then
 					Try
 						strBasicProteinHashInfoFilePath = _
-						 System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
-						 System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_ProteinHashes.txt")
-						swProteinSequenceHashBasic = New System.IO.StreamWriter(strBasicProteinHashInfoFilePath, False)
+						 IO.Path.Combine(IO.Path.GetDirectoryName(strFastaFilePath), _
+						 IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_ProteinHashes.txt")
+						swProteinSequenceHashBasic = New IO.StreamWriter(strBasicProteinHashInfoFilePath, False)
 
 						swProteinSequenceHashBasic.WriteLine("Protein_ID" & ControlChars.Tab & _
 						 "Protein_Name" & ControlChars.Tab & _
@@ -1132,7 +1134,7 @@ Public Class clsValidateFastaFile
 				RecordFastaFileError(mLineCount, 0, strProteinName, eMessageCodeConstants.FinalProteinEntryMissingResidues)
 			ElseIf Not blnBlankLineProcessed Then
 				' File does not end in multiple blank lines; need to re-open it using a binary reader and check the last two characters to make sure they're valid
-				System.Threading.Thread.Sleep(100)
+				Threading.Thread.Sleep(100)
 
 				If Not VerifyLinefeedAtEOF(strFastaFilePath, mAddMissingLinefeedAtEOF) Then
 					RecordFastaFileError(mLineCount, 0, String.Empty, eMessageCodeConstants.FileDoesNotEndWithLinefeed)
@@ -1168,7 +1170,7 @@ Public Class clsValidateFastaFile
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in AnalyzeFastaFile:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in AnalyzeFastaFile", ex)
+				Throw New Exception("Error in AnalyzeFastaFile", ex)
 			End If
 			blnSuccess = False
 		Finally
@@ -1190,7 +1192,7 @@ Public Class clsValidateFastaFile
 	End Function
 
 	Protected Sub AnalyzeFastaProcessProteinHeader( _
-	 ByRef swFixedFastaOut As System.IO.StreamWriter, _
+	 ByRef swFixedFastaOut As IO.StreamWriter, _
 	 ByRef strLineIn As String, _
 	 ByRef strProteinName As String, _
 	 ByRef blnProcessingDuplicateOrInvalidProtein As Boolean, _
@@ -1209,7 +1211,7 @@ Public Class clsValidateFastaFile
 		Dim strExtraProteinNameText As String
 		Dim strProteinDescription As String = String.Empty
 
-		Dim reMatch As System.Text.RegularExpressions.Match
+		Dim reMatch As Text.RegularExpressions.Match
 
 		Dim blnDuplicateName As Boolean
 		Dim chLetterToAppend As Char
@@ -1446,7 +1448,7 @@ Public Class clsValidateFastaFile
 										intNumberToAppend += 1
 									Else
 										' chLetterToAppend = Chr(Asc(chLetterToAppend) + 1)
-										chLetterToAppend = System.Convert.ToChar(System.Convert.ToInt32(chLetterToAppend) + 1)
+										chLetterToAppend = Convert.ToChar(Convert.ToInt32(chLetterToAppend) + 1)
 									End If
 								End If
 							Loop While blnDuplicateName
@@ -1508,8 +1510,8 @@ Public Class clsValidateFastaFile
 	 ByVal blnKeepDuplicateNamedProteinsUnlessMatchingSequence As Boolean, _
 	 ByVal strFastaFilePathOut As String) As Boolean
 
-		Dim swUniqueProteinSeqsOut As System.IO.StreamWriter
-		Dim swDuplicateProteinMapping As System.IO.StreamWriter = Nothing
+		Dim swUniqueProteinSeqsOut As IO.StreamWriter
+		Dim swDuplicateProteinMapping As IO.StreamWriter = Nothing
 
 		Dim strUniqueProteinSeqsFileOut As String = String.Empty
 		Dim strDuplicateProteinMappingFileOut As String = String.Empty
@@ -1526,11 +1528,11 @@ Public Class clsValidateFastaFile
 
 		Try
 			strUniqueProteinSeqsFileOut = _
-			 System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
-			 System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqs.txt")
+			 IO.Path.Combine(IO.Path.GetDirectoryName(strFastaFilePath), _
+			 IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqs.txt")
 
 			' Create swUniqueProteinSeqsOut
-			swUniqueProteinSeqsOut = New System.IO.StreamWriter(strUniqueProteinSeqsFileOut, False)
+			swUniqueProteinSeqsOut = New IO.StreamWriter(strUniqueProteinSeqsFileOut, False)
 		Catch ex As Exception
 			' Error opening output file
 			RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
@@ -1543,11 +1545,11 @@ Public Class clsValidateFastaFile
 			' Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
 			' We'll only create it if two or more proteins have the same protein sequence
 			strDuplicateProteinMappingFileOut = _
-			  System.IO.Path.Combine(System.IO.Path.GetDirectoryName(strFastaFilePath), _
-			  System.IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqDuplicates.txt")					   ' Look for strDuplicateProteinMappingFileOut and erase it if it exists
+			  IO.Path.Combine(IO.Path.GetDirectoryName(strFastaFilePath), _
+			  IO.Path.GetFileNameWithoutExtension(strFastaFilePath) & "_UniqueProteinSeqDuplicates.txt")					   ' Look for strDuplicateProteinMappingFileOut and erase it if it exists
 
-			If System.IO.File.Exists(strDuplicateProteinMappingFileOut) Then
-				System.IO.File.Delete(strDuplicateProteinMappingFileOut)
+			If IO.File.Exists(strDuplicateProteinMappingFileOut) Then
+				IO.File.Delete(strDuplicateProteinMappingFileOut)
 			End If
 		Catch ex As Exception
 			' Error deleting output file
@@ -1584,7 +1586,7 @@ Public Class clsValidateFastaFile
 
 						If swDuplicateProteinMapping Is Nothing Then
 							' Need to create swDuplicateProteinMapping
-							swDuplicateProteinMapping = New System.IO.StreamWriter(strDuplicateProteinMappingFileOut, False)
+							swDuplicateProteinMapping = New IO.StreamWriter(strDuplicateProteinMappingFileOut, False)
 
 							strLineOut = "Sequence_Index" & ControlChars.Tab & _
 							 "Protein_Name_First" & ControlChars.Tab & _
@@ -1733,9 +1735,9 @@ Public Class clsValidateFastaFile
 	 ByVal intProteinSequenceHashCount As Integer, _
 	 ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType) As Boolean
 
-		Dim fsInFile As System.IO.Stream
-		Dim srFastaInFile As System.IO.StreamReader = Nothing
-		Dim swConsolidatedFastaOut As System.IO.StreamWriter = Nothing
+		Dim fsInFile As IO.Stream
+		Dim srFastaInFile As IO.StreamReader = Nothing
+		Dim swConsolidatedFastaOut As IO.StreamWriter = Nothing
 
 		Dim lngBytesRead As Long
 		Dim intTerminatorSize As Integer
@@ -1747,9 +1749,8 @@ Public Class clsValidateFastaFile
 
 		Dim strCachedProteinName As String = String.Empty
 		Dim strCachedProteinDescription As String = String.Empty
-		Dim sbCachedProteinResidueLines As System.Text.StringBuilder = New System.Text.StringBuilder(250)
-		Dim sbCachedProteinResidues As System.Text.StringBuilder = New System.Text.StringBuilder(250)
-		Dim blnWriteCachedProtein As Boolean = True
+		Dim sbCachedProteinResidueLines As Text.StringBuilder = New Text.StringBuilder(250)
+		Dim sbCachedProteinResidues As Text.StringBuilder = New Text.StringBuilder(250)
 
 		' This list contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
 		' If blnConsolidateDuplicateProteinSeqsInFasta=False then this will contain all protein names
@@ -1764,10 +1765,8 @@ Public Class clsValidateFastaFile
 		Dim lstDuplicateProteinList As Generic.Dictionary(Of String, String)
 
 		Dim intDescriptionStartIndex As Integer
-		Dim intDuplicateNameSkipCount As Integer
 
 		Dim blnSuccess As Boolean
-		blnSuccess = False
 
 		If intProteinSequenceHashCount <= 0 Then
 			Return True
@@ -1792,11 +1791,11 @@ Public Class clsValidateFastaFile
 		Try
 			strFixedFastaFilePathTemp = strFixedFastaFilePath & ".TempFixed"
 
-			If System.IO.File.Exists(strFixedFastaFilePathTemp) Then
-				System.IO.File.Delete(strFixedFastaFilePathTemp)
+			If IO.File.Exists(strFixedFastaFilePathTemp) Then
+				IO.File.Delete(strFixedFastaFilePathTemp)
 			End If
 
-			System.IO.File.Move(strFixedFastaFilePath, strFixedFastaFilePathTemp)
+			IO.File.Move(strFixedFastaFilePath, strFixedFastaFilePathTemp)
 		Catch ex As Exception
 			RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
 			 "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
@@ -1809,13 +1808,13 @@ Public Class clsValidateFastaFile
 			intTerminatorSize = DetermineLineTerminatorSize(strFixedFastaFilePathTemp)
 
 			' Open the Fixed fasta file
-			fsInFile = New System.IO.FileStream( _
+			fsInFile = New IO.FileStream( _
 			   strFixedFastaFilePathTemp, _
-			   System.IO.FileMode.Open, _
-			   System.IO.FileAccess.Read, _
+			   IO.FileMode.Open, _
+			   IO.FileAccess.Read, _
 			   IO.FileShare.Read)
 
-			srFastaInFile = New System.IO.StreamReader(fsInFile)
+			srFastaInFile = New IO.StreamReader(fsInFile)
 
 		Catch ex As Exception
 			RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
@@ -1826,7 +1825,7 @@ Public Class clsValidateFastaFile
 
 		Try
 			' Create the new fasta file
-			swConsolidatedFastaOut = New System.IO.StreamWriter(strFixedFastaFilePath, False)
+			swConsolidatedFastaOut = New IO.StreamWriter(strFixedFastaFilePath, False)
 		Catch ex As Exception
 			RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError, _
 			 "Error creating consolidated fasta output file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
@@ -1849,7 +1848,7 @@ Public Class clsValidateFastaFile
 						' The fixed fasta file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
 						' but we should increment the DuplicateNameSkipCount
 
-						intDuplicateNameSkipCount += 1
+
 					End If
 
 					If .AdditionalProteins.Count > 0 Then
@@ -1870,7 +1869,6 @@ Public Class clsValidateFastaFile
 								Else
 									' .AdditionalProteins(intDupIndex) is already present in lstProteinNameFirst
 									' Increment the DuplicateNameSkipCount
-									intDuplicateNameSkipCount += 1
 								End If
 
 							End If
@@ -1957,9 +1955,9 @@ Public Class clsValidateFastaFile
 				If Not srFastaInFile Is Nothing Then srFastaInFile.Close()
 				If Not swConsolidatedFastaOut Is Nothing Then swConsolidatedFastaOut.Close()
 
-				System.Threading.Thread.Sleep(100)
+				Threading.Thread.Sleep(100)
 
-				System.IO.File.Delete(strFixedFastaFilePathTemp)
+				IO.File.Delete(strFixedFastaFilePathTemp)
 			Catch ex As Exception
 				' Ignore errors here
 			End Try
@@ -1987,10 +1985,10 @@ Public Class clsValidateFastaFile
 
 		Try
 			' Record the current time in dtNow
-			strStatsFilePath = "FastaFileStats_" & System.DateTime.Now.ToString("yyyy-MM-dd") & ".txt"
+			strStatsFilePath = "FastaFileStats_" & DateTime.Now.ToString("yyyy-MM-dd") & ".txt"
 
 			If Not strOutputFolderPath Is Nothing AndAlso strOutputFolderPath.Length > 0 Then
-				strStatsFilePath = System.IO.Path.Combine(strOutputFolderPath, strStatsFilePath)
+				strStatsFilePath = IO.Path.Combine(strOutputFolderPath, strStatsFilePath)
 			End If
 		Catch ex As Exception
 			If strStatsFilePath Is Nothing OrElse strStatsFilePath.Length = 0 Then
@@ -2017,17 +2015,18 @@ Public Class clsValidateFastaFile
 				Return 2
 		End Select
 
+		Return 2
+
 	End Function
 
 	Private Function DetermineLineTerminatorType(ByVal strInputFilePath As String) As IValidateFastaFile.eLineEndingCharacters
 		Dim intByte As Integer
 
-		Dim intTerminatorSize As Integer = 2
 		Dim endCharacterType As IValidateFastaFile.eLineEndingCharacters
 
 		Try
 			' Open the input file and look for the first carriage return or line feed
-			Using fsInFile As System.IO.FileStream = New System.IO.FileStream(strInputFilePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, IO.FileShare.Read)
+			Using fsInFile As IO.FileStream = New IO.FileStream(strInputFilePath, IO.FileMode.Open, IO.FileAccess.Read, IO.FileShare.Read)
 
 				Do While fsInFile.Position < fsInFile.Length AndAlso fsInFile.Position < 100000
 
@@ -2039,15 +2038,12 @@ Public Class clsValidateFastaFile
 							intByte = fsInFile.ReadByte()
 							If intByte = 13 Then
 								' LfCr
-								intTerminatorSize = 2
 								endCharacterType = IValidateFastaFile.eLineEndingCharacters.LFCR
 							Else
 								' Lf only
-								intTerminatorSize = 1
 								endCharacterType = IValidateFastaFile.eLineEndingCharacters.LF
 							End If
 						Else
-							intTerminatorSize = 1
 							endCharacterType = IValidateFastaFile.eLineEndingCharacters.LF
 						End If
 						Exit Do
@@ -2057,15 +2053,12 @@ Public Class clsValidateFastaFile
 							intByte = fsInFile.ReadByte()
 							If intByte = 10 Then
 								' CrLf
-								intTerminatorSize = 2
 								endCharacterType = IValidateFastaFile.eLineEndingCharacters.CRLF
 							Else
 								' Cr only
-								intTerminatorSize = 1
 								endCharacterType = IValidateFastaFile.eLineEndingCharacters.CR
 							End If
 						Else
-							intTerminatorSize = 1
 							endCharacterType = IValidateFastaFile.eLineEndingCharacters.CR
 						End If
 						Exit Do
@@ -2110,16 +2103,15 @@ Public Class clsValidateFastaFile
 		Dim endCharType As IValidateFastaFile.eLineEndingCharacters = _
 		 Me.DetermineLineTerminatorType(pathOfFileToFix)
 
-		Dim fi As System.IO.FileInfo
-		Dim tr As System.IO.TextReader
+		Dim fi As IO.FileInfo
+		Dim tr As IO.TextReader
 		Dim s As String
 		Dim origEndCharCount As Integer
 
 		Dim fileLength As Long
 		Dim currFilePos As Long
-		Dim lineCount As Long
 
-		Dim sw As System.IO.StreamWriter
+		Dim sw As IO.StreamWriter
 
 
 		If endCharType <> desiredLineEndCharacterType Then
@@ -2145,28 +2137,29 @@ Public Class clsValidateFastaFile
 					origEndCharCount = 2
 			End Select
 
-			If Not System.IO.Path.IsPathRooted(newFileName) Then
-				newFileName = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(pathOfFileToFix), System.IO.Path.GetFileName(newFileName))
+			If Not IO.Path.IsPathRooted(newFileName) Then
+				newFileName = IO.Path.Combine(IO.Path.GetDirectoryName(pathOfFileToFix), IO.Path.GetFileName(newFileName))
 			End If
 
-			fi = New System.IO.FileInfo(pathOfFileToFix)
+			fi = New IO.FileInfo(pathOfFileToFix)
 			fileLength = fi.Length
 
 			tr = fi.OpenText
 
-			sw = New System.IO.StreamWriter(newFileName)
+			sw = New IO.StreamWriter(newFileName)
 
 			Me.OnProgressUpdate("Normalizing Line Endings...", 0.0)
 
 			s = tr.ReadLine
+			Dim linesRead As Long = 0
 			Do While Not s Is Nothing
 				sw.Write(s)
 				sw.Write(newEndChar)
 
 				currFilePos = s.Length + origEndCharCount
-				lineCount += 1
+				linesRead += 1
 
-				If lineCount Mod 1000 = 0 Then
+				If linesRead Mod 1000 = 0 Then
 					Me.OnProgressUpdate("Normalizing Line Endings (" & _
 					 Math.Round(CDbl(currFilePos / fileLength * 100), 1).ToString & _
 					 " % complete", CSng(currFilePos / fileLength * 100))
@@ -2176,7 +2169,6 @@ Public Class clsValidateFastaFile
 			Loop
 			tr.Close()
 			sw.Close()
-			fi = Nothing
 
 			Return newFileName
 		Else
@@ -2202,7 +2194,7 @@ Public Class clsValidateFastaFile
 	 ByVal intContextLength As Integer)
 
 		Dim intIndex As Integer
-		Dim reMatch As System.Text.RegularExpressions.Match
+		Dim reMatch As Text.RegularExpressions.Match
 		Dim strExtraInfo As String
 		Dim intCharIndexOfMatch As Integer
 
@@ -2476,7 +2468,7 @@ Public Class clsValidateFastaFile
 
 	Private Function GetTimeStamp() As String
 		' Record the current time
-		Return System.DateTime.Now.ToShortDateString & " " & System.DateTime.Now.ToLongTimeString
+		Return DateTime.Now.ToShortDateString & " " & DateTime.Now.ToLongTimeString
 	End Function
 
 	Private Sub InitializeLocalVariables()
@@ -2549,10 +2541,10 @@ Public Class clsValidateFastaFile
 				Try
 					With udtRuleDetails(intIndex)
 						.RuleDefinition = udtRuleDefs(intIndex)
-						.reRule = New System.Text.RegularExpressions.Regex( _
+						.reRule = New Text.RegularExpressions.Regex( _
 						 .RuleDefinition.MatchRegEx, _
-						 System.Text.RegularExpressions.RegexOptions.Singleline Or _
-						 System.Text.RegularExpressions.RegexOptions.Compiled)
+						 Text.RegularExpressions.RegexOptions.Singleline Or _
+						 Text.RegularExpressions.RegexOptions.Compiled)
 						.Valid = True
 					End With
 				Catch ex As Exception
@@ -2581,12 +2573,12 @@ Public Class clsValidateFastaFile
 				Return True
 			End If
 
-			If Not System.IO.File.Exists(strParameterFilePath) Then
+			If Not IO.File.Exists(strParameterFilePath) Then
 				' See if strParameterFilePath points to a file in the same directory as the application
-				strParameterFilePath = System.IO.Path.Combine( _
-				 System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), _
-				  System.IO.Path.GetFileName(strParameterFilePath))
-				If Not System.IO.File.Exists(strParameterFilePath) Then
+				strParameterFilePath = IO.Path.Combine( _
+				 IO.Path.GetDirectoryName(Reflection.Assembly.GetExecutingAssembly().Location), _
+				  IO.Path.GetFileName(strParameterFilePath))
+				If Not IO.File.Exists(strParameterFilePath) Then
 					MyBase.SetBaseClassErrorCode(clsProcessFilesBaseClass.eProcessFilesErrorCodes.ParameterFileNotFound)
 					Return False
 				End If
@@ -2756,7 +2748,7 @@ Public Class clsValidateFastaFile
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in LoadParameterFileSettings:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in LoadParameterFileSettings", ex)
+				Throw New Exception("Error in LoadParameterFileSettings", ex)
 			End If
 			Return False
 		End Try
@@ -2926,8 +2918,8 @@ Public Class clsValidateFastaFile
 
 		'Returns True if success, False if failure
 
-		Dim ioFile As System.IO.FileInfo
-		Dim swStatsOutFile As System.IO.StreamWriter
+		Dim ioFile As IO.FileInfo
+		Dim swStatsOutFile As IO.StreamWriter
 
 		Dim strInputFilePathFull As String
 		Dim strStatusMessage As String
@@ -2954,7 +2946,7 @@ Public Class clsValidateFastaFile
 			Else
 
 				Console.WriteLine()
-				Console.WriteLine("Parsing " & System.IO.Path.GetFileName(strInputFilePath))
+				Console.WriteLine("Parsing " & IO.Path.GetFileName(strInputFilePath))
 
 				If Not CleanupFilePaths(strInputFilePath, strOutputFolderPath) Then
 					MyBase.SetBaseClassErrorCode(clsProcessFilesBaseClass.eProcessFilesErrorCodes.FilePathError)
@@ -2962,7 +2954,7 @@ Public Class clsValidateFastaFile
 					Try
 
 						' Obtain the full path to the input file
-						ioFile = New System.IO.FileInfo(strInputFilePath)
+						ioFile = New IO.FileInfo(strInputFilePath)
 						strInputFilePathFull = ioFile.FullName
 
 						blnSuccess = AnalyzeFastaFile(strInputFilePathFull)
@@ -2972,14 +2964,13 @@ Public Class clsValidateFastaFile
 						Else
 							If mOutputToStatsFile Then
 								mStatsFilePath = ConstructStatsFilePath(strOutputFolderPath)
-								swStatsOutFile = New System.IO.StreamWriter(mStatsFilePath, True)
+								swStatsOutFile = New IO.StreamWriter(mStatsFilePath, True)
 								swStatsOutFile.WriteLine(GetTimeStamp() & ControlChars.Tab & "Error parsing " & _
-								 System.IO.Path.GetFileName(strInputFilePath) & ": " & Me.GetErrorMessage())
+								 IO.Path.GetFileName(strInputFilePath) & ": " & Me.GetErrorMessage())
 								swStatsOutFile.Close()
-								swStatsOutFile = Nothing
 							Else
 								Console.WriteLine("Error parsing " & _
-								 System.IO.Path.GetFileName(strInputFilePath) & _
+								 IO.Path.GetFileName(strInputFilePath) & _
 								 ": " & Me.GetErrorMessage())
 							End If
 						End If
@@ -2987,7 +2978,7 @@ Public Class clsValidateFastaFile
 						If MyBase.ShowMessages Then
 							ShowErrorMessage("Error calling AnalyzeFastaFile")
 						Else
-							Throw New System.Exception("Error calling AnalyzeFastaFile", ex)
+							Throw New Exception("Error calling AnalyzeFastaFile", ex)
 						End If
 					End Try
 				End If
@@ -2996,7 +2987,7 @@ Public Class clsValidateFastaFile
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in ProcessFile:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in ProcessFile", ex)
+				Throw New Exception("Error in ProcessFile", ex)
 			End If
 		End Try
 
@@ -3033,9 +3024,9 @@ Public Class clsValidateFastaFile
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
-	  ByRef swFixedFastaOut As System.IO.StreamWriter, _
+	  ByRef swFixedFastaOut As IO.StreamWriter, _
 	  ByVal intCurrentValidResidueLineLengthMax As Integer, _
-	  ByRef swProteinSequenceHashBasic As System.IO.StreamWriter)
+	  ByRef swProteinSequenceHashBasic As IO.StreamWriter)
 
 		Dim intWrapLength As Integer
 		Dim intResidueCount As Integer
@@ -3092,7 +3083,7 @@ Public Class clsValidateFastaFile
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
-	  ByRef swProteinSequenceHashBasic As System.IO.StreamWriter)
+	  ByRef swProteinSequenceHashBasic As IO.StreamWriter)
 
 		Dim strComputedHash As String
 		Dim intSeqHashLookupPointer As Integer
@@ -3149,7 +3140,7 @@ Public Class clsValidateFastaFile
 
 		Catch ex As Exception
 			'Error caught; pass it up to the calling function
-			Throw ex
+			Throw
 		End Try
 
 
@@ -3364,10 +3355,10 @@ Public Class clsValidateFastaFile
 			strOutputFilePath = strParameterFilePath & "_" & strTimeStamp & ".fixed"
 
 			' Open the input file
-			Using srInFile As System.IO.StreamReader = New System.IO.StreamReader(strParameterFilePath)
+			Using srInFile As IO.StreamReader = New IO.StreamReader(strParameterFilePath)
 
 				' Open the output file
-				Using swOutFile As System.IO.StreamWriter = New System.IO.StreamWriter(strOutputFilePath, False)
+				Using swOutFile As IO.StreamWriter = New IO.StreamWriter(strOutputFilePath, False)
 
 					' Parse each line in the file
 					Do While srInFile.Peek() >= 0
@@ -3385,22 +3376,22 @@ Public Class clsValidateFastaFile
 			End Using
 
 			' Wait 100 msec
-			System.Threading.Thread.Sleep(100)
+			Threading.Thread.Sleep(100)
 
 			' Delete the input file
-			System.IO.File.Delete(strParameterFilePath)
+			IO.File.Delete(strParameterFilePath)
 
 			' Wait 250 msec
-			System.Threading.Thread.Sleep(250)
+			Threading.Thread.Sleep(250)
 
 			' Rename the output file to the input file
-			System.IO.File.Move(strOutputFilePath, strParameterFilePath)
+			IO.File.Move(strOutputFilePath, strParameterFilePath)
 
 		Catch ex As Exception
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in ReplaceXMLCodesWithText:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in ReplaceXMLCodesWithText", ex)
+				Throw New Exception("Error in ReplaceXMLCodesWithText", ex)
 			End If
 		End Try
 
@@ -3410,7 +3401,7 @@ Public Class clsValidateFastaFile
 	 ByVal strOutputFolderPath As String, _
 	 ByVal blnOutputToStatsFile As Boolean)
 
-		Dim srOutFile As System.IO.StreamWriter = Nothing
+		Dim srOutFile As IO.StreamWriter = Nothing
 
 		Dim iErrorInfoComparerClass As ErrorInfoComparerClass
 
@@ -3427,23 +3418,23 @@ Public Class clsValidateFastaFile
 
 		Try
 			Try
-				strSourceFile = System.IO.Path.GetFileName(mFastaFilePath)
+				strSourceFile = IO.Path.GetFileName(mFastaFilePath)
 			Catch ex As Exception
 				strSourceFile = "Unknown_filename_due_to_error.fasta"
 			End Try
 
 			If blnOutputToStatsFile Then
 				mStatsFilePath = ConstructStatsFilePath(strOutputFolderPath)
-				blnFileAlreadyExists = System.IO.File.Exists(mStatsFilePath)
+				blnFileAlreadyExists = IO.File.Exists(mStatsFilePath)
 
 				blnSuccess = False
 				intRetryCount = 0
 
 				Do While Not blnSuccess And intRetryCount < 5
-					Dim objOutStream As System.IO.FileStream = Nothing
+					Dim objOutStream As IO.FileStream = Nothing
 					Try
-						objOutStream = New System.IO.FileStream(mStatsFilePath, IO.FileMode.Append, IO.FileAccess.Write, IO.FileShare.Read)
-						srOutFile = New System.IO.StreamWriter(objOutStream)
+						objOutStream = New IO.FileStream(mStatsFilePath, IO.FileMode.Append, IO.FileAccess.Write, IO.FileShare.Read)
+						srOutFile = New IO.StreamWriter(objOutStream)
 						blnSuccess = True
 					Catch ex As Exception
 						' Failed to open file, wait 1 second, then try again
@@ -3451,11 +3442,10 @@ Public Class clsValidateFastaFile
 						srOutFile = Nothing
 						If Not objOutStream Is Nothing Then
 							objOutStream.Close()
-							objOutStream = Nothing
 						End If
 
 						intRetryCount += 1
-						System.Threading.Thread.Sleep(1000)
+						Threading.Thread.Sleep(1000)
 					End Try
 				Loop
 
@@ -3527,7 +3517,6 @@ Public Class clsValidateFastaFile
 				If mFileErrorCount > 1 Then
 					iErrorInfoComparerClass = New ErrorInfoComparerClass
 					Array.Sort(mFileErrors, 0, mFileErrorCount, iErrorInfoComparerClass)
-					iErrorInfoComparerClass = Nothing
 				End If
 
 				For intIndex = 0 To mFileErrorCount - 1
@@ -3569,7 +3558,6 @@ Public Class clsValidateFastaFile
 				If mFileWarningCount > 1 Then
 					iErrorInfoComparerClass = New ErrorInfoComparerClass
 					Array.Sort(mFileWarnings, 0, mFileWarningCount, iErrorInfoComparerClass)
-					iErrorInfoComparerClass = Nothing
 				End If
 
 				For intIndex = 0 To mFileWarningCount - 1
@@ -3597,14 +3585,13 @@ Public Class clsValidateFastaFile
 
 			If blnOutputToStatsFile AndAlso Not srOutFile Is Nothing Then
 				srOutFile.Close()
-				srOutFile = Nothing
 			End If
 
 		Catch ex As Exception
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in ReportResults:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in ReportResults", ex)
+				Throw New Exception("Error in ReportResults", ex)
 			End If
 
 		End Try
@@ -3618,7 +3605,7 @@ Public Class clsValidateFastaFile
 	 ByVal strInfo As String, _
 	 ByVal strContext As String, _
 	 ByVal blnOutputToStatsFile As Boolean, _
-	 ByVal srOutFile As System.IO.StreamWriter, _
+	 ByVal srOutFile As IO.StreamWriter, _
 	 ByVal strSepChar As String)
 
 		ReportResultAddEntry( _
@@ -3640,7 +3627,7 @@ Public Class clsValidateFastaFile
 	 ByVal strInfo As String, _
 	 ByVal strContext As String, _
 	 ByVal blnOutputToStatsFile As Boolean, _
-	 ByVal srOutFile As System.IO.StreamWriter, _
+	 ByVal srOutFile As IO.StreamWriter, _
 	 ByVal strSepChar As String)
 
 		Dim strMessage As String
@@ -3734,7 +3721,7 @@ Public Class clsValidateFastaFile
 	Public Function SaveSettingsToParameterFile(ByVal strParameterFilePath As String) As Boolean Implements IValidateFastaFile.SaveParameterSettingsToParameterFile
 		' Save a model parameter file
 
-		Dim srOutFile As System.IO.StreamWriter
+		Dim srOutFile As IO.StreamWriter
 		Dim objSettingsFile As New XmlSettingsFileAccessor
 
 		Try
@@ -3744,10 +3731,10 @@ Public Class clsValidateFastaFile
 				Return True
 			End If
 
-			If Not System.IO.File.Exists(strParameterFilePath) Then
+			If Not IO.File.Exists(strParameterFilePath) Then
 				' Need to generate a blank XML settings file
 
-				srOutFile = New System.IO.StreamWriter(strParameterFilePath, False)
+				srOutFile = New IO.StreamWriter(strParameterFilePath, False)
 
 				srOutFile.WriteLine("<?xml version=""1.0"" encoding=""UTF-8""?>")
 				srOutFile.WriteLine("<sections>")
@@ -3819,7 +3806,7 @@ Public Class clsValidateFastaFile
 			If MyBase.ShowMessages Then
 				ShowErrorMessage("Error in SaveSettingsToParameterFile:" & ex.Message)
 			Else
-				Throw New System.Exception("Error in SaveSettingsToParameterFile", ex)
+				Throw New Exception("Error in SaveSettingsToParameterFile", ex)
 			End If
 			Return False
 		End Try
@@ -4040,7 +4027,7 @@ Public Class clsValidateFastaFile
 
 		Try
 			' Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
-			Using fsInFile As System.IO.FileStream = New System.IO.FileStream(strInputFilePath, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite)
+			Using fsInFile As IO.FileStream = New IO.FileStream(strInputFilePath, IO.FileMode.Open, IO.FileAccess.ReadWrite)
 
 				If fsInFile.Length > 2 Then
 					fsInFile.Seek(-1, IO.SeekOrigin.End)
@@ -4057,7 +4044,7 @@ Public Class clsValidateFastaFile
 
 				If blnNeedToAddCrLf Then
 					If blnAddCrLfIfMissing Then
-						Console.WriteLine("Appending CrLf return to: " & System.IO.Path.GetFileName(strInputFilePath))
+						Console.WriteLine("Appending CrLf return to: " & IO.Path.GetFileName(strInputFilePath))
 						bytOneByte = CType(13, Byte)
 						fsInFile.WriteByte(bytOneByte)
 
@@ -4085,10 +4072,10 @@ Public Class clsValidateFastaFile
 	End Function
 
 	Protected Sub WriteCachedProtein(ByVal strCachedProteinName As String, ByVal strCachedProteinDescription As String, _
-	  ByRef swConsolidatedFastaOut As System.IO.StreamWriter, _
+	  ByRef swConsolidatedFastaOut As IO.StreamWriter, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
-	  ByRef sbCachedProteinResidueLines As System.Text.StringBuilder, _
-	  ByRef sbCachedProteinResidues As System.Text.StringBuilder, _
+	  ByRef sbCachedProteinResidueLines As Text.StringBuilder, _
+	  ByRef sbCachedProteinResidues As Text.StringBuilder, _
 	  ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
 	  ByRef lstProteinNameFirst As Generic.Dictionary(Of String, Integer), _
@@ -4096,7 +4083,7 @@ Public Class clsValidateFastaFile
 	  ByVal intLineCount As Integer,
 	  ByRef lstProteinsWritten As Generic.Dictionary(Of String, String))
 
-		Static reAdditionalProtein As System.Text.RegularExpressions.Regex = New System.Text.RegularExpressions.Regex("(.+)-[a-z]\d*", Text.RegularExpressions.RegexOptions.Compiled)
+		Static reAdditionalProtein As Text.RegularExpressions.Regex = New Text.RegularExpressions.Regex("(.+)-[a-z]\d*", Text.RegularExpressions.RegexOptions.Compiled)
 
 		Dim strMasterProteinHash As String = String.Empty
 
@@ -4105,7 +4092,7 @@ Public Class clsValidateFastaFile
 
 		Dim strProteinHash As String
 		Dim strLineOut As String = String.Empty
-		Dim reMatch As System.Text.RegularExpressions.Match
+		Dim reMatch As Text.RegularExpressions.Match
 
 		Dim blnKeepProtein As Boolean
 		Dim blnSkipDupProtein As Boolean
@@ -4210,7 +4197,7 @@ Public Class clsValidateFastaFile
 	Private Class ErrorInfoComparerClass
 		Implements IComparer
 
-		Public Function Compare(ByVal x As Object, ByVal y As Object) As Integer Implements System.Collections.IComparer.Compare
+		Public Function Compare(ByVal x As Object, ByVal y As Object) As Integer Implements IComparer.Compare
 
 			Dim udtErrorInfo1, udtErrorInfo2 As IValidateFastaFile.udtMsgInfoType
 
