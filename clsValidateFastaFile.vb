@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
 	Implements IValidateFastaFile
 
 	Public Sub New()
-		MyBase.mFileDate = "November 1, 2013"
+		MyBase.mFileDate = "April 25, 2014"
 		InitializeLocalVariables()
 	End Sub
 
