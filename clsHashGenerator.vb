@@ -24,14 +24,14 @@ Option Strict On
 
 Public Class clsHashGenerator
     Public Function GenerateHash(ByVal SourceText As String) As String
-        Static objSHA1Provider As System.Security.Cryptography.SHA1Managed
+		Static objSHA1Provider As Security.Cryptography.SHA1Managed
 
         If objSHA1Provider Is Nothing Then
-            objSHA1Provider = New System.Security.Cryptography.SHA1Managed
+			objSHA1Provider = New Security.Cryptography.SHA1Managed
         End If
 
         'Create an encoding object to ensure the encoding standard for the source text
-        Dim Ue As New System.Text.ASCIIEncoding
+		Dim Ue As New Text.ASCIIEncoding
 
         'Retrieve a byte array based on the source text
         Dim ByteSourceText() As Byte = Ue.GetBytes(SourceText)
@@ -47,7 +47,7 @@ Public Class clsHashGenerator
 
     Public Function ToHexString(ByVal bytes() As Byte) As String
         Dim i As Integer
-        Dim sb As New System.Text.StringBuilder(bytes.Length * 2)
+		Dim sb As New Text.StringBuilder(bytes.Length * 2)
 
         For i = 0 To bytes.Length - 1
             sb.Append(bytes(i).ToString("X").PadLeft(2, "0"c))

@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
 	Implements IValidateFastaFile
 
 	Public Sub New()
-		MyBase.mFileDate = "April 25, 2014"
+		MyBase.mFileDate = "August 25, 2014"
 		InitializeLocalVariables()
 	End Sub
 
@@ -67,6 +67,10 @@ Public Class clsValidateFastaFile
 	Public Const XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES As String = "ValidateFastaProteinSequenceRules"
 
 	Public Const XML_OPTION_ENTRY_RULE_COUNT As String = "RuleCount"
+
+	' The value of 7995 is chosen because the maximum varchar() value in Sql Server is varchar(8000) 
+	' and we want to prevent truncation errors when importing protein names and descriptions into Sql Server
+	Public Const MAX_PROTEIN_DESCRIPTION_LENGTH As Integer = 7995
 
 	' Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
 	' the values in enum eMessageCodeConstants should all be less than CUSTOM_RULE_ID_START
@@ -143,7 +147,7 @@ Public Class clsValidateFastaFile
 		Public SequenceLength As Integer
 		Public SequenceStart As String					' The first 20 residues of the protein sequence
 		Public ProteinNameFirst As String
-		Public AdditionalProteins As Generic.List(Of String)			' .ProteinNameFirst is not stored here; only additional proteins
+		Public AdditionalProteins As List(Of String)			' .ProteinNameFirst is not stored here; only additional proteins
 		Public DuplicateProteinNameCount As Integer		' > 0 if multiple entries have the same name and same sequence
 	End Structure
 
@@ -744,10 +748,10 @@ Public Class clsValidateFastaFile
 		Dim blnBlankLineProcessed As Boolean
 
 		' Note that the dictionary is case-insensitive
-		Dim htProteinNames As Generic.Dictionary(Of String, String)
+		Dim htProteinNames As Dictionary(Of String, String)
 
 		' This dictionary provides a quick lookup for existing protein hashes
-		Dim lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer)
+		Dim lstProteinSequenceHashes As Dictionary(Of String, Integer)
 
 		' This array tracks protein hash details
 		Dim intProteinSequenceHashCount As Integer
@@ -772,7 +776,7 @@ Public Class clsValidateFastaFile
 			ReDim udtProteinDescriptionRuleDetails(1)
 			ReDim udtProteinSequenceRuleDetails(1)
 
-			lstProteinSequenceHashes = New Generic.Dictionary(Of String, Integer)
+			lstProteinSequenceHashes = New Dictionary(Of String, Integer)
 
 			If mNormalizeFileLineEndCharacters Then
 				mFastaFilePath = Me.NormalizeFileLineEndings( _
@@ -915,7 +919,7 @@ Public Class clsValidateFastaFile
 				End If
 
 				' Initialize htProteinNames
-				htProteinNames = New Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+				htProteinNames = New Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
 
 				' Optionally, initialize the protein sequence hash objects
 				If mSaveProteinSequenceHashInfoFiles Then
@@ -1196,7 +1200,7 @@ Public Class clsValidateFastaFile
 	 ByRef strLineIn As String, _
 	 ByRef strProteinName As String, _
 	 ByRef blnProcessingDuplicateOrInvalidProtein As Boolean, _
-	 ByRef htProteinNames As Generic.Dictionary(Of String, String), _
+	 ByRef htProteinNames As Dictionary(Of String, String), _
 	 ByRef udtHeaderLineRuleDetails() As udtRuleDefinitionExtendedType, _
 	 ByRef udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType, _
 	 ByRef udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType, _
@@ -1670,7 +1674,7 @@ Public Class clsValidateFastaFile
 		ReDim udtRules(-1)
 	End Sub
 
-	Private Function ComputeProteinHash(ByRef sbResidues As Text.StringBuilder, ByVal blnConsolidateDupsIgnoreILDiff As Boolean) As String
+	Public Function ComputeProteinHash(ByRef sbResidues As Text.StringBuilder, ByVal blnConsolidateDupsIgnoreILDiff As Boolean) As String
 
 		Static objHashGenerator As clsHashGenerator
 
@@ -1755,14 +1759,14 @@ Public Class clsValidateFastaFile
 		' This list contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
 		' If blnConsolidateDuplicateProteinSeqsInFasta=False then this will contain all protein names
 		' If blnConsolidateDuplicateProteinSeqsInFasta=True then we only keep the first name found for a given sequence
-		Dim lstProteinNameFirst As Generic.Dictionary(Of String, Integer)
+		Dim lstProteinNameFirst As Dictionary(Of String, Integer)
 
 		' This list keeps track of the protein names that have been written out to the new fasta file
 		' Keys are the protein names; values are the protein hash values
-		Dim lstProteinsWritten As Generic.Dictionary(Of String, String)
+		Dim lstProteinsWritten As Dictionary(Of String, String)
 
 		' This list contains the names of duplicate proteins; the hash values are the protein names of the master protein that has the same sequence
-		Dim lstDuplicateProteinList As Generic.Dictionary(Of String, String)
+		Dim lstDuplicateProteinList As Dictionary(Of String, String)
 
 		Dim intDescriptionStartIndex As Integer
 
@@ -1833,10 +1837,10 @@ Public Class clsValidateFastaFile
 
 		Try
 			' Populate lstProteinNameFirst with the protein names in udtProteinSeqHashInfo().ProteinNameFirst
-			lstProteinNameFirst = New Generic.Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
+			lstProteinNameFirst = New Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
 
 			' Populate htDuplicateProteinList with the protein names in udtProteinSeqHashInfo().AdditionalProteins 
-			lstDuplicateProteinList = New Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+			lstDuplicateProteinList = New Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
 
 			For intIndex As Integer = 0 To intProteinSequenceHashCount - 1
 				With udtProteinSeqHashInfo(intIndex)
@@ -1878,7 +1882,7 @@ Public Class clsValidateFastaFile
 				End With
 			Next intIndex
 
-			lstProteinsWritten = New Generic.Dictionary(Of String, String)
+			lstProteinsWritten = New Dictionary(Of String, String)
 
 			' Parse each line in the file
 			intLineCount = 0
@@ -1971,7 +1975,7 @@ Public Class clsValidateFastaFile
 
 		If strProteinName Is Nothing Then strProteinName = "????"
 
-		If strProteinDescription Is Nothing OrElse strProteinDescription.Length = 0 Then
+		If String.IsNullOrWhiteSpace(strProteinDescription) Then
 			Return mProteinLineStartChar & strProteinName
 		Else
 			Return mProteinLineStartChar & strProteinName & " " & strProteinDescription
@@ -2310,7 +2314,7 @@ Public Class clsValidateFastaFile
 		End If
 	End Function
 
-	Private Function FlattenArray(ByRef lstArray As Generic.List(Of String), ByVal chSepChar As Char) As String
+	Private Function FlattenArray(ByRef lstArray As List(Of String), ByVal chSepChar As Char) As String
 		Dim intIndex As Integer
 		Dim strResult As String
 
@@ -3020,7 +3024,7 @@ Public Class clsValidateFastaFile
 	Private Sub ProcessResiduesForPreviousProtein( _
 	  ByVal strProteinName As String, _
 	  ByRef sbCurrentResidues As Text.StringBuilder, _
-	  ByRef lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer), _
+	  ByRef lstProteinSequenceHashes As Dictionary(Of String, Integer), _
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
@@ -3079,7 +3083,7 @@ Public Class clsValidateFastaFile
 	Private Sub ProcessSequenceHashInfo( _
 	  ByVal strProteinName As String, _
 	  ByRef sbCurrentResidues As Text.StringBuilder, _
-	  ByRef lstProteinSequenceHashes As Generic.Dictionary(Of String, Integer), _
+	  ByRef lstProteinSequenceHashes As Dictionary(Of String, Integer), _
 	  ByRef intProteinSequenceHashCount As Integer, _
 	  ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
@@ -3124,7 +3128,7 @@ Public Class clsValidateFastaFile
 
 						With udtProteinSeqHashInfo(intProteinSequenceHashCount)
 							.ProteinNameFirst = String.Copy(strProteinName)
-							.AdditionalProteins = New Generic.List(Of String)
+							.AdditionalProteins = New List(Of String)
 							.SequenceHash = String.Copy(strComputedHash)
 							.SequenceLength = sbCurrentResidues.Length
 							.SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
@@ -4078,10 +4082,10 @@ Public Class clsValidateFastaFile
 	  ByRef sbCachedProteinResidues As Text.StringBuilder, _
 	  ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean, _
 	  ByVal blnConsolidateDupsIgnoreILDiff As Boolean, _
-	  ByRef lstProteinNameFirst As Generic.Dictionary(Of String, Integer), _
-	  ByRef lstDuplicateProteinList As Generic.Dictionary(Of String, String), _
+	  ByRef lstProteinNameFirst As Dictionary(Of String, Integer), _
+	  ByRef lstDuplicateProteinList As Dictionary(Of String, String), _
 	  ByVal intLineCount As Integer,
-	  ByRef lstProteinsWritten As Generic.Dictionary(Of String, String))
+	  ByRef lstProteinsWritten As Dictionary(Of String, String))
 
 		Static reAdditionalProtein As Text.RegularExpressions.Regex = New Text.RegularExpressions.Regex("(.+)-[a-z]\d*", Text.RegularExpressions.RegexOptions.Compiled)
 
@@ -4097,8 +4101,8 @@ Public Class clsValidateFastaFile
 		Dim blnKeepProtein As Boolean
 		Dim blnSkipDupProtein As Boolean
 
-		Dim lstAdditionalProteinNames As Generic.List(Of String)
-		lstAdditionalProteinNames = New Generic.List(Of String)
+		Dim lstAdditionalProteinNames As List(Of String)
+		lstAdditionalProteinNames = New List(Of String)
 
 		Dim intSeqIndex As Integer
 		If lstProteinNameFirst.TryGetValue(strCachedProteinName, intSeqIndex) Then
@@ -4165,9 +4169,13 @@ Public Class clsValidateFastaFile
 
 					If lstAdditionalProteinNames.Count > 0 AndAlso blnConsolidateDuplicateProteinSeqsInFasta Then
 						' Append the duplicate protein names to the description
-						strLineOut = ConstructFastaHeaderLine( _
-						 strCachedProteinName, _
-						  strCachedProteinDescription & "; Duplicate proteins: " & FlattenArray(lstAdditionalProteinNames, ","c))
+						' However, do not let the description get over 7995 characters in length
+						Dim updatedDescription = strCachedProteinDescription & "; Duplicate proteins: " & FlattenArray(lstAdditionalProteinNames, ","c)
+						If updatedDescription.Length > MAX_PROTEIN_DESCRIPTION_LENGTH Then
+							updatedDescription = updatedDescription.Substring(0, MAX_PROTEIN_DESCRIPTION_LENGTH - 3) & "..."
+						End If
+
+						strLineOut = ConstructFastaHeaderLine(strCachedProteinName, updatedDescription)
 					End If
 				End If
 			End If

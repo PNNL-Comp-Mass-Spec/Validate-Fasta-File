@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.1.5350; August 25, 2014
+	- Now limiting the protein description to 7995 characters in length when consolidating duplicate proteins
+	- Made ComputeProteinHash public
+
 Version 2.1.5053; November 1, 2013
 	- Added clsProcessFilesOrFoldersBase
 
