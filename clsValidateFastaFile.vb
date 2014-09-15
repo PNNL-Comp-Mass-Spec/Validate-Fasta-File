@@ -28,7 +28,7 @@ Public Class clsValidateFastaFile
 	Implements IValidateFastaFile
 
 	Public Sub New()
-		MyBase.mFileDate = "August 25, 2014"
+		MyBase.mFileDate = "September 15, 2014"
 		InitializeLocalVariables()
 	End Sub
 
@@ -870,11 +870,21 @@ Public Class clsValidateFastaFile
 			intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
 
 			' Open the input file
-			fsInFile = New IO.FileStream( _
-			   strFastaFilePath, _
-			   IO.FileMode.Open, _
-			   IO.FileAccess.Read, _
-			   IO.FileShare.Read)
+
+			Try
+				fsInFile = New System.IO.FileStream(strFastaFilePath, IO.FileMode.Open, IO.FileAccess.Read, IO.FileShare.Read)
+			Catch ex As System.IO.IOException
+
+				Try
+					' Try again, this time allowing for read/write access
+					fsInFile = New System.IO.FileStream(strFastaFilePath, IO.FileMode.Open, IO.FileAccess.Read, IO.FileShare.ReadWrite)
+				Catch ex2 As Exception
+					Throw
+				End Try
+
+			Catch ex As Exception
+				Throw
+			End Try
 
 			Using srFastaInFile As IO.StreamReader = New IO.StreamReader(fsInFile)
 
