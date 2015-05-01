@@ -26,7 +26,7 @@
     <item key="ConsolidateDuplicateProteinSeqs" value="False" />
     <item key="ConsolidateDupsIgnoreILDiff" value="False" />
     <item key="TruncateLongProteinNames" value="True" />
-    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
+    <item key="SplitOutMultipleRefsForKnownAccession" value="False" />
     <item key="WrapLongResidueLines" value="True" />
     <item key="RemoveInvalidResidues" value="False" />
     <item key="LongProteinNameSplitChars" value="|" />
@@ -116,7 +116,7 @@
     <item key="Rule2MessageWhenProblem" value="An asterisk was found in the residues" />
     <item key="Rule2Severity" value="7" />
     <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
-    <item key="Rule3MatchRegEx" value="[^A-IK-Z \t\*]" />
+    <item key="Rule3MatchRegEx" value="[^A-IK-Z \t\*\-]" />
     <item key="Rule3MatchIndicatesProblem" value="True" />
     <item key="Rule3MessageWhenProblem" value="Invalid residues found" />
     <item key="Rule3Severity" value="7" />

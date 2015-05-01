@@ -25,7 +25,7 @@
     <item key="ConsolidateDuplicateProteinSeqs" value="False" />
     <item key="ConsolidateDupsIgnoreILDiff" value="False" />
     <item key="TruncateLongProteinNames" value="True" />
-    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
+    <item key="SplitOutMultipleRefsForKnownAccession" value="False" />
     <item key="WrapLongResidueLines" value="True" />
     <item key="RemoveInvalidResidues" value="False" />
     <item key="LongProteinNameSplitChars" value="|" />
