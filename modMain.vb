@@ -26,7 +26,7 @@ Option Strict On
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "October 30, 2014"
+    Public Const PROGRAM_DATE As String = "May 7, 2015"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -35,13 +35,18 @@ Module modMain
     Private mUseStatsFile As Boolean
 	Private mGenerateFixedFastaFile As Boolean
 
+    Private mCheckForDuplicateProteinNames As Boolean
+    Private mCheckForDuplicateProteinSequences As Boolean
+
 	Private mFixedFastaRenameDuplicateNameProteins As Boolean
 	Private mFixedFastaKeepDuplicateNamedProteins As Boolean
 
     Private mFixedFastaConsolidateDuplicateProteinSeqs As Boolean
 	Private mFixedFastaConsolidateDupsIgnoreILDiff As Boolean
+    Private mFixedFastaRemoveInvalidResidues As Boolean
 
-	Private mFixedFastaRemoveInvalidResidues As Boolean
+    Private mAllowAsterisk As Boolean
+    Private mAllowDash As Boolean
 
     Private mSaveBasicProteinHashInfoFile As Boolean
 
@@ -53,6 +58,8 @@ Module modMain
     Private mQuietMode As Boolean
 
     Private WithEvents mValidateFastaFile As clsValidateFastaFile
+
+    Private mLastProgressReportPctTime As System.DateTime
     Private mLastProgressReportTime As System.DateTime
     Private mLastProgressReportValue As Integer
 
@@ -63,9 +70,6 @@ Module modMain
         Dim objParseCommandLine As New clsParseCommandLine
         Dim blnProceed As Boolean
 
-        Dim ProteinCount As Integer = 0
-        Dim ResidueCount As Long = 0
-
         intReturnCode = 0
         mInputFilePath = String.Empty
         mOutputFolderPath = String.Empty
@@ -74,16 +78,25 @@ Module modMain
         mUseStatsFile = False
         mGenerateFixedFastaFile = False
 
+        mCheckForDuplicateProteinNames = True
+        mCheckForDuplicateProteinSequences = True
+
 		mFixedFastaRenameDuplicateNameProteins = False
 		mFixedFastaKeepDuplicateNamedProteins = False
 
         mFixedFastaConsolidateDuplicateProteinSeqs = False
 		mFixedFastaConsolidateDupsIgnoreILDiff = False
 
+        mAllowAsterisk = False
+        mAllowDash = False
+
         mSaveBasicProteinHashInfoFile = False
 
         mRecurseFolders = False
         mRecurseFoldersMaxLevels = 0
+
+        mLastProgressReportPctTime = DateTime.UtcNow
+        mLastProgressReportTime = DateTime.UtcNow
 
         Try
             blnProceed = False
@@ -111,6 +124,7 @@ Module modMain
                 mValidateFastaFile = New clsValidateFastaFile
                 With mValidateFastaFile
                     .ShowMessages = Not mQuietMode
+
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
                     .SetOptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
 
@@ -125,7 +139,16 @@ Module modMain
 
 					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues)
 
-					.SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, mAllowAsterisk)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues, mAllowDash)
+
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
+
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames, mCheckForDuplicateProteinNames)
+                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, mCheckForDuplicateProteinSequences)
+
+                    ' Update the rules based on the options that were set above
+                    .SetDefaultRules()
 				End With
 
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
@@ -140,7 +163,6 @@ Module modMain
                 '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
                 'End With
 
-
                 If mRecurseFolders Then
                     If mValidateFastaFile.ProcessFilesAndRecurseFolders(mInputFilePath, mOutputFolderPath, mOutputFolderPath, False, mParameterFilePath, mRecurseFoldersMaxLevels) Then
                         intReturnCode = 0
@@ -153,7 +175,7 @@ Module modMain
                     Else
                         intReturnCode = mValidateFastaFile.ErrorCode
                         If intReturnCode <> 0 AndAlso Not mQuietMode Then
-							ShowErrorMessage("Error while processing: " & mValidateFastaFile.GetErrorMessage())
+                            ShowErrorMessage("Error while processing: " & mValidateFastaFile.GetErrorMessage())
                         End If
                     End If
                 End If
@@ -189,7 +211,11 @@ Module modMain
 		' Returns True if no problems; otherwise, returns false
 
 		Dim strValue As String = String.Empty
-		Dim lstValidParameters As Generic.List(Of String) = New Generic.List(Of String) From {"I", "O", "P", "C", "F", "R", "D", "L", "V", "KeepSameName", "AllowDash", "AllowAsterisk", "B", "X", "S", "Q"}
+        Dim lstValidParameters = New List(Of String) From {
+            "I", "O", "P", "C",
+            "SkipDupeNameCheck", "SkipDupeSeqCheck",
+            "F", "R", "D", "L", "V",
+            "KeepSameName", "AllowDash", "AllowAsterisk", "B", "X", "S", "Q"}
 		Dim intValue As Integer
 
 		Try
@@ -209,26 +235,33 @@ Module modMain
 
 					If .RetrieveValueForParameter("O", strValue) Then mOutputFolderPath = strValue
 					If .RetrieveValueForParameter("P", strValue) Then mParameterFilePath = strValue
-					If .RetrieveValueForParameter("C", strValue) Then mUseStatsFile = True
-					If .RetrieveValueForParameter("F", strValue) Then mGenerateFixedFastaFile = True
-					If .RetrieveValueForParameter("R", strValue) Then mFixedFastaRenameDuplicateNameProteins = True
-					If .RetrieveValueForParameter("D", strValue) Then mFixedFastaConsolidateDuplicateProteinSeqs = True
-					If .RetrieveValueForParameter("L", strValue) Then mFixedFastaConsolidateDupsIgnoreILDiff = True
-					If .RetrieveValueForParameter("V", strValue) Then mFixedFastaRemoveInvalidResidues = True
+                    If .IsParameterPresent("C") Then mUseStatsFile = True
 
-					If .RetrieveValueForParameter("KeepSameName", strValue) Then mFixedFastaKeepDuplicateNamedProteins = True
-					If .RetrieveValueForParameter("B", strValue) Then mSaveBasicProteinHashInfoFile = True
-					If .RetrieveValueForParameter("X", strValue) Then mCreateModelXMLParameterFile = True
+                    If .IsParameterPresent("SkipDupeNameCheck") Then mCheckForDuplicateProteinNames = False
+                    If .IsParameterPresent("SkipDupeSeqCheck") Then mCheckForDuplicateProteinSequences = False
 
-					If .RetrieveValueForParameter("S", strValue) Then
-						mRecurseFolders = True
-						If Integer.TryParse(strValue, intValue) Then
-							mRecurseFoldersMaxLevels = intValue
-						End If
-					End If
+                    If .IsParameterPresent("F") Then mGenerateFixedFastaFile = True
+                    If .IsParameterPresent("R") Then mFixedFastaRenameDuplicateNameProteins = True
+                    If .IsParameterPresent("D") Then mFixedFastaConsolidateDuplicateProteinSeqs = True
+                    If .IsParameterPresent("L") Then mFixedFastaConsolidateDupsIgnoreILDiff = True
+                    If .IsParameterPresent("V") Then mFixedFastaRemoveInvalidResidues = True
+                    If .IsParameterPresent("KeepSameName") Then mFixedFastaKeepDuplicateNamedProteins = True
 
-					If .RetrieveValueForParameter("Q", strValue) Then mQuietMode = True
-				End With
+                    If .IsParameterPresent("AllowAsterisk") Then mAllowAsterisk = True
+                    If .IsParameterPresent("AllowDash") Then mAllowDash = True
+
+                    If .IsParameterPresent("B") Then mSaveBasicProteinHashInfoFile = True
+                    If .IsParameterPresent("X") Then mCreateModelXMLParameterFile = True
+
+                    If .RetrieveValueForParameter("S", strValue) Then
+                        mRecurseFolders = True
+                        If Integer.TryParse(strValue, intValue) Then
+                            mRecurseFoldersMaxLevels = intValue
+                        End If
+                    End If
+
+                    If .RetrieveValueForParameter("Q", strValue) Then mQuietMode = True
+                End With
 
 				Return True
 			End If
@@ -279,27 +312,32 @@ Module modMain
 			Console.WriteLine()
 			Console.WriteLine("Program syntax:" & System.Environment.NewLine & IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
 			Console.WriteLine("  /I:InputFilePath.fasta [/O:OutputFolderPath]")
-			Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
-			Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
+            Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
+            Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
 			Console.WriteLine(" [/AllowDash] [/AllowAsterisk]")
-			Console.WriteLine(" [/B] [/X] [/S:[MaxLevel]] [/Q]")
+            Console.WriteLine(" [/SkipDupeNameCheck] [/SkipDupeSeqCheck]")
+            Console.WriteLine(" [/B] [/X] [/S:[MaxLevel]] [/Q]")
 			Console.WriteLine()
 
 			Console.WriteLine("The input file path can contain the wildcard character * and should point to a fasta file.")
 			Console.WriteLine("The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file.")
 			Console.WriteLine("Use /C to specify that an output file should be created, rather than displaying the results on the screen.")
-			Console.WriteLine()
-			Console.WriteLine("Use /F to shorten long protein names and generate a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
+            Console.WriteLine()
+            Console.WriteLine("Use /F to shorten long protein names and generate a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
 			Console.WriteLine("Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins with duplicate protein sequences while generating a fixed fasta file.")
 			Console.WriteLine("Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file.")
 			Console.WriteLine("Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file (if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used")
-			Console.WriteLine("Use /AllowDash to allow a - in residues; use /AllowAsterisk to allow * in residues")
+            Console.WriteLine("Use /AllowDash to allow a - in residues")
+            Console.WriteLine("use /AllowAsterisk to allow * in residues")
 			Console.WriteLine()
-			Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates)")
+            Console.WriteLine("When parsing large fasta files, you can reduce the memory used by disabling the checking for duplicates")
+            Console.WriteLine(" /SkipDupeSeqCheck disables duplicate sequence checking (large memory footprint)")
+            Console.WriteLine(" /SkipDupeNameCheck disables duplicate name checking (small memory footprint)")
+            Console.WriteLine()
+            Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates)")
 			Console.WriteLine()
-
 			Console.WriteLine("The parameter file path is optional.  If included, it should point to a valid XML parameter file.")
 			Console.WriteLine("Use /X to specify that a model XML parameter file should be created.")
 			Console.WriteLine("Use /S to process all valid files in the input folder and subfolders. Include a number after /S (like /S:2) to limit the level of subfolders to examine.")
@@ -334,18 +372,31 @@ Module modMain
 	End Sub
 
     Private Sub mValidateFastaFile_ProgressChanged(ByVal taskDescription As String, ByVal percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
-        Const PERCENT_REPORT_INTERVAL As Integer = 25
-        Const PROGRESS_DOT_INTERVAL_MSEC As Integer = 250
+        Const PERCENT_REPORT_INTERVAL = 25
+        Const PROGRESS_DOT_INTERVAL_MSEC = 500
 
-        If percentComplete >= mLastProgressReportValue Then
+        If percentComplete >= mLastProgressReportValue OrElse
+           DateTime.UtcNow.Subtract(mLastProgressReportPctTime).TotalSeconds >= 30 Then
+
+            mLastProgressReportPctTime = DateTime.UtcNow
+
             If mLastProgressReportValue > 0 Then
                 Console.WriteLine()
             End If
-            DisplayProgressPercent(mLastProgressReportValue, False)
-            mLastProgressReportValue += PERCENT_REPORT_INTERVAL
+
+            If percentComplete < mLastProgressReportValue Then
+                DisplayProgressPercent(CInt(Math.Round(percentComplete, 0)), False)
+            Else
+                DisplayProgressPercent(mLastProgressReportValue, False)
+            End If
+
+            While percentComplete >= mLastProgressReportValue
+                mLastProgressReportValue += PERCENT_REPORT_INTERVAL
+            End While
+
             mLastProgressReportTime = DateTime.UtcNow
         Else
-            If DateTime.UtcNow.Subtract(mLastProgressReportTime).TotalMilliseconds > PROGRESS_DOT_INTERVAL_MSEC Then
+            If DateTime.UtcNow.Subtract(mLastProgressReportTime).TotalMilliseconds >= PROGRESS_DOT_INTERVAL_MSEC Then
                 mLastProgressReportTime = DateTime.UtcNow
                 Console.Write(".")
             End If
@@ -354,6 +405,7 @@ Module modMain
 
     Private Sub mValidateFastaFile_ProgressReset() Handles mValidateFastaFile.ProgressReset
         mLastProgressReportTime = DateTime.UtcNow
+        mLastProgressReportPctTime = DateTime.UtcNow
         mLastProgressReportValue = 0
     End Sub
 End Module
