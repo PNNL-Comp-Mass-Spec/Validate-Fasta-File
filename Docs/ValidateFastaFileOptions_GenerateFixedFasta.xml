@@ -60,7 +60,7 @@
   </section>
   <section name="ValidateFastaProteinNameRules">
     <item key="RuleCount" value="3" />
-    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]\=\+]" />
+    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]\=\+#]" />
     <item key="Rule1MatchIndicatesProblem" value="True" />
     <item key="Rule1MessageWhenProblem" value="Protein name contains invalid characters" />
     <item key="Rule1Severity" value="7" />
