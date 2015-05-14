@@ -1,27 +1,28 @@
 Public Interface IValidateFastaFile
 
-    Event ProgressChanged( _
-        ByVal taskDescription As String, _
+    Event ProgressChanged(
+        ByVal taskDescription As String,
         ByVal percentComplete As Single)
     Event ProgressCompleted()
     Event WroteLineEndNormalizedFASTA(ByVal newFilePath As String)
 
-    Function ValidateFASTAFile(ByVal FASTAFilePath As String) As Boolean
-    Function ValidateFASTAFile( _
-        ByVal FASTAFilePath As String, _
-        ByVal ErrorDumpOutputPath As String, _
-        ByVal ParameterFilePath As String, _
-        ByVal ResetErrorCodes As Boolean) As Boolean
+    Function ValidateFASTAFile(ByVal filePath As String) As Boolean
+
+    Function ValidateFASTAFile(
+        ByVal filePath As String,
+        ByVal errorDumpOutputPath As String,
+        ByVal parameterFilePath As String,
+        ByVal resetErrorCodes As Boolean) As Boolean
 
     Function GetDefaultExtensionsToParse() As String()
     Function GetCurrentErrorMessage() As String
 
-    Function SaveParameterSettingsToParameterFile(ByVal ParameterFilePath As String) As Boolean
-    Function LoadParameterFileSettings(ByVal ParameterFilePath As String) As Boolean
+    Function SaveParameterSettingsToParameterFile(ByVal parameterFilePath As String) As Boolean
+    Function LoadParameterFileSettings(ByVal parameterFilePath As String) As Boolean
 
-    Function LookupMessageDescription(ByVal ErrorMessageCode As Integer) As String
-    Function LookupMessageDescription(ByVal ErrorMessageCode As Integer, ByVal ExtraInfo As String) As String
-    Function LookupMessageTypeString(ByVal EntryType As eMsgTypeConstants) As String
+    Function LookupMessageDescription(ByVal errorMessageCode As Integer) As String
+    Function LookupMessageDescription(ByVal errorMessageCode As Integer, ByVal ExtraInfo As String) As String
+    Function LookupMessageTypeString(ByVal entryType As eMsgTypeConstants) As String
 
 
     Sub AbortProcessingNow()
@@ -31,62 +32,61 @@ Public Interface IValidateFastaFile
 
     Sub SetDefaultRules()
 
-    Sub SetRule( _
-        ByVal ruleType As RuleTypes, _
-        ByVal regexToMatch As String, _
-        ByVal doesMatchIndicateProblem As Boolean, _
-        ByVal problemReturnMessage As String, _
+    Sub SetRule(
+        ByVal ruleType As RuleTypes,
+        ByVal regexToMatch As String,
+        ByVal doesMatchIndicateProblem As Boolean,
+        ByVal problemReturnMessage As String,
         ByVal severityLevel As Short)
-    Sub SetRule( _
-        ByVal ruleType As RuleTypes, _
-        ByVal regexToMatch As String, _
-        ByVal doesMatchIndicateProblem As Boolean, _
-        ByVal problemReturnMessage As String, _
-        ByVal severityLevel As Short, _
+    Sub SetRule(
+        ByVal ruleType As RuleTypes,
+        ByVal regexToMatch As String,
+        ByVal doesMatchIndicateProblem As Boolean,
+        ByVal problemReturnMessage As String,
+        ByVal severityLevel As Short,
         ByVal displayMatchAsExtraInfo As Boolean)
 
     Property OptionSwitches(ByVal SwitchName As SwitchOptions) As Boolean
 
-    ReadOnly Property FixedFASTAFileStats( _
+    ReadOnly Property FixedFASTAFileStats(
         ByVal ValueType As FixedFASTAFileValues) As Integer
+    
 
-
-
-    ReadOnly Property ErrorMessageTextByIndex( _
-        ByVal errorIndex As Integer, _
+    ReadOnly Property ErrorMessageTextByIndex(
+        ByVal errorIndex As Integer,
         ByVal valueSeparator As String) As String
     ReadOnly Property FileErrorByIndex(ByVal errorIndex As Integer) As udtMsgInfoType
-    ReadOnly Property FileErrorList() As udtMsgInfoType()
+    ReadOnly Property FileErrorList As udtMsgInfoType()
 
-    ReadOnly Property WarningMessageTextByIndex( _
-        ByVal warningIndex As Integer, _
+    ReadOnly Property WarningMessageTextByIndex(
+        ByVal warningIndex As Integer,
         ByVal valueSeparator As String) As String
     ReadOnly Property FileWarningByIndex(ByVal warningIndex As Integer) As udtMsgInfoType
-    ReadOnly Property FileWarningList() As udtMsgInfoType()
+    ReadOnly Property FileWarningList As udtMsgInfoType()
 
-    ReadOnly Property LocalErrorCode() As eValidateFastaFileErrorCodes
+    ReadOnly Property LocalErrorCode As eValidateFastaFileErrorCodes
 
-    ReadOnly Property ProteinCount() As Integer
-    ReadOnly Property FileLineCount() As Integer
-    ReadOnly Property ResidueCount() As Long
-    ReadOnly Property FASTAFilePath() As String
-
-
-
-    Property MaximumFileErrorsToTrack() As Integer
-    Property MinimumProteinNameLength() As Integer
-    Property MaximumProteinNameLength() As Integer
-    Property MaximumResiduesPerLine() As Integer
+    ReadOnly Property ProteinCount As Integer
+    ReadOnly Property FileLineCount As Integer
+    ReadOnly Property ResidueCount As Long
+    ReadOnly Property FASTAFilePath As String
 
 
-    Property LongProteinNameSplitChars() As String
-    Property ProteinLineStartCharacter() As Char
-    Property ProteinNameInvalidCharactersToRemove() As String
 
-    Property ProteinNameFirstRefSepChars() As String
-    Property ProteinNameSubsequentRefSepChars() As String
+    Property MaximumFileErrorsToTrack As Integer
+    Property MinimumProteinNameLength As Integer
+    Property MaximumProteinNameLength As Integer
+    Property MaximumResiduesPerLine As Integer
 
-    Property ShowMessages() As Boolean
+
+    Property LongProteinNameSplitChars As String
+    Property ProteinLineStartCharacter As Char
+    Property ProteinNameInvalidCharactersToRemove As String
+
+    Property ProteinNameFirstRefSepChars As String
+    Property ProteinNameSubsequentRefSepChars As String
+
+    Property ShowMessages As Boolean
 
     Structure udtMsgInfoType
         Public LineNumber As Integer

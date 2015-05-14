@@ -22,6 +22,7 @@ Option Strict On
 ' WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS 
 ' SOFTWARE.  This notice including this sentence must appear on any copies of 
 ' this computer software.
+
 Imports System.IO
 Imports System.Runtime.InteropServices
 Imports System.Text.RegularExpressions
@@ -31,7 +32,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "May 7, 2015"
+        MyBase.mFileDate = "May 13, 2015"
         InitializeLocalVariables()
     End Sub
 
@@ -3899,7 +3900,7 @@ Public Class clsValidateFastaFile
         Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", 3)
 
         ' Protein Name error characters
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[^A-Za-z0-9.\-_:,\|/()\[\]\=\+]", True, "Protein name contains invalid characters", 7, True)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[^A-Za-z0-9.\-_:,\|/()\[\]\=\+#]", True, "Protein name contains invalid characters", 7, True)
 
         ' Protein name warnings
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|][^:|;]*[:|;]", True, "Protein name contains two or more vertical bars", 4, True)

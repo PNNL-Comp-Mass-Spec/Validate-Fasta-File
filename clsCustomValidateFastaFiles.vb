@@ -11,14 +11,14 @@ Public Interface ICustomValidation
         WarningMsg = 1
     End Enum
 
-    ReadOnly Property FullErrorCollection() As Hashtable
-    ReadOnly Property FullWarningCollection() As Hashtable
+    ReadOnly Property FullErrorCollection As Hashtable
+    ReadOnly Property FullWarningCollection As Hashtable
 
     ReadOnly Property RecordedFASTAFileErrors(ByVal FASTAFileName As String) As ArrayList
     ReadOnly Property RecordedFASTAFileWarnings(ByVal FASTAFileName As String) As ArrayList
 
     ReadOnly Property FASTAFileValid(ByVal FASTAFileName As String) As Boolean
-    ReadOnly Property NumberOfFilesWithErrors() As Integer
+    ReadOnly Property NumberOfFilesWithErrors As Integer
 
     ReadOnly Property FASTAFileHasWarnings(ByVal FASTAFileName As String) As Boolean
 
@@ -29,11 +29,11 @@ Public Interface ICustomValidation
     Function StartValidateFASTAFile(ByVal FASTAFilePath As String) As Boolean
 
     Structure udtErrorInfoExtended
-        Sub New( _
-            ByVal LineNumber As Integer, _
-            ByVal ProteinName As String, _
-            ByVal MessageText As String, _
-            ByVal ExtraInfo As String, _
+        Sub New(
+            ByVal LineNumber As Integer,
+            ByVal ProteinName As String,
+            ByVal MessageText As String,
+            ByVal ExtraInfo As String,
             ByVal Type As String)
 
             Me.LineNumber = LineNumber
@@ -89,14 +89,14 @@ Public Class clsCustomValidateFastaFiles
         End If
     End Sub
 
-    Public ReadOnly Property FullErrorCollection() As Hashtable _
+    Public ReadOnly Property FullErrorCollection As Hashtable _
         Implements ICustomValidation.FullErrorCollection
         Get
             Return Me.m_FileErrorList
         End Get
     End Property
 
-    Public ReadOnly Property FullWarningCollection() As Hashtable _
+    Public ReadOnly Property FullWarningCollection As Hashtable _
      Implements ICustomValidation.FullWarningCollection
         Get
             Return Me.m_FileWarningList
@@ -140,7 +140,7 @@ Public Class clsCustomValidateFastaFiles
         End Get
     End Property
 
-    Public ReadOnly Property NumFilesWithErrors() As Integer _
+    Public ReadOnly Property NumFilesWithErrors As Integer _
         Implements ICustomValidation.NumberOfFilesWithErrors
         Get
             If m_FileWarningList Is Nothing Then
@@ -151,11 +151,11 @@ Public Class clsCustomValidateFastaFiles
         End Get
     End Property
 
-    Protected Sub RecordFastaFileProblem( _
-        ByVal intLineNumber As Integer, _
-        ByVal strProteinName As String, _
-        ByVal intErrorMessageCode As Integer, _
-        ByVal strExtraInfo As String, _
+    Protected Sub RecordFastaFileProblem(
+        ByVal intLineNumber As Integer,
+        ByVal strProteinName As String,
+        ByVal intErrorMessageCode As Integer,
+        ByVal strExtraInfo As String,
         ByVal eType As ICustomValidation.eValidationMessageTypes)
 
         Dim msgString As String = Me.LookupMessageDescription(intErrorMessageCode, strExtraInfo)
@@ -164,21 +164,21 @@ Public Class clsCustomValidateFastaFiles
 
     End Sub
 
-    Protected Sub RecordFastaFileProblem( _
-     ByVal intLineNumber As Integer, _
-     ByVal strProteinName As String, _
-     ByVal strErrorMessage As String, _
-     ByVal strExtraInfo As String, _
+    Protected Sub RecordFastaFileProblem(
+     ByVal intLineNumber As Integer,
+     ByVal strProteinName As String,
+     ByVal strErrorMessage As String,
+     ByVal strExtraInfo As String,
      ByVal eType As ICustomValidation.eValidationMessageTypes)
 
         Me.RecordFastaFileProblemToHash(intLineNumber, strProteinName, strErrorMessage, strExtraInfo, eType)
     End Sub
 
-    Private Sub RecordFastaFileProblemToHash( _
-        ByVal intLineNumber As Integer, _
-        ByVal strProteinName As String, _
-        ByVal intMessageString As String, _
-        ByVal strExtraInfo As String, _
+    Private Sub RecordFastaFileProblemToHash(
+        ByVal intLineNumber As Integer,
+        ByVal strProteinName As String,
+        ByVal intMessageString As String,
+        ByVal strExtraInfo As String,
         ByVal eType As ICustomValidation.eValidationMessageTypes)
 
         If Not Me.mFastaFilePath.Equals(Me.m_CachedFastaFilePath) Then
@@ -191,14 +191,14 @@ Public Class clsCustomValidateFastaFiles
 
         If eType = ICustomValidation.eValidationMessageTypes.WarningMsg Then
             ' Treat as warning
-            Me.m_CurrentFileWarnings.Add(New ICustomValidation.udtErrorInfoExtended( _
+            Me.m_CurrentFileWarnings.Add(New ICustomValidation.udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Warning"))
 
             Me.m_FileWarningList.Item(System.IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileWarnings
         Else
 
             ' Treat as error
-            Me.m_CurrentFileErrors.Add(New ICustomValidation.udtErrorInfoExtended( _
+            Me.m_CurrentFileErrors.Add(New ICustomValidation.udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Error"))
 
             Me.m_FileErrorList.Item(System.IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileErrors
@@ -210,8 +210,8 @@ Public Class clsCustomValidateFastaFiles
         mValidationOptions(eValidationOptionName) = blnEnabled
     End Sub
 
-    Public Function StartValidateFASTAFile(ByVal FASTAFilePath As String) As Boolean Implements ICustomValidation.StartValidateFASTAFile
-        ' This function calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate FASTAFilePath
+    Public Function StartValidateFASTAFile(ByVal filePath As String) As Boolean Implements ICustomValidation.StartValidateFASTAFile
+        ' This function calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
         ' The function returns true if the file was successfully processed (even if it contains errors)
 
         Dim udtErrors() As IValidateFastaFile.udtMsgInfoType
@@ -226,7 +226,7 @@ Public Class clsCustomValidateFastaFiles
         Dim blnSuccess As Boolean
 
         intErrorCount = 0
-        blnSuccess = SimpleProcessFile(FASTAFilePath)
+        blnSuccess = SimpleProcessFile(filePath)
 
         If blnSuccess Then
             If MyBase.ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.WarningMsg, IValidateFastaFile.ErrorWarningCountTypes.Total) > 0 Then
