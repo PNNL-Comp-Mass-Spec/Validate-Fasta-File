@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.1.5773; October 22, 2015
+	- Added option AllowAllSymbolsInProteinNames
+
 Version 2.1.5611; May 13, 2015
 	- Now allowing pound signs (#) in protein names
 

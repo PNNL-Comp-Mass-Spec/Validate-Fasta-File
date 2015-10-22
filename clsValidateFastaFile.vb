@@ -32,7 +32,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "May 13, 2015"
+        MyBase.mFileDate = "October 22, 2015"
         InitializeLocalVariables()
     End Sub
 
@@ -246,6 +246,8 @@ Public Class clsValidateFastaFile
 
     Protected mAllowAsteriskInResidues As Boolean
     Protected mAllowDashInResidues As Boolean
+    Protected mAllowAllSymbolsInProteinNames As Boolean
+
     Protected mWarnBlankLinesBetweenProteins As Boolean
     Protected mWarnLineStartsWithSpace As Boolean
     Protected mNormalizeFileLineEndCharacters As Boolean
@@ -323,6 +325,8 @@ Public Class clsValidateFastaFile
                 Me.mSaveBasicProteinHashInfoFile = State
             Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
                 Me.mAllowDashInResidues = State
+            Case IValidateFastaFile.SwitchOptions.AllowAllSymbolsInProteinNames
+                Me.mAllowAllSymbolsInProteinNames = State
         End Select
 
     End Sub
@@ -372,6 +376,8 @@ Public Class clsValidateFastaFile
                 Return Me.mSaveBasicProteinHashInfoFile
             Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
                 Return Me.mAllowDashInResidues
+            Case IValidateFastaFile.SwitchOptions.AllowAllSymbolsInProteinNames
+                Return Me.mAllowAllSymbolsInProteinNames
         End Select
 
         Return False
@@ -728,40 +734,13 @@ Public Class clsValidateFastaFile
         Dim swFixedFastaOut As StreamWriter = Nothing
         Dim swProteinSequenceHashBasic As StreamWriter = Nothing
 
-        Dim lngBytesRead As Long
-        Dim intTerminatorSize As Integer
-        Dim sngPercentComplete As Single
-
-        Dim strFastaFilePathOut As String = String.Empty
-        Dim strBasicProteinHashInfoFilePath As String = String.Empty
-
-        Dim strLineIn As String
-        Dim strResiduesClean As String
-        Dim strNonLetterResidueSpec As String
-
-        Dim sbCurrentResidues As Text.StringBuilder
-
-        ' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
-        Dim intCurrentValidResidueLineLengthMax As Integer
-
-        Dim intIndex As Integer
-        Dim intNewResidueCount As Integer
-
-        Dim strProteinName As String
+        Dim strFastaFilePathOut = "UndefinedFilePath.xyz"
 
         Dim blnSuccess As Boolean
-        Dim blnProteinHeaderFound As Boolean
-        Dim blnProcessingResidueBlock As Boolean
-        Dim blnProcessingDuplicateOrInvalidProtein As Boolean
 
-        Dim blnConsolidateDuplicateProteinSeqsInFasta As Boolean
-        Dim blnKeepDuplicateNamedProteinsUnlessMatchingSequence As Boolean
-        Dim blnConsolidateDupsIgnoreILDiff As Boolean
-
-        Dim blnBlankLineProcessed As Boolean
-
-        ' This dictionary provides a quick lookup for existing protein hashes
-        Dim lstProteinSequenceHashes As Dictionary(Of String, Integer)
+        Dim blnConsolidateDuplicateProteinSeqsInFasta = False
+        Dim blnKeepDuplicateNamedProteinsUnlessMatchingSequence = False
+        Dim blnConsolidateDupsIgnoreILDiff = False
 
         ' This array tracks protein hash details
         Dim intProteinSequenceHashCount As Integer
@@ -772,9 +751,6 @@ Public Class clsValidateFastaFile
         Dim udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType
         Dim udtProteinSequenceRuleDetails() As udtRuleDefinitionExtendedType
 
-        Dim reProteinNameTruncation As udtProteinNameTruncationRegex
-
-        Dim reNonLetterResidues As Text.RegularExpressions.Regex
 
         Try
             ' Reset the data structures and variables
@@ -786,7 +762,8 @@ Public Class clsValidateFastaFile
             ReDim udtProteinDescriptionRuleDetails(1)
             ReDim udtProteinSequenceRuleDetails(1)
 
-            lstProteinSequenceHashes = New Dictionary(Of String, Integer)
+            ' This dictionary provides a quick lookup for existing protein hashes
+            Dim lstProteinSequenceHashes = New Dictionary(Of String, Integer)
 
             If mNormalizeFileLineEndCharacters Then
                 mFastaFilePath = Me.NormalizeFileLineEndings(
@@ -804,15 +781,16 @@ Public Class clsValidateFastaFile
 
             Me.OnProgressUpdate("Parsing " & Path.GetFileName(mFastaFilePath), 0)
 
-            blnProteinHeaderFound = False
-            blnProcessingResidueBlock = False
-            blnBlankLineProcessed = False
+            Dim blnProteinHeaderFound = False
+            Dim blnProcessingResidueBlock = False
+            Dim blnBlankLineProcessed = False
 
-            strProteinName = String.Empty
-            sbCurrentResidues = New Text.StringBuilder
+            Dim strProteinName = String.Empty
+            Dim sbCurrentResidues = New Text.StringBuilder
 
             ' Initialize the RegEx objects
 
+            Dim reProteinNameTruncation = New udtProteinNameTruncationRegex
             With reProteinNameTruncation
                 ' Note that each of these RegEx tests contain two groups with captured text:
 
@@ -856,13 +834,13 @@ Public Class clsValidateFastaFile
             End With
 
             ' Non-letter characters in residues
-            strNonLetterResidueSpec = "A-Z"
-            If mAllowAsteriskInResidues Then strNonLetterResidueSpec &= "*"
-            If mAllowDashInResidues Then strNonLetterResidueSpec &= "-"
+            Dim allowedResidueChars = "A-Z"
+            If mAllowAsteriskInResidues Then allowedResidueChars &= "*"
+            If mAllowDashInResidues Then allowedResidueChars &= "-"
 
-            reNonLetterResidues =
-             New Text.RegularExpressions.Regex("[^" & strNonLetterResidueSpec & "]",
-             Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+            Dim reNonLetterResidues =
+              New Text.RegularExpressions.Regex("[^" & allowedResidueChars & "]",
+              Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
 
             ' Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
             If mFixedFastaOptions.LongProteinNameSplitChars Is Nothing OrElse mFixedFastaOptions.LongProteinNameSplitChars.Length = 0 Then
@@ -876,7 +854,7 @@ Public Class clsValidateFastaFile
             InitializeRuleDetails(mProteinSequenceRules, udtProteinSequenceRuleDetails)
 
             ' Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
-            intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
+            Dim intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
 
             ' Open the input file
 
@@ -885,6 +863,7 @@ Public Class clsValidateFastaFile
 
                 ' Optionally, open the output fasta file
                 If mGenerateFixedFastaFile Then
+
                     Try
                         strFastaFilePathOut =
                          Path.Combine(Path.GetDirectoryName(strFastaFilePath),
@@ -899,6 +878,8 @@ Public Class clsValidateFastaFile
 
                 ' Optionally, open the Sequence Hash file
                 If mSaveBasicProteinHashInfoFile Then
+                    Dim strBasicProteinHashInfoFilePath = "<undefined>"
+
                     Try
                         strBasicProteinHashInfoFilePath =
                          Path.Combine(Path.GetDirectoryName(strFastaFilePath),
@@ -943,10 +924,6 @@ Public Class clsValidateFastaFile
                     blnConsolidateDuplicateProteinSeqsInFasta = False
                     blnKeepDuplicateNamedProteinsUnlessMatchingSequence = mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence
                     blnConsolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
-                Else
-                    blnConsolidateDuplicateProteinSeqsInFasta = False
-                    blnKeepDuplicateNamedProteinsUnlessMatchingSequence = False
-                    blnConsolidateDupsIgnoreILDiff = False
                 End If
 
                 If mCheckForDuplicateProteinSequences Then
@@ -956,17 +933,21 @@ Public Class clsValidateFastaFile
                 End If
 
                 ' Parse each line in the file
-                lngBytesRead = 0
+                Dim lngBytesRead = 0
+
+                ' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
+                Dim intCurrentValidResidueLineLengthMax = 0
+                Dim blnProcessingDuplicateOrInvalidProtein = False
 
                 Do While Not srFastaInFile.EndOfStream
 
-                    strLineIn = srFastaInFile.ReadLine()
+                    Dim strLineIn = srFastaInFile.ReadLine()
                     lngBytesRead += strLineIn.Length + intTerminatorSize
 
                     If mLineCount Mod 50 = 0 Then
                         If MyBase.AbortProcessing Then Exit Do
 
-                        sngPercentComplete = CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
+                        Dim sngPercentComplete = CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
                         If blnConsolidateDuplicateProteinSeqsInFasta OrElse blnKeepDuplicateNamedProteinsUnlessMatchingSequence Then
                             ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
                             ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
@@ -1058,7 +1039,7 @@ Public Class clsValidateFastaFile
                             End If
                         End If
 
-                        intNewResidueCount = strLineIn.Length
+                        Dim intNewResidueCount = strLineIn.Length
                         mResidueCount += intNewResidueCount
 
                         ' Check the line length; raise a warning if longer than suggested
@@ -1070,6 +1051,8 @@ Public Class clsValidateFastaFile
                         EvaluateRules(udtProteinSequenceRuleDetails, strProteinName, strLineIn, 0, strLineIn, 5)
 
                         If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences OrElse mSaveBasicProteinHashInfoFile Then
+                            Dim strResiduesClean As String
+
                             If mFixedFastaOptions.RemoveInvalidResidues Then
                                 ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
                                 strResiduesClean = reNonLetterResidues.Replace(strLineIn, String.Empty)
@@ -1102,7 +1085,6 @@ Public Class clsValidateFastaFile
 
                         ' Reset the blank line tracking variable
                         blnBlankLineProcessed = False
-
 
                     End If
 
@@ -1154,7 +1136,7 @@ Public Class clsValidateFastaFile
             End If
 
             If mSaveProteinSequenceHashInfoFiles Then
-                sngPercentComplete = 98
+                Dim sngPercentComplete = 98.0!
                 If blnConsolidateDuplicateProteinSeqsInFasta OrElse blnKeepDuplicateNamedProteinsUnlessMatchingSequence Then
                     sngPercentComplete = sngPercentComplete * 3 / 4
                 End If
@@ -3900,11 +3882,24 @@ Public Class clsValidateFastaFile
         Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", 3)
 
         ' Protein Name error characters
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[^A-Za-z0-9.\-_:,\|/()\[\]\=\+#]", True, "Protein name contains invalid characters", 7, True)
+        Dim allowedChars = "A-Za-z0-9.\-_:,\|/()\[\]\=\+#"
+
+        If mAllowAllSymbolsInProteinNames Then
+            allowedChars &= "!@$%^&*<>?,\\"
+        End If
+
+        Dim allowedCharsMatchSpec = "[^" & allowedChars & "]"
+
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", 7, True)
 
         ' Protein name warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|][^:|;]*[:|;]", True, "Protein name contains two or more vertical bars", 4, True)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", 3, True)
+
+        ' Note that .*? changes .* from being greedy to being lazy
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", 4, True)
+
+        If Not mAllowAllSymbolsInProteinNames Then
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", 3, True)
+        End If
 
         ' Protein description warnings
         Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", 3)

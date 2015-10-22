@@ -4,6 +4,7 @@ Public Interface ICustomValidation
     Enum eValidationOptionConstants As Integer
         AllowAsterisksInResidues = 0
         AllowDashInResidues = 1
+        AllowAllSymbolsInProteinNames = 2
     End Enum
 
     Enum eValidationMessageTypes As Integer

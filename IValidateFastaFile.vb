@@ -125,7 +125,8 @@ Public Interface IValidateFastaFile
         FixedFastaRemoveInvalidResidues
         SaveBasicProteinHashInfoFile
 		AllowDashInResidues
-		FixedFastaKeepDuplicateNamedProteins		' Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
+        FixedFastaKeepDuplicateNamedProteins        ' Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
+        AllowAllSymbolsInProteinNames
     End Enum
 
     Enum FixedFASTAFileValues
