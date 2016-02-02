@@ -32,7 +32,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "October 22, 2015"
+        MyBase.mFileDate = "February 2, 2016"
         InitializeLocalVariables()
     End Sub
 
@@ -873,6 +873,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strFastaFilePathOut & ": " & ex.Message, String.Empty)
+                        ShowExceptionStackTrace("AnalyzeFastaFile (Create _new.fasta)", ex)
                     End Try
                 End If
 
@@ -895,6 +896,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strBasicProteinHashInfoFilePath & ": " & ex.Message, String.Empty)
+                        ShowExceptionStackTrace("AnalyzeFastaFile (Create _ProteinHashes.txt)", ex)
                     End Try
 
                 End If
@@ -1163,6 +1165,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             If MyBase.ShowMessages Then
                 ShowErrorMessage("Error in AnalyzeFastaFile:" & ex.Message)
+                ShowExceptionStackTrace("AnalyzeFastaFile", ex)
             Else
                 Throw New Exception("Error in AnalyzeFastaFile", ex)
             End If
@@ -1254,7 +1257,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error parsing protein header line '" & strLineIn & "': " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("AnalyzeFastaFileProcesssProteinHeader", ex)
         End Try
 
 
@@ -1295,7 +1298,7 @@ Public Class clsValidateFastaFile
             ' Error opening output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating output file " & strUniqueProteinSeqsFileOut & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqs.txt)", ex)
             Return False
         End Try
 
@@ -1313,7 +1316,7 @@ Public Class clsValidateFastaFile
             ' Error deleting output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error deleting output file " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqDuplicates.txt)", ex)
             Return False
         End Try
 
@@ -1380,7 +1383,7 @@ Public Class clsValidateFastaFile
             ' Error writing results
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing results to " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo", ex)
             blnSuccess = False
         End Try
 
@@ -1739,7 +1742,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (rename fixed fasta to .tempfixed)", ex)
             Return False
         End Try
 
@@ -1761,7 +1764,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error opening " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastafilePathTemp)", ex)
             Return False
         End Try
 
@@ -1771,6 +1774,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating consolidated fasta output file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
+            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastaFilePath)", ex)
         End Try
 
         Try
@@ -1890,7 +1894,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing to consolidated fasta file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
-
+            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta", ex)
             Return False
         Finally
             Try
@@ -1902,6 +1906,7 @@ Public Class clsValidateFastaFile
                 File.Delete(strFixedFastaFilePathTemp)
             Catch ex As Exception
                 ' Ignore errors here
+                ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (closing file handles)", ex)
             End Try
         End Try
 
@@ -2994,6 +2999,7 @@ Public Class clsValidateFastaFile
                     Catch ex As Exception
                         If MyBase.ShowMessages Then
                             ShowErrorMessage("Error calling AnalyzeFastaFile")
+                            ShowExceptionStackTrace("ProcessFile (call AnalyzeFastaFile)", ex)
                         Else
                             Throw New Exception("Error calling AnalyzeFastaFile", ex)
                         End If
@@ -3003,6 +3009,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             If MyBase.ShowMessages Then
                 ShowErrorMessage("Error in ProcessFile:" & ex.Message)
+                ShowExceptionStackTrace("ProcessFile", ex)
             Else
                 Throw New Exception("Error in ProcessFile", ex)
             End If
@@ -3360,6 +3367,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             ' Ignore any errors that occur, but output the error to the console
             Console.WriteLine("Error in RecordFastaFileProblemWork: " & ex.Message)
+            ShowExceptionStackTrace("RecordFastaFileProblemWork", ex)
         End Try
 
     End Sub
@@ -3408,6 +3416,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             If MyBase.ShowMessages Then
                 ShowErrorMessage("Error in ReplaceXMLCodesWithText:" & ex.Message)
+                ShowExceptionStackTrace("ReplaceXMLCodesWithText", ex)
             Else
                 Throw New Exception("Error in ReplaceXMLCodesWithText", ex)
             End If
@@ -3621,6 +3630,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             If MyBase.ShowMessages Then
                 ShowErrorMessage("Error in ReportResults:" & ex.Message)
+                ShowExceptionStackTrace("ReportResults", ex)
             Else
                 Throw New Exception("Error in ReportResults", ex)
             End If
@@ -4007,6 +4017,16 @@ Public Class clsValidateFastaFile
 
         mMasterCustomRuleID += 1
 
+    End Sub
+
+    Private Sub ShowExceptionStackTrace(callingFunction As String, ex As Exception)
+        If (String.IsNullOrEmpty(callingFunction)) Then
+            Console.WriteLine("Stack trace for exception in " & callingFunction)
+        Else
+            Console.WriteLine("Stack trace for exception")
+        End If
+
+        Console.WriteLine(ex.StackTrace.ToString())
     End Sub
 
     Protected Sub SplitFastaProteinHeaderLine(
