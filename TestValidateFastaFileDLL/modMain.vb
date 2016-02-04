@@ -1,5 +1,6 @@
 Option Strict On
 
+Imports ValidateFastaFile
 ' Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
 ' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
@@ -87,6 +88,7 @@ Module modMain
 
         Catch ex As Exception
             Console.WriteLine("Error occurred: " & ex.Message)
+            Console.WriteLine(clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex))
             intReturnCode = -1
         End Try
 

@@ -64,7 +64,7 @@ Public Class clsNestedStringDictionary(Of T)
     ''' <param name="spannerCharLength"></param>
     ''' <remarks>
     ''' If spannerCharLength is too small, all of the items added to this class instance using Add() will be
-    ''' tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary</remarks>
+    ''' tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
     ''' </remarks>
     Public Sub New(Optional ignoreCaseForKeys As Boolean = False, Optional spannerCharLength As Byte = 1)
 

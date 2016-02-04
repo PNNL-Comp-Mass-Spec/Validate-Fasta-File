@@ -27,7 +27,7 @@ Public Interface ICustomValidation
 
     Sub SetValidationOptions(ByVal eValidationOptionName As eValidationOptionConstants, ByVal blnEnabled As Boolean)
 
-    Function StartValidateFASTAFile(ByVal FASTAFilePath As String) As Boolean
+    Function StartValidateFASTAFile(ByVal filePath As String) As Boolean
 
     Structure udtErrorInfoExtended
         Sub New(
@@ -53,9 +53,8 @@ Public Interface ICustomValidation
 
 End Interface
 
-
 Public Class clsCustomValidateFastaFiles
-    Inherits ValidateFastaFile.clsValidateFastaFile
+    Inherits clsValidateFastaFile
     Implements ICustomValidation
 
     Protected m_FileErrorList As Hashtable
@@ -195,14 +194,14 @@ Public Class clsCustomValidateFastaFiles
             Me.m_CurrentFileWarnings.Add(New ICustomValidation.udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Warning"))
 
-            Me.m_FileWarningList.Item(System.IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileWarnings
+            Me.m_FileWarningList.Item(IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileWarnings
         Else
 
             ' Treat as error
             Me.m_CurrentFileErrors.Add(New ICustomValidation.udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Error"))
 
-            Me.m_FileErrorList.Item(System.IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileErrors
+            Me.m_FileErrorList.Item(IO.Path.GetFileName(Me.m_CachedFastaFilePath)) = Me.m_CurrentFileErrors
         End If
 
     End Sub
@@ -256,12 +255,12 @@ Public Class clsCustomValidateFastaFiles
 
                         blnIgnoreError = False
                         Select Case strErrorMessage
-                            Case ValidateFastaFile.clsValidateFastaFile.MESSAGE_TEXT_ASTERISK_IN_RESIDUES
+                            Case MESSAGE_TEXT_ASTERISK_IN_RESIDUES
                                 If mValidationOptions(ICustomValidation.eValidationOptionConstants.AllowAsterisksInResidues) Then
                                     blnIgnoreError = True
                                 End If
 
-                            Case ValidateFastaFile.clsValidateFastaFile.MESSAGE_TEXT_DASH_IN_RESIDUES
+                            Case MESSAGE_TEXT_DASH_IN_RESIDUES
                                 If mValidationOptions(ICustomValidation.eValidationOptionConstants.AllowDashInResidues) Then
                                     blnIgnoreError = True
                                 End If

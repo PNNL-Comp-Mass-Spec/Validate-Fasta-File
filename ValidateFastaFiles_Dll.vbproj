@@ -119,6 +119,8 @@
     <Compile Include="clsHashGenerator.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsMemoryUsageLogger.vb" />
+    <Compile Include="clsNestedStringDictionary.vb" />
     <Compile Include="clsParseCommandLine.vb">
       <SubType>Code</SubType>
     </Compile>
@@ -126,6 +128,8 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsProcessFilesOrFoldersBase.vb" />
+    <Compile Include="clsProteinHashInfo.vb" />
+    <Compile Include="clsStackTraceFormatter.vb" />
     <Compile Include="clsValidateFastaFile.vb">
       <SubType>Code</SubType>
     </Compile>

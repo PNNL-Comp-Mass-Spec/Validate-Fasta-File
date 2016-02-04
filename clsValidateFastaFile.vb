@@ -126,6 +126,10 @@ Public Class clsValidateFastaFile
         Public MessageCode As Integer               ' Note: Custom rules start with message code CUSTOM_RULE_ID_START
         Public CountSpecified As Integer
         Public CountUnspecified As Integer
+
+        Public Overrides Function ToString() As String
+            Return MessageCode & ": " & CountSpecified & " specified, " & CountUnspecified & " unspecified"
+        End Function
     End Structure
 
     Private Structure udtItemSummaryIndexedType
@@ -133,8 +137,7 @@ Public Class clsValidateFastaFile
         Public ErrorStats() As udtErrorStatsType        ' Note: This array ranges from 0 to .ErrorStatsCount since it is Dimmed with extra space
         Public htMessageCodeToArrayIndex As Hashtable
     End Structure
-
-
+    
     Public Structure udtRuleDefinitionType
         Public MatchRegEx As String
         Public MatchIndicatesProblem As Boolean     ' True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
@@ -142,12 +145,20 @@ Public Class clsValidateFastaFile
         Public Severity As Short                    ' 0 is lowest severity, 9 is highest severity; value >= 5 means error
         Public DisplayMatchAsExtraInfo As Boolean   ' If true, then the matching text is stored as the context info
         Public CustomRuleID As Integer              ' This value is auto-assigned
+
+        Public Overrides Function ToString() As String
+            Return CustomRuleID & ": " & MessageWhenProblem
+        End Function
     End Structure
 
     Private Structure udtRuleDefinitionExtendedType
         Public RuleDefinition As udtRuleDefinitionType
         Public reRule As Regex
         Public Valid As Boolean
+
+        Public Overrides Function ToString() As String
+            Return RuleDefinition.CustomRuleID & ": " & RuleDefinition.MessageWhenProblem
+        End Function
     End Structure
 
     Private Structure udtFixedFastaOptionsType
@@ -187,7 +198,9 @@ Public Class clsValidateFastaFile
 
 #Region "Classwide Variables"
 
-    Private mFastaFilePath As String
+    ' Note: used by clsCustomValidateFastaFiles
+    Protected mFastaFilePath As String
+
     Private mLineCount As Integer
     Private mProteinCount As Integer
     Private mResidueCount As Long
@@ -2688,7 +2701,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function GetFileErrors() As IValidateFastaFile.udtMsgInfoType()
+    Protected Function GetFileErrors() As IValidateFastaFile.udtMsgInfoType()
 
         Dim udtFileErrors() As IValidateFastaFile.udtMsgInfoType
 
@@ -2739,7 +2752,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function GetFileWarnings() As IValidateFastaFile.udtMsgInfoType()
+    Protected Function GetFileWarnings() As IValidateFastaFile.udtMsgInfoType()
 
         Dim udtFileWarnings() As IValidateFastaFile.udtMsgInfoType
 
@@ -3184,7 +3197,7 @@ Public Class clsValidateFastaFile
 
         End Select
 
-        If Not strExtraInfo Is Nothing AndAlso strExtraInfo.Length > 0 Then
+        If Not String.IsNullOrWhiteSpace(strExtraInfo) Then
             strMessage &= " (" & strExtraInfo & ")"
         End If
 
@@ -3204,7 +3217,7 @@ Public Class clsValidateFastaFile
         End Select
     End Function
 
-    Private Function SimpleProcessFile(ByVal strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
+    Protected Function SimpleProcessFile(ByVal strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
         ' Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
         Return Me.ProcessFile(strInputFilePath, Nothing, Nothing, False)
     End Function
@@ -3278,6 +3291,7 @@ Public Class clsValidateFastaFile
                             ShowErrorMessage("Error calling AnalyzeFastaFile")
                             ShowExceptionStackTrace("ProcessFile (call AnalyzeFastaFile)", ex)
                         Else
+                            ShowExceptionStackTrace("ProcessFile (call AnalyzeFastaFile)", ex)
                             Throw New Exception("Error calling AnalyzeFastaFile", ex)
                         End If
                     End Try
@@ -3288,6 +3302,7 @@ Public Class clsValidateFastaFile
                 ShowErrorMessage("Error in ProcessFile:" & ex.Message)
                 ShowExceptionStackTrace("ProcessFile", ex)
             Else
+                ShowExceptionStackTrace("ProcessFile", ex)
                 Throw New Exception("Error in ProcessFile", ex)
             End If
         End Try
@@ -3863,12 +3878,14 @@ Public Class clsValidateFastaFile
                             strProteinName = String.Copy(.ProteinName)
                         End If
 
+                        Dim messageDescription = LookupMessageDescription(.MessageCode, .ExtraInfo)
+
                         ReportResultAddEntry(strSourceFile,
                            IValidateFastaFile.eMsgTypeConstants.ErrorMsg,
                            .LineNumber,
                            .ColNumber,
                            strProteinName,
-                           LookupMessageDescription(.MessageCode, .ExtraInfo),
+                           messageDescription,
                            .Context,
                            outputToStatsFile,
                            srOutFile,
@@ -3919,10 +3936,6 @@ Public Class clsValidateFastaFile
                 Next intIndex
             End If
 
-            If outputToStatsFile AndAlso Not srOutFile Is Nothing Then
-                srOutFile.Close()
-            End If
-
             Dim fiFastaFile = New FileInfo(mFastaFilePath)
 
             ' # Proteins, # Peptides, FileSizeKB
@@ -3936,11 +3949,16 @@ Public Class clsValidateFastaFile
               srOutFile,
               strSepChar)
 
+            If outputToStatsFile AndAlso Not srOutFile Is Nothing Then
+                srOutFile.Close()
+            End If
+
         Catch ex As Exception
             If MyBase.ShowMessages Then
                 ShowErrorMessage("Error in ReportResults:" & ex.Message)
                 ShowExceptionStackTrace("ReportResults", ex)
             Else
+                ShowExceptionStackTrace("ReportResults", ex)
                 Throw New Exception("Error in ReportResults", ex)
             End If
 
@@ -4170,21 +4188,17 @@ Public Class clsValidateFastaFile
       intErrorMessageCode As Integer,
       <Out()> ByRef strMessage As String) As Boolean
 
-        Dim intIndex As Integer
-        Dim blnMatchFound As Boolean = False
-
         If Not udtRules Is Nothing Then
             For intIndex = 0 To udtRules.Length - 1
                 If udtRules(intIndex).CustomRuleID = intErrorMessageCode Then
                     strMessage = udtRules(intIndex).MessageWhenProblem
-                    blnMatchFound = True
-                    Exit For
+                    Return True
                 End If
             Next intIndex
         End If
 
         strMessage = Nothing
-        Return blnMatchFound
+        Return False
 
     End Function
 
