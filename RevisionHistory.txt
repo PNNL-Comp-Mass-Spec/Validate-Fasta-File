@@ -1,5 +1,11 @@
 Validate Fasta File Change Log
 
+Version 2.1.5877; February 3, 2016
+	- Replaced dictionaries with clsNestedStringDictionary to allow for increased memory usage
+	- Replaced struct with a class for better memory allocation
+	- Now reporting memory usage at regular intervals
+	- Added clsStackTraceFormatter
+
 Version 2.1.5773; October 22, 2015
 	- Added option AllowAllSymbolsInProteinNames
 

@@ -25,6 +25,7 @@ Option Strict On
 
 Imports System.IO
 Imports System.Runtime.InteropServices
+Imports System.Text
 Imports System.Text.RegularExpressions
 
 Public Class clsValidateFastaFile
@@ -32,7 +33,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "February 2, 2016"
+        MyBase.mFileDate = "February 3, 2016"
         InitializeLocalVariables()
     End Sub
 
@@ -43,9 +44,9 @@ Public Class clsValidateFastaFile
 
 
 #Region "Constants and Enums"
-    Protected Const DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH As Integer = 3
+    Private Const DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH As Integer = 3
     Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 34
-    Protected Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
+    Private Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
 
     Public Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
     Public Const DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR As Char = "|"c
@@ -75,6 +76,9 @@ Public Class clsValidateFastaFile
     ' The value of 7995 is chosen because the maximum varchar() value in Sql Server is varchar(8000) 
     ' and we want to prevent truncation errors when importing protein names and descriptions into Sql Server
     Public Const MAX_PROTEIN_DESCRIPTION_LENGTH As Integer = 7995
+
+    Private Const MEM_USAGE_PREFIX = "MemUsage: "
+    Private Const REPORT_DETAILED_MEMORY_USAGE = False
 
     ' Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
     ' the values in enum eMessageCodeConstants should all be less than CUSTOM_RULE_ID_START
@@ -118,7 +122,7 @@ Public Class clsValidateFastaFile
 
 #Region "Structures"
 
-    Protected Structure udtErrorStatsType
+    Private Structure udtErrorStatsType
         Public MessageCode As Integer               ' Note: Custom rules start with message code CUSTOM_RULE_ID_START
         Public CountSpecified As Integer
         Public CountUnspecified As Integer
@@ -140,22 +144,13 @@ Public Class clsValidateFastaFile
         Public CustomRuleID As Integer              ' This value is auto-assigned
     End Structure
 
-    Protected Structure udtRuleDefinitionExtendedType
+    Private Structure udtRuleDefinitionExtendedType
         Public RuleDefinition As udtRuleDefinitionType
-        Public reRule As Text.RegularExpressions.Regex
+        Public reRule As Regex
         Public Valid As Boolean
     End Structure
 
-    Protected Structure udtProteinHashInfoType
-        Public SequenceHash As String
-        Public SequenceLength As Integer
-        Public SequenceStart As String                  ' The first 20 residues of the protein sequence
-        Public ProteinNameFirst As String
-        Public AdditionalProteins As List(Of String)            ' .ProteinNameFirst is not stored here; only additional proteins
-        Public DuplicateProteinNameCount As Integer     ' > 0 if multiple entries have the same name and same sequence
-    End Structure
-
-    Protected Structure udtFixedFastaOptionsType
+    Private Structure udtFixedFastaOptionsType
         Public SplitOutMultipleRefsInProteinName As Boolean
         Public SplitOutMultipleRefsForKnownAccession As Boolean
         Public LongProteinNameSplitChars As Char()
@@ -169,7 +164,7 @@ Public Class clsValidateFastaFile
         Public RemoveInvalidResidues As Boolean
     End Structure
 
-    Protected Structure udtFixedFastaStatsType
+    Private Structure udtFixedFastaStatsType
         Public TruncatedProteinNameCount As Integer
         Public UpdatedResidueLines As Integer
         Public ProteinNamesInvalidCharsReplaced As Integer
@@ -179,25 +174,25 @@ Public Class clsValidateFastaFile
         Public DuplicateSequenceProteinsSkipped As Integer
     End Structure
 
-    Protected Structure udtProteinNameTruncationRegex
-        Public reMatchIPI As Text.RegularExpressions.Regex
-        Public reMatchGI As Text.RegularExpressions.Regex
-        Public reMatchJGI As Text.RegularExpressions.Regex
-        Public reMatchJGIBaseAndID As Text.RegularExpressions.Regex
-        Public reMatchGeneric As Text.RegularExpressions.Regex
-        Public reMatchDoubleBarOrColonAndBar As Text.RegularExpressions.Regex
+    Private Structure udtProteinNameTruncationRegex
+        Public reMatchIPI As Regex
+        Public reMatchGI As Regex
+        Public reMatchJGI As Regex
+        Public reMatchJGIBaseAndID As Regex
+        Public reMatchGeneric As Regex
+        Public reMatchDoubleBarOrColonAndBar As Regex
     End Structure
 
 #End Region
 
 #Region "Classwide Variables"
 
-    Protected mFastaFilePath As String
-    Protected mLineCount As Integer
-    Protected mProteinCount As Integer
-    Protected mResidueCount As Long
+    Private mFastaFilePath As String
+    Private mLineCount As Integer
+    Private mProteinCount As Integer
+    Private mResidueCount As Long
 
-    Protected mFixedFastaStats As udtFixedFastaStatsType
+    Private mFixedFastaStats As udtFixedFastaStatsType
 
     Private mFileErrorCount As Integer
     Private mFileErrors() As IValidateFastaFile.udtMsgInfoType
@@ -217,42 +212,56 @@ Public Class clsValidateFastaFile
     Private mProteinNameFirstRefSepChars() As Char
     Private mProteinNameSubsequentRefSepChars() As Char
 
-    Protected mAddMissingLinefeedAtEOF As Boolean
-    Protected mCheckForDuplicateProteinNames As Boolean
+    Private mAddMissingLinefeedAtEOF As Boolean
+    Private mCheckForDuplicateProteinNames As Boolean
 
     ' This will be set to True if 
     '   mSaveProteinSequenceHashInfoFiles = True or Me.mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = True
-    Protected mCheckForDuplicateProteinSequences As Boolean
+    Private mCheckForDuplicateProteinSequences As Boolean
 
-    Protected mMaximumFileErrorsToTrack As Integer        ' This is the maximum # of errors per type to track
-    Protected mMinimumProteinNameLength As Integer
-    Protected mMaximumProteinNameLength As Integer
-    Protected mMaximumResiduesPerLine As Integer
+    Private mMaximumFileErrorsToTrack As Integer        ' This is the maximum # of errors per type to track
+    Private mMinimumProteinNameLength As Integer
+    Private mMaximumProteinNameLength As Integer
+    Private mMaximumResiduesPerLine As Integer
 
-    Protected mFixedFastaOptions As udtFixedFastaOptionsType     ' Used if mGenerateFixedFastaFile = True
+    Private mFixedFastaOptions As udtFixedFastaOptionsType     ' Used if mGenerateFixedFastaFile = True
 
-    Protected mOutputToStatsFile As Boolean
-    Protected mStatsFilePath As String
+    Private mOutputToStatsFile As Boolean
+    Private mStatsFilePath As String
 
-    Protected mGenerateFixedFastaFile As Boolean
-    Protected mSaveProteinSequenceHashInfoFiles As Boolean
+    Private mGenerateFixedFastaFile As Boolean
+    Private mSaveProteinSequenceHashInfoFiles As Boolean
 
     ' When true, then creates a text file that will contain the protein name and sequence hash for each protein; 
     '  this option will not store protein names and/or hashes in memory, and is thus useful for processing 
     '  huge .Fasta files to determine duplicate proteins
-    Protected mSaveBasicProteinHashInfoFile As Boolean
+    Private mSaveBasicProteinHashInfoFile As Boolean
 
-    Protected mProteinLineStartChar As Char
+    Private mProteinLineStartChar As Char
 
-    Protected mAllowAsteriskInResidues As Boolean
-    Protected mAllowDashInResidues As Boolean
-    Protected mAllowAllSymbolsInProteinNames As Boolean
+    Private mAllowAsteriskInResidues As Boolean
+    Private mAllowDashInResidues As Boolean
+    Private mAllowAllSymbolsInProteinNames As Boolean
 
-    Protected mWarnBlankLinesBetweenProteins As Boolean
-    Protected mWarnLineStartsWithSpace As Boolean
-    Protected mNormalizeFileLineEndCharacters As Boolean
+    Private mWarnBlankLinesBetweenProteins As Boolean
+    Private mWarnLineStartsWithSpace As Boolean
+    Private mNormalizeFileLineEndCharacters As Boolean
+
+    ''' <summary>
+    ''' The number of characters at the start of keystrings to use when adding items to clsNestedStringDictionary instances
+    ''' </summary>
+    ''' <remarks>
+    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance 
+    ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+    ''' </remarks>
+    Private mProteinNameSpannerCharLength As Byte = 1
 
     Private mLocalErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes
+
+    Private mMemoryUsageLogger As clsMemoryUsageLogger
+
+    Private mProcessMemoryUsageMBAtStart As Single
+
 #End Region
 
 #Region "Properties"
@@ -457,7 +466,7 @@ Public Class clsValidateFastaFile
     End Property
 
     'Public ReadOnly Property FixedFastaDuplicateProteinNamesSkippedCount() As Integer
-    'Protected ReadOnly Property FixedFastaProteinNamesInvalidCharsReplaced() As Integer
+    'Private ReadOnly Property FixedFastaProteinNamesInvalidCharsReplaced() As Integer
     'Public ReadOnly Property FixedFastaProteinNamesMultipleRefsRemoved() As Integer
     'Public ReadOnly Property FixedFastaTruncatedProteinNameCount() As Integer
     'Public ReadOnly Property FixedFastaUpdatedResidueLines() As Integer
@@ -587,7 +596,6 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-
     Public ReadOnly Property StatsFilePath() As String
         Get
             If mStatsFilePath Is Nothing Then
@@ -703,15 +711,15 @@ Public Class clsValidateFastaFile
 
 #End Region
 
-    Protected Event ProgressUpdated(
+    Private Event ProgressUpdated(
      ByVal taskDescription As String,
      ByVal percentComplete As Single) Implements IValidateFastaFile.ProgressChanged
 
-    Protected Event ProgressCompleted() Implements IValidateFastaFile.ProgressCompleted
+    Private Event ProgressCompleted() Implements IValidateFastaFile.ProgressCompleted
 
-    Protected Event WroteLineEndNormalizedFASTA(ByVal newFilePath As String) Implements IValidateFastaFile.WroteLineEndNormalizedFASTA
+    Private Event WroteLineEndNormalizedFASTA(ByVal newFilePath As String) Implements IValidateFastaFile.WroteLineEndNormalizedFASTA
 
-    Protected Sub OnProgressUpdate(
+    Private Sub OnProgressUpdate(
      ByVal taskDescription As String,
      ByVal percentComplete As Single) Handles MyBase.ProgressChanged
 
@@ -719,15 +727,15 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Protected Sub OnProgressComplete() Handles MyBase.ProgressComplete
+    Private Sub OnProgressComplete() Handles MyBase.ProgressComplete
         RaiseEvent ProgressCompleted()
     End Sub
 
-    Protected Sub OnWroteLineEndNormalizedFASTA(ByVal newFilePath As String)
+    Private Sub OnWroteLineEndNormalizedFASTA(ByVal newFilePath As String)
         RaiseEvent WroteLineEndNormalizedFASTA(newFilePath)
     End Sub
 
-    Protected Function AnalyzeFastaFile(ByVal strFastaFilePath As String) As Boolean
+    Private Function AnalyzeFastaFile(ByVal strFastaFilePath As String) As Boolean
         ' This function assumes strFastaFilePath exists
         ' Returns True if the file was successfully analyzed (even if errors were found)
 
@@ -744,7 +752,7 @@ Public Class clsValidateFastaFile
 
         ' This array tracks protein hash details
         Dim intProteinSequenceHashCount As Integer
-        Dim udtProteinSeqHashInfo() As udtProteinHashInfoType
+        Dim udtProteinSeqHashInfo() As clsProteinHashInfo
 
         Dim udtHeaderLineRuleDetails() As udtRuleDefinitionExtendedType
         Dim udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType
@@ -762,8 +770,9 @@ Public Class clsValidateFastaFile
             ReDim udtProteinDescriptionRuleDetails(1)
             ReDim udtProteinSequenceRuleDetails(1)
 
-            ' This dictionary provides a quick lookup for existing protein hashes
-            Dim lstProteinSequenceHashes = New Dictionary(Of String, Integer)
+            ' This is a Dictionary of dictionaries, with one dictionary for each letter or number that a SHA-1 hash could start with
+            ' This Dictionary of dictionaries provides a quick lookup for existing protein hashes
+            Dim lstProteinSequenceHashes = New clsNestedStringDictionary(Of Integer)(False, 1)
 
             If mNormalizeFileLineEndCharacters Then
                 mFastaFilePath = Me.NormalizeFileLineEndings(
@@ -786,7 +795,7 @@ Public Class clsValidateFastaFile
             Dim blnBlankLineProcessed = False
 
             Dim strProteinName = String.Empty
-            Dim sbCurrentResidues = New Text.StringBuilder
+            Dim sbCurrentResidues = New StringBuilder
 
             ' Initialize the RegEx objects
 
@@ -796,41 +805,41 @@ Public Class clsValidateFastaFile
 
                 ' The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
                 .reMatchIPI =
-                 New Text.RegularExpressions.Regex("^(IPI:IPI[\w.]{2,})\|(.+)",
-                  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                 New Regex("^(IPI:IPI[\w.]{2,})\|(.+)",
+                  RegexOptions.Singleline Or RegexOptions.Compiled)
 
                 ' The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
                 .reMatchGI =
-                 New Text.RegularExpressions.Regex("^(gi\|\d+)\|(.+)",
-                  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                 New Regex("^(gi\|\d+)\|(.+)",
+                  RegexOptions.Singleline Or RegexOptions.Compiled)
 
                 ' The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
                 .reMatchJGI =
-                 New Text.RegularExpressions.Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)",
-                  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                 New Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)",
+                  RegexOptions.Singleline Or RegexOptions.Compiled)
 
                 ' The following will extract bob|234384 from  bob|234384|ref|483293
                 '                         or bob|845832 from  bob|845832;ref|384923
                 .reMatchGeneric =
-                 New Text.RegularExpressions.Regex("^(\w{2,}[" &
+                 New Regex("^(\w{2,}[" &
                  CharArrayToString(mProteinNameFirstRefSepChars) & "][\w\d._]{2,})[" &
                  CharArrayToString(mProteinNameSubsequentRefSepChars) & "](.+)",
-                 Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                 RegexOptions.Singleline Or RegexOptions.Compiled)
             End With
 
             With reProteinNameTruncation
                 ' The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
                 .reMatchJGIBaseAndID =
-                 New Text.RegularExpressions.Regex("^jgi\|[^|]+\|\d+",
-                   Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                 New Regex("^jgi\|[^|]+\|\d+",
+                   RegexOptions.Singleline Or RegexOptions.Compiled)
 
                 ' Note that this RegEx contains a group with captured text:
                 .reMatchDoubleBarOrColonAndBar =
-                 New Text.RegularExpressions.Regex("[" &
+                 New Regex("[" &
                   CharArrayToString(mProteinNameFirstRefSepChars) & "][^" &
                   CharArrayToString(mProteinNameSubsequentRefSepChars) & "]*([" &
                   CharArrayToString(mProteinNameSubsequentRefSepChars) & "])",
-                  Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+                  RegexOptions.Singleline Or RegexOptions.Compiled)
             End With
 
             ' Non-letter characters in residues
@@ -839,8 +848,8 @@ Public Class clsValidateFastaFile
             If mAllowDashInResidues Then allowedResidueChars &= "-"
 
             Dim reNonLetterResidues =
-              New Text.RegularExpressions.Regex("[^" & allowedResidueChars & "]",
-              Text.RegularExpressions.RegexOptions.Singleline Or Text.RegularExpressions.RegexOptions.Compiled)
+              New Regex("[^" & allowedResidueChars & "]",
+              RegexOptions.Singleline Or RegexOptions.Compiled)
 
             ' Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
             If mFixedFastaOptions.LongProteinNameSplitChars Is Nothing OrElse mFixedFastaOptions.LongProteinNameSplitChars.Length = 0 Then
@@ -855,6 +864,9 @@ Public Class clsValidateFastaFile
 
             ' Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
             Dim intTerminatorSize = DetermineLineTerminatorSize(strFastaFilePath)
+
+            ' Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+            AutoDetermineProteinNameSpannerCharLength(mFastaFilePath, intTerminatorSize)
 
             ' Open the input file
 
@@ -873,6 +885,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strFastaFilePathOut & ": " & ex.Message, String.Empty)
+                        Console.WriteLine(ex.Message)
                         ShowExceptionStackTrace("AnalyzeFastaFile (Create _new.fasta)", ex)
                     End Try
                 End If
@@ -896,6 +909,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strBasicProteinHashInfoFilePath & ": " & ex.Message, String.Empty)
+                        Console.WriteLine(ex.Message)
                         ShowExceptionStackTrace("AnalyzeFastaFile (Create _ProteinHashes.txt)", ex)
                     End Try
 
@@ -935,7 +949,8 @@ Public Class clsValidateFastaFile
                 End If
 
                 ' Parse each line in the file
-                Dim lngBytesRead = 0
+                Dim lngBytesRead As Int64 = 0
+                Dim dtLastMemoryUsageReport = DateTime.UtcNow
 
                 ' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
                 Dim intCurrentValidResidueLineLengthMax = 0
@@ -957,6 +972,11 @@ Public Class clsValidateFastaFile
                         End If
 
                         MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
+
+                        If DateTime.UtcNow.Subtract(dtLastMemoryUsageReport).TotalMinutes >= 1 Then
+                            dtLastMemoryUsageReport = DateTime.UtcNow
+                            ReportMemoryUsage(lstProteinSequenceHashes, lstProteinNames)
+                        End If
                     End If
 
                     mLineCount += 1
@@ -1010,7 +1030,6 @@ Public Class clsValidateFastaFile
                             udtHeaderLineRuleDetails,
                             udtProteinNameRuleDetails,
                             udtProteinDescriptionRuleDetails,
-                            udtProteinSequenceRuleDetails,
                             reProteinNameTruncation)
 
                         If blnBlankLineProcessed Then
@@ -1113,6 +1132,11 @@ Public Class clsValidateFastaFile
                     Next intIndex
                 End If
 
+                If clsMemoryUsageLogger.GetProcessMemoryUsageMB > mProcessMemoryUsageMBAtStart * 4 OrElse
+                    clsMemoryUsageLogger.GetProcessMemoryUsageMB - mProcessMemoryUsageMBAtStart > 50 Then
+                    ReportMemoryUsage(lstProteinSequenceHashes, lstProteinNames)
+                End If
+
             End Using
 
             ' Close the output files
@@ -1188,23 +1212,25 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Sub AnalyzeFastaProcessProteinHeader(
-     ByRef swFixedFastaOut As StreamWriter,
-     ByRef strLineIn As String,
-     ByRef strProteinName As String,
-     ByRef blnProcessingDuplicateOrInvalidProtein As Boolean,
-     ByRef lstProteinNames As SortedSet(Of String),
-     ByRef udtHeaderLineRuleDetails() As udtRuleDefinitionExtendedType,
-     ByRef udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType,
-     ByRef udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType,
-     ByRef udtProteinSequenceRuleDetails() As udtRuleDefinitionExtendedType,
-     ByRef reProteinNameTruncation As udtProteinNameTruncationRegex)
+    Private Sub AnalyzeFastaProcessProteinHeader(
+     swFixedFastaOut As StreamWriter,
+     strLineIn As String,
+     <Out()> ByRef strProteinName As String,
+     <Out()> ByRef blnProcessingDuplicateOrInvalidProtein As Boolean,
+     lstProteinNames As SortedSet(Of String),
+     udtHeaderLineRuleDetails() As udtRuleDefinitionExtendedType,
+     udtProteinNameRuleDetails() As udtRuleDefinitionExtendedType,
+     udtProteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType,
+     reProteinNameTruncation As udtProteinNameTruncationRegex)
 
         Dim intDescriptionStartIndex As Integer
 
         Dim strProteinDescription As String = String.Empty
 
-        Dim blnSkipDuplicateProtein As Boolean = False
+        Dim blnSkipDuplicateProtein = False
+
+        strProteinName = String.Empty
+        blnProcessingDuplicateOrInvalidProtein = True
 
         Try
             SplitFastaProteinHeaderLine(strLineIn, strProteinName, strProteinDescription, intDescriptionStartIndex)
@@ -1257,6 +1283,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error parsing protein header line '" & strLineIn & "': " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("AnalyzeFastaFileProcesssProteinHeader", ex)
         End Try
 
@@ -1264,13 +1291,13 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function AnalyzeFastaSaveHashInfo(
-     ByVal strFastaFilePath As String,
-     ByVal intProteinSequenceHashCount As Integer,
-     ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType,
-     ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
-     ByVal blnConsolidateDupsIgnoreILDiff As Boolean,
-     ByVal blnKeepDuplicateNamedProteinsUnlessMatchingSequence As Boolean,
-     ByVal strFastaFilePathOut As String) As Boolean
+     strFastaFilePath As String,
+     intProteinSequenceHashCount As Integer,
+     udtProteinSeqHashInfo() As clsProteinHashInfo,
+     blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
+     blnConsolidateDupsIgnoreILDiff As Boolean,
+     blnKeepDuplicateNamedProteinsUnlessMatchingSequence As Boolean,
+     strFastaFilePathOut As String) As Boolean
 
         Dim swUniqueProteinSeqsOut As StreamWriter
         Dim swDuplicateProteinMapping As StreamWriter = Nothing
@@ -1298,6 +1325,7 @@ Public Class clsValidateFastaFile
             ' Error opening output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating output file " & strUniqueProteinSeqsFileOut & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqs.txt)", ex)
             Return False
         End Try
@@ -1316,6 +1344,7 @@ Public Class clsValidateFastaFile
             ' Error deleting output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error deleting output file " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqDuplicates.txt)", ex)
             Return False
         End Try
@@ -1383,6 +1412,7 @@ Public Class clsValidateFastaFile
             ' Error writing results
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing results to " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo", ex)
             blnSuccess = False
         End Try
@@ -1397,8 +1427,226 @@ Public Class clsValidateFastaFile
 
     End Function
 
+    ''' <summary>
+    ''' Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+    ''' </summary>
+    ''' <param name="fastaFilePathToTest">Fasta file to examine</param>
+    ''' <param name="intTerminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
+    ''' <remarks>
+    ''' Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
+    ''' Keeps track of the portion of protein names in common between adjacent proteins
+    ''' Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
+    ''' </remarks>
+    Private Sub AutoDetermineProteinNameSpannerCharLength(fastaFilePathToTest As String, intTerminatorSize As Integer)
+
+        Const PARTS_TO_SAMPLE = 10
+        Const KBYTES_PER_SAMPLE = 51200
+
+        Dim proteinStartLetters = New Dictionary(Of String, Integer)
+        Dim dtStartTime = DateTime.UtcNow
+        Dim showStats = False
+
+        Dim fiFastaFile = New FileInfo(fastaFilePathToTest)
+        If Not fiFastaFile.Exists Then Return
+
+        Dim fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KBYTES_PER_SAMPLE
+        Dim linesReadTotal As Int64
+
+        If fiFastaFile.Length < fullScanLengthBytes Then
+            linesReadTotal = AutoDetermineProteinNameSpannerCharLength(fiFastaFile, intTerminatorSize, proteinStartLetters, 0, fiFastaFile.Length)
+        Else
+
+            Dim stepSizeBytes As Int64 = CLng(Math.Round(fiFastaFile.Length / PARTS_TO_SAMPLE, 0))
+
+            For byteOffsetStart As Int64 = 0 To fiFastaFile.Length Step stepSizeBytes
+                Dim linesRead = AutoDetermineProteinNameSpannerCharLength(fiFastaFile, intTerminatorSize, proteinStartLetters, byteOffsetStart, KBYTES_PER_SAMPLE * 1024)
+                linesReadTotal += linesRead
+
+                If Not showStats AndAlso DateTime.UtcNow.Subtract(dtStartTime).TotalMilliseconds > 500 Then
+                    showStats = True
+                    Console.WriteLine("Pre-scanning the file to look for common base protein names")
+                End If
+            Next
+        End If
+
+        Dim preScanProteins = (From item In proteinStartLetters Select item.Value).Sum()
+
+        If showStats Then
+            Dim percentFileProcessed = fullScanLengthBytes / fiFastaFile.Length * 100
+            Console.WriteLine("  parsed {0}% of the file, reading {1} lines and finding {2} proteins",
+                              percentFileProcessed.ToString("0"), linesReadTotal.ToString("#,##0"), preScanProteins.ToString("#,##0"))
+        End If
+
+        ' Compute the average observation count in proteinStartLetters
+        Dim averageCount = (From item In proteinStartLetters Select item.Value).Average()
+
+        ' Determine the shortest base name in proteinStartLetters for items with a count of the average or higher
+        Dim minimumLength = (From item In proteinStartLetters Where item.Value >= averageCount Select item.Key.Length).Min()
+
+        If minimumLength > 0 Then
+            If minimumLength > 100 Then
+                mProteinNameSpannerCharLength = 100
+            Else
+                mProteinNameSpannerCharLength = CByte(minimumLength + 1)
+            End If
+
+            Dim query = (From item In proteinStartLetters Where item.Key.Length = minimumLength And item.Value >= averageCount Select item).ToList()
+
+            If query.Count > 0 Then
+                Console.WriteLine("Shortest common name prefix: " & query(0).Key & ", length " & minimumLength & ", seen " & query(0).Value & " times")
+            Else
+                Console.WriteLine("Shortest common name prefix: ????")
+            End If
+
+            Console.WriteLine("Using ProteinNameSpannerCharLength = " & mProteinNameSpannerCharLength)
+            Console.WriteLine()
+        End If
+
+    End Sub
+
+    ''' <summary>
+    ''' Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
+    ''' </summary>
+    ''' <param name="fiFastaFile"></param>
+    ''' <param name="intTerminatorSize"></param>
+    ''' <param name="proteinStartLetters"></param>
+    ''' <param name="startOffset"></param>
+    ''' <param name="bytesToRead"></param>
+    ''' <returns>The number of lines read</returns>
+    ''' <remarks></remarks>
+    Private Function AutoDetermineProteinNameSpannerCharLength(
+      fiFastaFile As FileInfo,
+      intTerminatorSize As Integer,
+      proteinStartLetters As IDictionary(Of String, Integer),
+      startOffset As Int64,
+      bytesToRead As Int64) As Int64
+
+        Dim linesRead = 0L
+
+        Try
+            Dim previousProteinLength = 0
+            Dim previousProteinName = String.Empty
+
+            If startOffset >= fiFastaFile.Length Then
+                Console.WriteLine("Ignoring byte offset of " & startOffset &
+                                  " in AutoDetermineProteinNameSpannerCharLength since past the end of the file " &
+                                  "(" & fiFastaFile.Length & " bytes")
+                Return 0
+            End If
+
+            Dim bytesRead As Int64 = 0
+
+            Dim firstLineDiscarded As Boolean
+            If startOffset = 0 Then
+                firstLineDiscarded = True
+            End If
+
+            Using fsInstream = New FileStream(fiFastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+                fsInstream.Position = startOffset
+
+                Using srFastaInFile = New StreamReader(fsInstream)
+
+                    Do While Not srFastaInFile.EndOfStream
+
+                        Dim strLineIn = srFastaInFile.ReadLine()
+                        bytesRead += intTerminatorSize
+                        linesRead += 1
+
+                        If String.IsNullOrEmpty(strLineIn) Then
+                            Continue Do
+                        End If
+
+                        bytesRead += strLineIn.Length
+                        If Not firstLineDiscarded Then
+                            ' We can't trust that this was a full line of text; skip it
+                            firstLineDiscarded = True
+                            Continue Do
+                        End If
+
+                        If bytesRead > bytesToRead Then
+                            Exit Do
+                        End If
+
+                        If Not strLineIn.Chars(0) = (mProteinLineStartChar) Then
+                            Continue Do
+                        End If
+
+                        ' Make sure the protein name and description are valid
+                        ' Find the first space and/or tab
+                        Dim intSpaceIndex = GetBestSpaceIndex(strLineIn)
+                        Dim strProteinName As String
+
+                        If intSpaceIndex > 1 Then
+                            strProteinName = strLineIn.Substring(1, intSpaceIndex - 1)
+                        Else
+                            ' Line does not contain a description
+                            If intSpaceIndex <= 0 Then
+                                If strLineIn.Trim.Length <= 1 Then
+                                    Continue Do
+                                Else
+                                    ' The line contains a protein name, but not a description
+                                    strProteinName = strLineIn.Substring(1)
+                                End If
+                            Else
+                                ' Space or tab found directly after the > symbol
+                                Continue Do
+                            End If
+                        End If
+
+                        If previousProteinLength = 0 Then
+                            previousProteinName = String.Copy(strProteinName)
+                            previousProteinLength = previousProteinName.Length
+                            Continue Do
+                        End If
+
+                        Dim currentNameLength = strProteinName.Length
+                        Dim charIndex = 0
+
+                        While charIndex < previousProteinLength
+                            If charIndex >= currentNameLength Then
+                                Exit While
+                            End If
+
+                            If previousProteinName(charIndex) <> strProteinName.Chars(charIndex) Then
+                                ' Difference found; add/update the dictionary
+                                Exit While
+                            End If
+
+                            charIndex += 1
+                        End While
+
+                        Dim charsInCommon = charIndex
+                        If charsInCommon > 0 Then
+                            Dim baseName As String = previousProteinName.Substring(0, charsInCommon)
+                            Dim matchCount = 0
+
+                            If proteinStartLetters.TryGetValue(baseName, matchCount) Then
+                                proteinStartLetters(baseName) = matchCount + 1
+                            Else
+                                proteinStartLetters.Add(baseName, 1)
+                            End If
+                        End If
+
+                    Loop
+
+                End Using
+
+            End Using
+
+        Catch ex As Exception
+            If MyBase.ShowMessages Then
+                ShowErrorMessage("Error in AutoDetermineProteinNameSpannerCharLength:" & ex.Message)
+            Else
+                Throw New Exception("Error in AutoDetermineProteinNameSpannerCharLength", ex)
+            End If
+        End Try
+
+        Return linesRead
+
+    End Function
+
     Private Function AutoFixProteinNameAndDescription(
-       strProteinName As String,
+       ByRef strProteinName As String,
        ByRef strProteinDescription As String,
        reProteinNameTruncation As udtProteinNameTruncationRegex) As String
 
@@ -1584,11 +1832,11 @@ Public Class clsValidateFastaFile
         Return CStr(chCharArray)
     End Function
 
-    Protected Shadows Sub AbortProcessingNow() Implements IValidateFastaFile.AbortProcessingNow
+    Private Shadows Sub AbortProcessingNow() Implements IValidateFastaFile.AbortProcessingNow
         MyBase.AbortProcessingNow()
     End Sub
 
-    Protected Sub ClearAllRules() Implements IValidateFastaFile.ClearAllRules
+    Private Sub ClearAllRules() Implements IValidateFastaFile.ClearAllRules
         Me.ClearRules(IValidateFastaFile.RuleTypes.HeaderLine)
         Me.ClearRules(IValidateFastaFile.RuleTypes.ProteinDescription)
         Me.ClearRules(IValidateFastaFile.RuleTypes.ProteinName)
@@ -1597,7 +1845,7 @@ Public Class clsValidateFastaFile
         mMasterCustomRuleID = CUSTOM_RULE_ID_START
     End Sub
 
-    Protected Sub ClearRules(ByVal ruleType As IValidateFastaFile.RuleTypes) Implements IValidateFastaFile.ClearRules
+    Private Sub ClearRules(ByVal ruleType As IValidateFastaFile.RuleTypes) Implements IValidateFastaFile.ClearRules
         Select Case ruleType
             Case IValidateFastaFile.RuleTypes.HeaderLine
                 Me.ClearRulesDataStructure(mHeaderLineRules)
@@ -1614,7 +1862,7 @@ Public Class clsValidateFastaFile
         ReDim udtRules(-1)
     End Sub
 
-    Public Function ComputeProteinHash(ByRef sbResidues As Text.StringBuilder, ByVal blnConsolidateDupsIgnoreILDiff As Boolean) As String
+    Public Function ComputeProteinHash(sbResidues As StringBuilder, blnConsolidateDupsIgnoreILDiff As Boolean) As String
 
         Static objHashGenerator As clsHashGenerator
 
@@ -1672,17 +1920,17 @@ Public Class clsValidateFastaFile
     ''' <param name="udtProteinSeqHashInfo"></param>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Protected Function CorrectForDuplicateProteinSeqsInFasta(
-     ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
-     ByVal blnConsolidateDupsIgnoreILDiff As Boolean,
-     ByVal strFixedFastaFilePath As String,
-     ByVal intProteinSequenceHashCount As Integer,
-     ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType) As Boolean
+    Private Function CorrectForDuplicateProteinSeqsInFasta(
+      blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
+      blnConsolidateDupsIgnoreILDiff As Boolean,
+      strFixedFastaFilePath As String,
+      intProteinSequenceHashCount As Integer,
+      udtProteinSeqHashInfo() As clsProteinHashInfo) As Boolean
 
         Dim fsInFile As Stream
         Dim swConsolidatedFastaOut As StreamWriter = Nothing
 
-        Dim lngBytesRead As Long
+        Dim lngBytesRead As Int64
         Dim intTerminatorSize As Integer
         Dim sngPercentComplete As Single
         Dim intLineCount As Integer
@@ -1692,20 +1940,20 @@ Public Class clsValidateFastaFile
 
         Dim strCachedProteinName As String = String.Empty
         Dim strCachedProteinDescription As String = String.Empty
-        Dim sbCachedProteinResidueLines = New Text.StringBuilder(250)
-        Dim sbCachedProteinResidues = New Text.StringBuilder(250)
+        Dim sbCachedProteinResidueLines = New StringBuilder(250)
+        Dim sbCachedProteinResidues = New StringBuilder(250)
 
         ' This list contains the protein names that we will keep, the hash values are the index values pointing into udtProteinSeqHashInfo
         ' If blnConsolidateDuplicateProteinSeqsInFasta=False then this will contain all protein names
         ' If blnConsolidateDuplicateProteinSeqsInFasta=True then we only keep the first name found for a given sequence
-        Dim lstProteinNameFirst As Dictionary(Of String, Integer)
+        Dim lstProteinNameFirst As clsNestedStringDictionary(Of Integer)
 
         ' This list keeps track of the protein names that have been written out to the new fasta file
-        ' Keys are the protein names; values are the protein hash values
-        Dim lstProteinsWritten As Dictionary(Of String, String)
+        ' Keys are the protein names; values are the index of the entry in udtProteinSeqHashInf()
+        Dim lstProteinsWritten As clsNestedStringDictionary(Of Integer)
 
         ' This list contains the names of duplicate proteins; the hash values are the protein names of the master protein that has the same sequence
-        Dim lstDuplicateProteinList As Dictionary(Of String, String)
+        Dim lstDuplicateProteinList As clsNestedStringDictionary(Of String)
 
         Dim intDescriptionStartIndex As Integer
 
@@ -1742,6 +1990,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (rename fixed fasta to .tempfixed)", ex)
             Return False
         End Try
@@ -1764,6 +2013,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error opening " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastafilePathTemp)", ex)
             Return False
         End Try
@@ -1774,15 +2024,16 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating consolidated fasta output file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastaFilePath)", ex)
         End Try
 
         Try
             ' Populate lstProteinNameFirst with the protein names in udtProteinSeqHashInfo().ProteinNameFirst
-            lstProteinNameFirst = New Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
+            lstProteinNameFirst = New clsNestedStringDictionary(Of Integer)(True, mProteinNameSpannerCharLength)
 
             ' Populate htDuplicateProteinList with the protein names in udtProteinSeqHashInfo().AdditionalProteins 
-            lstDuplicateProteinList = New Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+            lstDuplicateProteinList = New clsNestedStringDictionary(Of String)(True, mProteinNameSpannerCharLength)
 
             For intIndex As Integer = 0 To intProteinSequenceHashCount - 1
                 With udtProteinSeqHashInfo(intIndex)
@@ -1793,7 +2044,6 @@ Public Class clsValidateFastaFile
                         ' .ProteinNameFirst is already present in lstProteinNameFirst
                         ' The fixed fasta file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
                         ' but we should increment the DuplicateNameSkipCount
-
 
                     End If
 
@@ -1824,7 +2074,9 @@ Public Class clsValidateFastaFile
                 End With
             Next intIndex
 
-            lstProteinsWritten = New Dictionary(Of String, String)
+            lstProteinsWritten = New clsNestedStringDictionary(Of Integer)(False, mProteinNameSpannerCharLength)
+
+            Dim dtLastMemoryUsageReport = DateTime.UtcNow
 
             ' Parse each line in the file
             intLineCount = 0
@@ -1840,6 +2092,11 @@ Public Class clsValidateFastaFile
 
                     sngPercentComplete = 75 + CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single) / 4
                     MyBase.UpdateProgress("Consolidating duplicate proteins to create a new FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
+
+                    If DateTime.UtcNow.Subtract(dtLastMemoryUsageReport).TotalMinutes >= 1 Then
+                        dtLastMemoryUsageReport = DateTime.UtcNow
+                        ReportMemoryUsage(lstProteinNameFirst, lstProteinsWritten, lstDuplicateProteinList)
+                    End If
                 End If
 
                 intLineCount += 1
@@ -1877,6 +2134,7 @@ Public Class clsValidateFastaFile
                         End If
                     End If
                 End If
+
             Loop
 
             If Not String.IsNullOrEmpty(strCachedProteinName) Then
@@ -1889,11 +2147,14 @@ Public Class clsValidateFastaFile
                  intLineCount, lstProteinsWritten)
             End If
 
+            ReportMemoryUsage(lstProteinNameFirst, lstProteinsWritten, lstDuplicateProteinList)
+
             blnSuccess = True
 
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing to consolidated fasta file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
+            Console.WriteLine(ex.Message)
             ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta", ex)
             Return False
         Finally
@@ -1906,6 +2167,7 @@ Public Class clsValidateFastaFile
                 File.Delete(strFixedFastaFilePathTemp)
             Catch ex As Exception
                 ' Ignore errors here
+                Console.WriteLine(ex.Message)
                 ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (closing file handles)", ex)
             End Try
         End Try
@@ -1914,7 +2176,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function ConstructFastaHeaderLine(ByRef strProteinName As String, ByRef strProteinDescription As String) As String
+    Private Function ConstructFastaHeaderLine(ByRef strProteinName As String, strProteinDescription As String) As String
 
         If strProteinName Is Nothing Then strProteinName = "????"
 
@@ -1926,7 +2188,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function ConstructStatsFilePath(ByVal strOutputFolderPath As String) As String
+    Private Function ConstructStatsFilePath(ByVal strOutputFolderPath As String) As String
 
         Dim strStatsFilePath As String = String.Empty
 
@@ -1948,8 +2210,8 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Function DetermineLineTerminatorSize(ByVal strInputFilePath As String) As Integer
-        Dim endCharType As IValidateFastaFile.eLineEndingCharacters =
-         Me.DetermineLineTerminatorType(strInputFilePath)
+
+        Dim endCharType As IValidateFastaFile.eLineEndingCharacters = Me.DetermineLineTerminatorType(strInputFilePath)
 
         Select Case endCharType
             Case IValidateFastaFile.eLineEndingCharacters.CR
@@ -2024,7 +2286,7 @@ Public Class clsValidateFastaFile
     End Function
 
     ' Unused function
-    ''Protected Function ExtractListItem(ByVal strList As String, ByVal intItem As Integer) As String
+    ''Private Function ExtractListItem(ByVal strList As String, ByVal intItem As Integer) As String
     ''    Dim strItems() As String
     ''    Dim strItem As String
 
@@ -2040,7 +2302,7 @@ Public Class clsValidateFastaFile
 
     ''End Function
 
-    Protected Function NormalizeFileLineEndings(
+    Private Function NormalizeFileLineEndings(
      ByVal pathOfFileToFix As String,
      ByVal newFileName As String,
      ByVal desiredLineEndCharacterType As IValidateFastaFile.eLineEndingCharacters) As String
@@ -2059,7 +2321,6 @@ Public Class clsValidateFastaFile
         Dim currFilePos As Long
 
         Dim sw As StreamWriter
-
 
         If endCharType <> desiredLineEndCharacterType Then
             Select Case desiredLineEndCharacterType
@@ -2124,15 +2385,15 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub EvaluateRules(
-     ByRef udtRuleDetails() As udtRuleDefinitionExtendedType,
-     ByVal strProteinName As String,
-     ByVal strTextToTest As String,
-     ByVal intTestTextOffsetInLine As Integer,
-     ByVal strEntireLine As String,
-     ByVal intContextLength As Integer)
+     udtRuleDetails() As udtRuleDefinitionExtendedType,
+     strProteinName As String,
+     strTextToTest As String,
+     intTestTextOffsetInLine As Integer,
+     strEntireLine As String,
+     intContextLength As Integer)
 
         Dim intIndex As Integer
-        Dim reMatch As Text.RegularExpressions.Match
+        Dim reMatch As Match
         Dim strExtraInfo As String
         Dim intCharIndexOfMatch As Integer
 
@@ -2169,23 +2430,21 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function ExamineProteinName(
-       strProteinName As String,
+       ByRef strProteinName As String,
        lstProteinNames As SortedSet(Of String),
-       ByRef blnSkipDuplicateProtein As Boolean,
+       <Out()> ByRef blnSkipDuplicateProtein As Boolean,
        ByRef blnProcessingDuplicateOrInvalidProtein As Boolean) As String
 
-        Dim blnDuplicateName As Boolean
-        Dim chLetterToAppend As Char
-        Dim intNumberToAppend As Integer
-        Dim strNewProteinName As String
-
-        blnDuplicateName = lstProteinNames.Contains(strProteinName)
+        Dim blnDuplicateName = lstProteinNames.Contains(strProteinName)
+        blnSkipDuplicateProtein = False
 
         If blnDuplicateName AndAlso mGenerateFixedFastaFile Then
             If mFixedFastaOptions.RenameProteinsWithDuplicateNames Then
 
-                chLetterToAppend = "b"c
-                intNumberToAppend = 0
+                Dim chLetterToAppend = "b"c
+                Dim intNumberToAppend = 0
+                Dim strNewProteinName As String
+
                 Do
                     strNewProteinName = strProteinName & "-"c & chLetterToAppend
                     If intNumberToAppend > 0 Then
@@ -2280,70 +2539,77 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function FlattenAdditionalProteinList(ByRef udtProteinSeqHashEntry As udtProteinHashInfoType, ByVal chSepChar As Char) As String
-        Return FlattenArray(udtProteinSeqHashEntry.AdditionalProteins, chSepChar)
+    Private Function FlattenAdditionalProteinList(oProteinSeqHashEntry As clsProteinHashInfo, ByVal chSepChar As Char) As String
+        Return FlattenArray(oProteinSeqHashEntry.AdditionalProteins, chSepChar)
     End Function
 
-    Private Function FlattenArray(ByRef strArray() As String) As String
-        Return FlattenArray(strArray, ControlChars.Tab)
+    Private Function FlattenArray(lstItems As IEnumerable(Of String)) As String
+        Return FlattenArray(lstItems, ControlChars.Tab)
     End Function
 
-    Private Function FlattenArray(ByRef strArray() As String, ByVal chSepChar As Char) As String
-        If strArray Is Nothing Then
+    Private Function FlattenArray(lstItems As IEnumerable(Of String), ByVal chSepChar As Char) As String
+        If lstItems Is Nothing Then
             Return String.Empty
         Else
-            Return FlattenArray(strArray, strArray.Length, chSepChar)
+            Return FlattenArray(lstItems, lstItems.Count, chSepChar)
         End If
     End Function
 
-    Private Function FlattenArray(ByRef strArray() As String, ByVal intDataCount As Integer, ByVal chSepChar As Char) As String
+    Private Function FlattenArray(lstItems As IEnumerable(Of String), ByVal intDataCount As Integer, ByVal chSepChar As Char) As String
         Dim intIndex As Integer
         Dim strResult As String
 
-        If strArray Is Nothing Then
+        If lstItems Is Nothing Then
             Return String.Empty
-        ElseIf strArray.Length = 0 OrElse intDataCount <= 0 Then
+        ElseIf lstItems.Count = 0 OrElse intDataCount <= 0 Then
             Return String.Empty
         Else
-            If intDataCount > strArray.Length Then
-                intDataCount = strArray.Length
+            If intDataCount > lstItems.Count Then
+                intDataCount = lstItems.Count
             End If
 
-            strResult = strArray(0)
+            strResult = lstItems(0)
             If strResult Is Nothing Then strResult = String.Empty
 
             For intIndex = 1 To intDataCount - 1
-                If strArray(intIndex) Is Nothing Then
+                If lstItems(intIndex) Is Nothing Then
                     strResult &= chSepChar
                 Else
-                    strResult &= chSepChar & strArray(intIndex)
+                    strResult &= chSepChar & lstItems(intIndex)
                 End If
             Next intIndex
             Return strResult
         End If
+
     End Function
 
-    Private Function FlattenArray(ByRef lstArray As List(Of String), ByVal chSepChar As Char) As String
-        Dim intIndex As Integer
-        Dim strResult As String
+    ''' <summary>
+    ''' Find the first space (or first tab) in the protein header line
+    ''' </summary>
+    ''' <param name="strHeaderLine"></param>
+    ''' <returns></returns>
+    ''' <remarks>Used for determining protein name</remarks>
+    Private Function GetBestSpaceIndex(strHeaderLine As String) As Integer
 
-        If lstArray Is Nothing Then
-            Return String.Empty
-        ElseIf lstArray.Count = 0 Then
-            Return String.Empty
-        Else
-            strResult = lstArray.Item(0)
-            If strResult Is Nothing Then strResult = String.Empty
+        Dim spaceIndex = strHeaderLine.IndexOf(" "c)
+        Dim tabIndex = strHeaderLine.IndexOf(ControlChars.Tab)
 
-            For intIndex = 1 To lstArray.Count - 1
-                If lstArray.Item(intIndex) Is Nothing Then
-                    strResult &= chSepChar
-                Else
-                    strResult &= chSepChar & lstArray.Item(intIndex)
+        If spaceIndex = 1 Then
+            ' Space found directly after the > symbol
+        ElseIf tabIndex > 0 Then
+            If tabIndex = 1 Then
+                ' Tab character found directly after the > symbol
+                spaceIndex = tabIndex
+            Else
+                ' Tab character found; does it separate the protein name and description?
+                If spaceIndex <= 0 OrElse (spaceIndex > 0 AndAlso tabIndex < spaceIndex) Then
+                    spaceIndex = tabIndex
                 End If
-            Next intIndex
-            Return strResult
+            End If
         End If
+
+        Return spaceIndex
+
     End Function
 
     Public Overrides Function GetDefaultExtensionsToParse() As String() Implements IValidateFastaFile.GetDefaultExtensionsToParse
@@ -2387,7 +2653,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function GetFileErrorTextByIndex(ByVal intFileErrorIndex As Integer, ByVal strSepChar As String) As String
+    Private Function GetFileErrorTextByIndex(ByVal intFileErrorIndex As Integer, ByVal strSepChar As String) As String
 
         Dim strProteinName As String
 
@@ -2412,7 +2678,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function GetFileErrorByIndex(ByVal intFileErrorIndex As Integer) As IValidateFastaFile.udtMsgInfoType
+    Private Function GetFileErrorByIndex(ByVal intFileErrorIndex As Integer) As IValidateFastaFile.udtMsgInfoType
 
         If mFileErrorCount <= 0 Or intFileErrorIndex < 0 Or intFileErrorIndex >= mFileErrorCount Then
             Return New IValidateFastaFile.udtMsgInfoType
@@ -2422,7 +2688,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function GetFileErrors() As IValidateFastaFile.udtMsgInfoType()
+    Private Function GetFileErrors() As IValidateFastaFile.udtMsgInfoType()
 
         Dim udtFileErrors() As IValidateFastaFile.udtMsgInfoType
 
@@ -2438,7 +2704,7 @@ Public Class clsValidateFastaFile
     End Function
 
 
-    Protected Function GetFileWarningTextByIndex(ByVal intFileWarningIndex As Integer, ByVal strSepChar As String) As String
+    Private Function GetFileWarningTextByIndex(ByVal intFileWarningIndex As Integer, ByVal strSepChar As String) As String
         Dim strProteinName As String
 
         If mFileWarningCount <= 0 Or intFileWarningIndex < 0 Or intFileWarningIndex >= mFileWarningCount Then
@@ -2463,7 +2729,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function GetFileWarningByIndex(ByVal intFileWarningIndex As Integer) As IValidateFastaFile.udtMsgInfoType
+    Private Function GetFileWarningByIndex(ByVal intFileWarningIndex As Integer) As IValidateFastaFile.udtMsgInfoType
 
         If mFileWarningCount <= 0 Or intFileWarningIndex < 0 Or intFileWarningIndex >= mFileWarningCount Then
             Return New IValidateFastaFile.udtMsgInfoType
@@ -2473,7 +2739,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function GetFileWarnings() As IValidateFastaFile.udtMsgInfoType()
+    Private Function GetFileWarnings() As IValidateFastaFile.udtMsgInfoType()
 
         Dim udtFileWarnings() As IValidateFastaFile.udtMsgInfoType
 
@@ -2486,6 +2752,10 @@ Public Class clsValidateFastaFile
 
         Return udtFileWarnings
 
+    End Function
+
+    Private Function GetProcessMemoryUsageWithTimestamp() As String
+        Return GetTimeStamp() & ControlChars.Tab & clsMemoryUsageLogger.GetProcessMemoryUsageMB.ToString("0.0") & " MB in use"
     End Function
 
     Private Function GetTimeStamp() As String
@@ -2547,6 +2817,15 @@ Public Class clsValidateFastaFile
         ResetStructures()
         mFastaFilePath = String.Empty
 
+        mMemoryUsageLogger = New clsMemoryUsageLogger(String.Empty)
+        mProcessMemoryUsageMBAtStart = clsMemoryUsageLogger.GetProcessMemoryUsageMB()
+
+        If REPORT_DETAILED_MEMORY_USAGE Then
+            ' mMemoryUsageMBAtStart = mMemoryUsageLogger.GetFreeMemoryMB()
+            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageHeader())
+            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageSummary())
+        End If
+
     End Sub
 
     Private Sub InitializeRuleDetails(
@@ -2563,10 +2842,10 @@ Public Class clsValidateFastaFile
                 Try
                     With udtRuleDetails(intIndex)
                         .RuleDefinition = udtRuleDefs(intIndex)
-                        .reRule = New Text.RegularExpressions.Regex(
+                        .reRule = New Regex(
                          .RuleDefinition.MatchRegEx,
-                         Text.RegularExpressions.RegexOptions.Singleline Or
-                         Text.RegularExpressions.RegexOptions.Compiled)
+                         RegexOptions.Singleline Or
+                         RegexOptions.Compiled)
                         .Valid = True
                     End With
                 Catch ex As Exception
@@ -2747,8 +3026,6 @@ Public Class clsValidateFastaFile
                         End If
                     End If
 
-
-
                     ' Read the custom rules
                     ' If all of the sections are missing, then use the default rules
                     blnCustomRulesLoaded = False
@@ -2915,7 +3192,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Function LookupMessageType(ByVal EntryType As IValidateFastaFile.eMsgTypeConstants) As String _
+    Private Function LookupMessageType(ByVal EntryType As IValidateFastaFile.eMsgTypeConstants) As String _
      Implements IValidateFastaFile.LookupMessageTypeString
         Select Case EntryType
             Case IValidateFastaFile.eMsgTypeConstants.ErrorMsg
@@ -2927,7 +3204,7 @@ Public Class clsValidateFastaFile
         End Select
     End Function
 
-    Protected Function SimpleProcessFile(ByVal strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
+    Private Function SimpleProcessFile(ByVal strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
         ' Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
         Return Me.ProcessFile(strInputFilePath, Nothing, Nothing, False)
     End Function
@@ -3019,7 +3296,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Sub PrependExtraTextToProteinDescription(ByVal strExtraProteinNameText As String, ByRef strProteinDescription As String)
+    Private Sub PrependExtraTextToProteinDescription(strExtraProteinNameText As String, ByRef strProteinDescription As String)
         Static chExtraCharsToTrim As Char() = New Char() {"|"c, " "c}
 
         If Not strExtraProteinNameText Is Nothing AndAlso strExtraProteinNameText.Length > 0 Then
@@ -3040,17 +3317,16 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-
     Private Sub ProcessResiduesForPreviousProtein(
-      ByVal strProteinName As String,
-      ByRef sbCurrentResidues As Text.StringBuilder,
-      ByRef lstProteinSequenceHashes As Dictionary(Of String, Integer),
+      strProteinName As String,
+      sbCurrentResidues As StringBuilder,
+      lstProteinSequenceHashes As clsNestedStringDictionary(Of Integer),
       ByRef intProteinSequenceHashCount As Integer,
-      ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType,
-      ByVal blnConsolidateDupsIgnoreILDiff As Boolean,
-      ByRef swFixedFastaOut As StreamWriter,
-      ByVal intCurrentValidResidueLineLengthMax As Integer,
-      ByRef swProteinSequenceHashBasic As StreamWriter)
+      ByRef udtProteinSeqHashInfo() As clsProteinHashInfo,
+      blnConsolidateDupsIgnoreILDiff As Boolean,
+      swFixedFastaOut As StreamWriter,
+      intCurrentValidResidueLineLengthMax As Integer,
+      swProteinSequenceHashBasic As StreamWriter)
 
         Dim intWrapLength As Integer
         Dim intResidueCount As Integer
@@ -3101,13 +3377,13 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ProcessSequenceHashInfo(
-      ByVal strProteinName As String,
-      ByRef sbCurrentResidues As Text.StringBuilder,
-      ByRef lstProteinSequenceHashes As Dictionary(Of String, Integer),
+      strProteinName As String,
+      sbCurrentResidues As StringBuilder,
+      lstProteinSequenceHashes As clsNestedStringDictionary(Of Integer),
       ByRef intProteinSequenceHashCount As Integer,
-      ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType,
-      ByVal blnConsolidateDupsIgnoreILDiff As Boolean,
-      ByRef swProteinSequenceHashBasic As StreamWriter)
+      ByRef udtProteinSeqHashInfo() As clsProteinHashInfo,
+      blnConsolidateDupsIgnoreILDiff As Boolean,
+      swProteinSequenceHashBasic As StreamWriter)
 
         Dim strComputedHash As String
         Dim intSeqHashLookupPointer As Integer
@@ -3129,15 +3405,13 @@ Public Class clsValidateFastaFile
                     If lstProteinSequenceHashes.TryGetValue(strComputedHash, intSeqHashLookupPointer) Then
 
                         ' Value exists; update the entry in udtProteinSeqHashInfo
-                        With udtProteinSeqHashInfo(intSeqHashLookupPointer)
 
-                            If .ProteinNameFirst = strProteinName Then
-                                .DuplicateProteinNameCount += 1
-                            Else
-                                .AdditionalProteins.Add(String.Copy(strProteinName))
-                            End If
+                        If udtProteinSeqHashInfo(intSeqHashLookupPointer).ProteinNameFirst = strProteinName Then
+                            udtProteinSeqHashInfo(intSeqHashLookupPointer).DuplicateProteinNameCount += 1
+                        Else
+                            udtProteinSeqHashInfo(intSeqHashLookupPointer).AddAdditionalProtein(strProteinName)
+                        End If
 
-                        End With
                     Else
                         ' Value not yet present; add it
 
@@ -3151,13 +3425,8 @@ Public Class clsValidateFastaFile
 
                         End If
 
-                        With udtProteinSeqHashInfo(intProteinSequenceHashCount)
-                            .ProteinNameFirst = String.Copy(strProteinName)
-                            .AdditionalProteins = New List(Of String)
-                            .SequenceHash = String.Copy(strComputedHash)
-                            .SequenceLength = sbCurrentResidues.Length
-                            .SequenceStart = sbCurrentResidues.ToString.Substring(0, Math.Min(sbCurrentResidues.Length, 20))
-                        End With
+                        Dim newProteinHashInfo = New clsProteinHashInfo(strComputedHash, sbCurrentResidues, strProteinName)
+                        udtProteinSeqHashInfo(intProteinSequenceHashCount) = newProteinHashInfo
 
                         lstProteinSequenceHashes.Add(strComputedHash, intProteinSequenceHashCount)
                         intProteinSequenceHashCount += 1
@@ -3168,7 +3437,9 @@ Public Class clsValidateFastaFile
             End If
 
         Catch ex As Exception
-            'Error caught; pass it up to the calling function
+            ' Error caught; pass it up to the calling function
+            Console.WriteLine(ex.Message)
+            ShowExceptionStackTrace("ProcessSequenceHashInfo", ex)
             Throw
         End Try
 
@@ -3176,13 +3447,13 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function ReadRulesFromParameterFile(
-     ByRef objSettingsFile As XmlSettingsFileAccessor,
-     ByVal strSectionName As String,
+     objSettingsFile As XmlSettingsFileAccessor,
+     strSectionName As String,
      ByRef udtRules() As udtRuleDefinitionType) As Boolean
         ' Returns True if the section named strSectionName is present and if it contains an item with keyName = "RuleCount"
         ' Note: even if RuleCount = 0, this function will return True
 
-        Dim blnSuccess As Boolean = False
+        Dim blnSuccess = False
         Dim intRuleCount As Integer
         Dim intRuleNumber As Integer
 
@@ -3225,22 +3496,22 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub RecordFastaFileError(
-     ByVal intLineNumber As Integer,
-     ByVal intCharIndex As Integer,
-     ByVal strProteinName As String,
-     ByVal intErrorMessageCode As Integer)
+     intLineNumber As Integer,
+     intCharIndex As Integer,
+     strProteinName As String,
+     intErrorMessageCode As Integer)
 
         RecordFastaFileError(intLineNumber, intCharIndex, strProteinName,
          intErrorMessageCode, String.Empty, String.Empty)
     End Sub
 
     Private Sub RecordFastaFileError(
-     ByVal intLineNumber As Integer,
-     ByVal intCharIndex As Integer,
-     ByVal strProteinName As String,
-     ByVal intErrorMessageCode As Integer,
-     ByVal strExtraInfo As String,
-     ByVal strContext As String)
+     intLineNumber As Integer,
+     intCharIndex As Integer,
+     strProteinName As String,
+     intErrorMessageCode As Integer,
+     strExtraInfo As String,
+     strContext As String)
         RecordFastaFileProblemWork(
          mFileErrorStats,
          mFileErrorCount,
@@ -3253,10 +3524,10 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub RecordFastaFileWarning(
-     ByVal intLineNumber As Integer,
-     ByVal intCharIndex As Integer,
-     ByVal strProteinName As String,
-     ByVal intWarningMessageCode As Integer)
+     intLineNumber As Integer,
+     intCharIndex As Integer,
+     strProteinName As String,
+     intWarningMessageCode As Integer)
         RecordFastaFileWarning(
          intLineNumber,
          intCharIndex,
@@ -3266,11 +3537,11 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub RecordFastaFileWarning(
-     ByVal intLineNumber As Integer,
-     ByVal intCharIndex As Integer,
-     ByVal strProteinName As String,
-     ByVal intWarningMessageCode As Integer,
-     ByVal strExtraInfo As String, ByVal strContext As String)
+     intLineNumber As Integer,
+     intCharIndex As Integer,
+     strProteinName As String,
+     intWarningMessageCode As Integer,
+     strExtraInfo As String, ByVal strContext As String)
 
         RecordFastaFileProblemWork(mFileWarningStats, mFileWarningCount,
          mFileWarnings, intLineNumber, intCharIndex, strProteinName,
@@ -3281,12 +3552,12 @@ Public Class clsValidateFastaFile
      ByRef udtItemSummaryIndexed As udtItemSummaryIndexedType,
      ByRef intItemCountSpecified As Integer,
      ByRef udtItems() As IValidateFastaFile.udtMsgInfoType,
-     ByVal intLineNumber As Integer,
-     ByVal intCharIndex As Integer,
-     ByVal strProteinName As String,
-     ByVal intMessageCode As Integer,
-     ByVal strExtraInfo As String,
-     ByVal strContext As String)
+     intLineNumber As Integer,
+     intCharIndex As Integer,
+     strProteinName As String,
+     intMessageCode As Integer,
+     strExtraInfo As String,
+     strContext As String)
 
         ' Note that intCharIndex is the index in the source string at which the error occurred
         ' When storing in .ColNumber, we add 1 to intCharIndex
@@ -3372,7 +3643,7 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Private Sub ReplaceXMLCodesWithText(ByVal strParameterFilePath As String)
+    Private Sub ReplaceXMLCodesWithText(strParameterFilePath As String)
 
         Dim strOutputFilePath As String
         Dim strTimeStamp As String
@@ -3424,9 +3695,47 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Protected Sub ReportResults(
-     ByVal outputFolderPath As String,
-     ByVal outputToStatsFile As Boolean)
+    Private Sub ReportMemoryUsage()
+
+        If REPORT_DETAILED_MEMORY_USAGE Then
+            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageSummary())
+        Else
+            Console.WriteLine(MEM_USAGE_PREFIX & GetProcessMemoryUsageWithTimestamp())
+        End If
+
+    End Sub
+
+    Private Sub ReportMemoryUsage(
+      lstProteinSequenceHashes As clsNestedStringDictionary(Of Integer),
+      lstProteinNames As SortedSet(Of String))
+
+        Console.WriteLine()
+        ReportMemoryUsage()
+        Console.WriteLine(String.Format(" lstProteinSequenceHashes: {0,12} records", lstProteinSequenceHashes.Count.ToString("#,##0")))
+        Console.WriteLine(String.Format("   {0}", lstProteinSequenceHashes.GetSizeSummary()))
+        Console.WriteLine(String.Format(" lstProteinNames:          {0,12} records", lstProteinNames.Count.ToString("#,##0")))
+        
+    End Sub
+
+    Private Sub ReportMemoryUsage(
+       lstProteinNameFirst As clsNestedStringDictionary(Of Integer),
+       lstProteinsWritten As clsNestedStringDictionary(Of Integer),
+       lstDuplicateProteinList As clsNestedStringDictionary(Of String))
+
+        Console.WriteLine()
+        ReportMemoryUsage()
+        Console.WriteLine(String.Format(" lstProteinNameFirst:      {0,12} records", lstProteinNameFirst.Count.ToString("#,##0")))
+        Console.WriteLine(String.Format("   {0}", lstProteinNameFirst.GetSizeSummary()))
+        Console.WriteLine(String.Format(" lstProteinsWritten:       {0,12} records", lstProteinsWritten.Count.ToString("#,##0")))
+        Console.WriteLine(String.Format("   {0}", lstProteinsWritten.GetSizeSummary()))
+        Console.WriteLine(String.Format(" lstDuplicateProteinList:  {0,12} records", lstDuplicateProteinList.Count.ToString("#,##0")))
+        Console.WriteLine(String.Format("   {0}", lstDuplicateProteinList.GetSizeSummary()))
+
+    End Sub
+
+    Private Sub ReportResults(
+     outputFolderPath As String,
+     outputToStatsFile As Boolean)
 
         Dim srOutFile As StreamWriter = Nothing
 
@@ -3640,14 +3949,14 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ReportResultAddEntry(
-     ByVal strSourceFile As String,
-     ByVal EntryType As IValidateFastaFile.eMsgTypeConstants,
-     ByVal strDescriptionOrProteinName As String,
-     ByVal strInfo As String,
-     ByVal strContext As String,
-     ByVal blnOutputToStatsFile As Boolean,
-     ByVal srOutFile As StreamWriter,
-     ByVal strSepChar As String)
+      strSourceFile As String,
+      EntryType As IValidateFastaFile.eMsgTypeConstants,
+      strDescriptionOrProteinName As String,
+      strInfo As String,
+      strContext As String,
+      blnOutputToStatsFile As Boolean,
+      srOutFile As StreamWriter,
+      strSepChar As String)
 
         ReportResultAddEntry(
          strSourceFile,
@@ -3660,16 +3969,16 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ReportResultAddEntry(
-     ByVal strSourceFile As String,
-     ByVal EntryType As IValidateFastaFile.eMsgTypeConstants,
-     ByVal intLineNumber As Integer,
-     ByVal intColNumber As Integer,
-     ByVal strDescriptionOrProteinName As String,
-     ByVal strInfo As String,
-     ByVal strContext As String,
-     ByVal blnOutputToStatsFile As Boolean,
-     ByVal srOutFile As StreamWriter,
-     ByVal strSepChar As String)
+      strSourceFile As String,
+      EntryType As IValidateFastaFile.eMsgTypeConstants,
+      intLineNumber As Integer,
+      intColNumber As Integer,
+      strDescriptionOrProteinName As String,
+      strInfo As String,
+      strContext As String,
+      blnOutputToStatsFile As Boolean,
+      srOutFile As StreamWriter,
+      strSepChar As String)
 
         Dim strMessage As String
 
@@ -3733,7 +4042,7 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Private Sub SaveRulesToParameterFile(ByRef objSettingsFile As XmlSettingsFileAccessor, ByVal strSectionName As String, ByRef udtRules() As udtRuleDefinitionType)
+    Private Sub SaveRulesToParameterFile(objSettingsFile As XmlSettingsFileAccessor, strSectionName As String, udtRules() As udtRuleDefinitionType)
 
         Dim intRuleNumber As Integer
         Dim strRuleBase As String
@@ -3856,7 +4165,10 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function SearchRulesForID(ByRef udtRules() As udtRuleDefinitionType, ByVal intErrorMessageCode As Integer, ByRef strMessage As String) As Boolean
+    Private Function SearchRulesForID(
+      udtRules() As udtRuleDefinitionType,
+      intErrorMessageCode As Integer,
+      <Out()> ByRef strMessage As String) As Boolean
 
         Dim intIndex As Integer
         Dim blnMatchFound As Boolean = False
@@ -3871,6 +4183,7 @@ Public Class clsValidateFastaFile
             Next intIndex
         End If
 
+        strMessage = Nothing
         Return blnMatchFound
 
     End Function
@@ -3938,13 +4251,13 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Protected Sub SetLocalErrorCode(ByVal eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes)
+    Private Sub SetLocalErrorCode(ByVal eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes)
         SetLocalErrorCode(eNewErrorCode, False)
     End Sub
 
-    Protected Sub SetLocalErrorCode(
-     ByVal eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes,
-     ByVal blnLeaveExistingErrorCodeUnchanged As Boolean)
+    Private Sub SetLocalErrorCode(
+      eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes,
+      blnLeaveExistingErrorCodeUnchanged As Boolean)
 
         If blnLeaveExistingErrorCodeUnchanged AndAlso mLocalErrorCode <> IValidateFastaFile.eValidateFastaFileErrorCodes.NoError Then
             ' An error code is already defined; do not change it
@@ -3962,12 +4275,12 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Protected Sub SetRule(
-     ByVal ruleType As IValidateFastaFile.RuleTypes,
-     ByVal regexToMatch As String,
-     ByVal doesMatchIndicateProblem As Boolean,
-     ByVal problemReturnMessage As String,
-     ByVal severityLevel As Short) Implements IValidateFastaFile.SetRule
+    Private Sub SetRule(
+      ruleType As IValidateFastaFile.RuleTypes,
+      regexToMatch As String,
+      doesMatchIndicateProblem As Boolean,
+      problemReturnMessage As String,
+      severityLevel As Short) Implements IValidateFastaFile.SetRule
 
         Me.SetRule(
          ruleType, regexToMatch,
@@ -3977,13 +4290,13 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Protected Sub SetRule(
-     ByVal ruleType As IValidateFastaFile.RuleTypes,
-     ByVal regexToMatch As String,
-     ByVal doesMatchIndicateProblem As Boolean,
-     ByVal problemReturnMessage As String,
-     ByVal severityLevel As Short,
-     ByVal displayMatchAsExtraInfo As Boolean) Implements IValidateFastaFile.SetRule
+    Private Sub SetRule(
+      ruleType As IValidateFastaFile.RuleTypes,
+      regexToMatch As String,
+      doesMatchIndicateProblem As Boolean,
+      problemReturnMessage As String,
+      severityLevel As Short,
+      displayMatchAsExtraInfo As Boolean) Implements IValidateFastaFile.SetRule
 
         Select Case ruleType
             Case IValidateFastaFile.RuleTypes.HeaderLine
@@ -3998,7 +4311,13 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Private Sub SetRule(ByRef udtRules() As udtRuleDefinitionType, ByVal strMatchRegEx As String, ByVal blnMatchIndicatesProblem As Boolean, ByVal strMessageWhenProblem As String, ByVal bytSeverity As Short, ByVal blnDisplayMatchAsExtraInfo As Boolean)
+    Private Sub SetRule(
+       ByRef udtRules() As udtRuleDefinitionType,
+       strMatchRegEx As String,
+       blnMatchIndicatesProblem As Boolean,
+       strMessageWhenProblem As String,
+       bytSeverity As Short,
+       blnDisplayMatchAsExtraInfo As Boolean)
 
         If udtRules Is Nothing OrElse udtRules.Length = 0 Then
             ReDim udtRules(0)
@@ -4020,46 +4339,30 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ShowExceptionStackTrace(callingFunction As String, ex As Exception)
+
+        Console.WriteLine()
+
+        Dim stackTraceInfo = clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex)
         If (String.IsNullOrEmpty(callingFunction)) Then
-            Console.WriteLine("Stack trace for exception in " & callingFunction)
+            Console.WriteLine(stackTraceInfo)
         Else
-            Console.WriteLine("Stack trace for exception")
+            Console.WriteLine(callingFunction & ": " & stackTraceInfo)
         End If
 
-        Console.WriteLine(ex.StackTrace.ToString())
     End Sub
 
-    Protected Sub SplitFastaProteinHeaderLine(
-      ByRef strHeaderLine As String,
+    Private Sub SplitFastaProteinHeaderLine(
+      strHeaderLine As String,
       <Out> ByRef strProteinName As String,
       <Out> ByRef strProteinDescription As String,
       <Out> ByRef intDescriptionStartIndex As Integer)
 
-        Dim intSpaceIndex As Integer
-        Dim intTabIndex As Integer
-
-        strProteinName = String.Empty
         strProteinDescription = String.Empty
         intDescriptionStartIndex = 0
 
         ' Make sure the protein name and description are valid
         ' Find the first space and/or tab
-        intSpaceIndex = strHeaderLine.IndexOf(" "c)
-        intTabIndex = strHeaderLine.IndexOf(ControlChars.Tab)
-
-        If intSpaceIndex = 1 Then
-            ' Space found directly after the > symbol
-        ElseIf intTabIndex > 0 Then
-            If intTabIndex = 1 Then
-                ' Tab character found directly after the > symbol
-                intSpaceIndex = intTabIndex
-            Else
-                ' Tab character found; does it separate the protein name and description?
-                If intSpaceIndex <= 0 OrElse (intSpaceIndex > 0 AndAlso intTabIndex < intSpaceIndex) Then
-                    intSpaceIndex = intTabIndex
-                End If
-            End If
-        End If
+        Dim intSpaceIndex = GetBestSpaceIndex(strHeaderLine)
 
         ' At this point, intSpaceIndex will contain the location of the space or tab separating the protein name and description
         ' However, if the space or tab is directly after the > sign, then we cannot continue (if this is the case, then intSpaceIndex will be 1)
@@ -4085,8 +4388,8 @@ Public Class clsValidateFastaFile
         End If
 
     End Sub
-
-    Protected Function VerifyLinefeedAtEOF(ByVal strInputFilePath As String, ByVal blnAddCrLfIfMissing As Boolean) As Boolean
+   
+    Private Function VerifyLinefeedAtEOF(ByVal strInputFilePath As String, ByVal blnAddCrLfIfMissing As Boolean) As Boolean
         Dim intByte As Integer
         Dim bytOneByte As Byte
 
@@ -4134,40 +4437,40 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Protected Sub WriteCachedProtein(ByVal strCachedProteinName As String, ByVal strCachedProteinDescription As String,
-      ByRef swConsolidatedFastaOut As StreamWriter,
-      ByRef udtProteinSeqHashInfo() As udtProteinHashInfoType,
-      ByRef sbCachedProteinResidueLines As Text.StringBuilder,
-      ByRef sbCachedProteinResidues As Text.StringBuilder,
-      ByVal blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
-      ByVal blnConsolidateDupsIgnoreILDiff As Boolean,
-      ByRef lstProteinNameFirst As Dictionary(Of String, Integer),
-      ByRef lstDuplicateProteinList As Dictionary(Of String, String),
-      ByVal intLineCount As Integer,
-      ByRef lstProteinsWritten As Dictionary(Of String, String))
+    Private Sub WriteCachedProtein(
+      strCachedProteinName As String,
+      strCachedProteinDescription As String,
+      swConsolidatedFastaOut As StreamWriter,
+      udtProteinSeqHashInfo() As clsProteinHashInfo,
+      sbCachedProteinResidueLines As StringBuilder,
+      sbCachedProteinResidues As StringBuilder,
+      blnConsolidateDuplicateProteinSeqsInFasta As Boolean,
+      blnConsolidateDupsIgnoreILDiff As Boolean,
+      lstProteinNameFirst As clsNestedStringDictionary(Of Integer),
+      lstDuplicateProteinList As clsNestedStringDictionary(Of String),
+      intLineCount As Integer,
+      lstProteinsWritten As clsNestedStringDictionary(Of Integer))
 
-        Static reAdditionalProtein As Regex = New Text.RegularExpressions.Regex("(.+)-[a-z]\d*", Text.RegularExpressions.RegexOptions.Compiled)
-
-        Dim strMasterProteinHash As String = String.Empty
+        Static reAdditionalProtein As Regex = New Regex("(.+)-[a-z]\d*", RegexOptions.Compiled)
 
         Dim strMasterProteinName As String = String.Empty
         Dim strMasterProteinInfo As String
 
         Dim strProteinHash As String
         Dim strLineOut As String = String.Empty
-        Dim reMatch As Text.RegularExpressions.Match
+        Dim reMatch As Match
 
         Dim blnKeepProtein As Boolean
         Dim blnSkipDupProtein As Boolean
 
-        Dim lstAdditionalProteinNames As List(Of String)
-        lstAdditionalProteinNames = New List(Of String)
+        Dim lstAdditionalProteinNames = New List(Of String)
 
         Dim intSeqIndex As Integer
         If lstProteinNameFirst.TryGetValue(strCachedProteinName, intSeqIndex) Then
             ' strCachedProteinName was found in lstProteinNameFirst
 
-            If lstProteinsWritten.TryGetValue(strCachedProteinName, strMasterProteinHash) Then
+            Dim cachedSeqIndex As Integer
+            If lstProteinsWritten.TryGetValue(strCachedProteinName, cachedSeqIndex) Then
                 If mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence Then
                     ' Keep this protein if its sequence hash differs from the first protein with this name
                     strProteinHash = ComputeProteinHash(sbCachedProteinResidues, blnConsolidateDupsIgnoreILDiff)
@@ -4182,7 +4485,7 @@ Public Class clsValidateFastaFile
                 End If
             Else
                 blnKeepProtein = True
-                lstProteinsWritten.Add(strCachedProteinName, udtProteinSeqHashInfo(intSeqIndex).SequenceHash)
+                lstProteinsWritten.Add(strCachedProteinName, intSeqIndex)
             End If
 
 

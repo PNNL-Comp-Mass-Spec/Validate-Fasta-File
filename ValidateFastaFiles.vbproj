@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectType>Local</ProjectType>
@@ -52,7 +52,8 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\</OutputPath>
-    <DocumentationFile>ValidateFastaFile.xml</DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <BaseAddress>285212672</BaseAddress>
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
@@ -73,8 +74,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <OutputPath>bin\</OutputPath>
-    <DocumentationFile>ValidateFastaFile.xml</DocumentationFile>
+    <OutputPath>bin\Release\</OutputPath>
+    <DocumentationFile>
+    </DocumentationFile>
     <BaseAddress>285212672</BaseAddress>
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
@@ -82,14 +84,14 @@
     </DefineConstants>
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <DebugSymbols>false</DebugSymbols>
+    <DebugSymbols>true</DebugSymbols>
     <Optimize>true</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>1</WarningLevel>
     <NoWarn>42353,42354,42355</NoWarn>
-    <DebugType>none</DebugType>
+    <DebugType>pdbonly</DebugType>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
@@ -117,6 +119,8 @@
     <Compile Include="clsHashGenerator.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsMemoryUsageLogger.vb" />
+    <Compile Include="clsNestedStringDictionary.vb" />
     <Compile Include="clsParseCommandLine.vb">
       <SubType>Code</SubType>
     </Compile>
@@ -124,6 +128,8 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsProcessFilesOrFoldersBase.vb" />
+    <Compile Include="clsProteinHashInfo.vb" />
+    <Compile Include="clsStackTraceFormatter.vb" />
     <Compile Include="clsValidateFastaFile.vb">
       <SubType>Code</SubType>
     </Compile>
