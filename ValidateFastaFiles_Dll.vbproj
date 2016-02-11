@@ -94,6 +94,9 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FlexibleFileSortUtility">
+      <HintPath>Lib\FlexibleFileSortUtility.dll</HintPath>
+    </Reference>
     <Reference Include="System">
       <Name>System</Name>
     </Reference>
@@ -120,6 +123,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsMemoryUsageLogger.vb" />
+    <Compile Include="clsNestedList.vb" />
     <Compile Include="clsNestedStringDictionary.vb" />
     <Compile Include="clsParseCommandLine.vb">
       <SubType>Code</SubType>

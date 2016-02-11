@@ -1,7 +1,7 @@
 ﻿Imports System.Runtime.InteropServices
 
 ''' <summary>
-''' This class implements of dictionary where keys are strings and values are type T (for example string or integer)
+''' This class implements a dictionary where keys are strings and values are type T (for example string or integer)
 ''' Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries
 ''' based on the first few letters of the keys of an added key/value pair
 ''' </summary>

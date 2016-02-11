@@ -8,7 +8,7 @@
     ''' Additional protein names
     ''' </summary>
     ''' <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
-    Private mAdditionalProteins As SortedSet(Of String)
+    Private ReadOnly mAdditionalProteins As SortedSet(Of String)
 
     ''' <summary>
     ''' SHA-1 has of the protein sequence

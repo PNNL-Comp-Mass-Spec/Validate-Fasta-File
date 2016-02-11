@@ -27,7 +27,7 @@ Imports System.Runtime.CompilerServices
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "February 3, 2016"
+    Public Const PROGRAM_DATE As String = "February 10, 2016"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -50,6 +50,7 @@ Module modMain
     Private mAllowDash As Boolean
 
     Private mSaveBasicProteinHashInfoFile As Boolean
+    Private mProteinHashFilePath As String
 
     Private mCreateModelXMLParameterFile As Boolean
 
@@ -92,6 +93,7 @@ Module modMain
         mAllowDash = False
 
         mSaveBasicProteinHashInfoFile = False
+        mProteinHashFilePath = String.Empty
 
         mRecurseFolders = False
         mRecurseFoldersMaxLevels = 0
@@ -154,6 +156,9 @@ Module modMain
 
                     ' Update the rules based on the options that were set above
                     .SetDefaultRules()
+
+                    mValidateFastaFile.ExistingProteinHashFile = mProteinHashFilePath
+
                 End With
 
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
@@ -220,7 +225,9 @@ Module modMain
             "I", "O", "P", "C",
             "SkipDupeNameCheck", "SkipDupeSeqCheck",
             "F", "R", "D", "L", "V",
-            "KeepSameName", "AllowDash", "AllowAsterisk", "B", "X", "S", "Q"}
+            "KeepSameName", "AllowDash", "AllowAsterisk",
+            "B", "HashFile",
+            "X", "S", "Q"}
         Dim intValue As Integer
 
         Try
@@ -256,6 +263,8 @@ Module modMain
                     If .IsParameterPresent("AllowDash") Then mAllowDash = True
 
                     If .IsParameterPresent("B") Then mSaveBasicProteinHashInfoFile = True
+                    If .RetrieveValueForParameter("HashFile", strValue) Then mProteinHashFilePath = strValue
+
                     If .IsParameterPresent("X") Then mCreateModelXMLParameterFile = True
 
                     If .RetrieveValueForParameter("S", strValue) Then
@@ -321,11 +330,13 @@ Module modMain
             Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
             Console.WriteLine(" [/AllowDash] [/AllowAsterisk]")
             Console.WriteLine(" [/SkipDupeNameCheck] [/SkipDupeSeqCheck]")
-            Console.WriteLine(" [/B] [/X] [/S:[MaxLevel]] [/Q]")
+            Console.WriteLine(" [/B] [/HashFile]")
+            Console.WriteLine(" [/X] [/S:[MaxLevel]] [/Q]")
             Console.WriteLine()
 
             Console.WriteLine("The input file path can contain the wildcard character * and should point to a fasta file.")
             Console.WriteLine("The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file.")
+            Console.WriteLine("The parameter file path is optional.  If included, it should point to a valid XML parameter file.")
             Console.WriteLine("Use /C to specify that an output file should be created, rather than displaying the results on the screen.")
             Console.WriteLine()
             Console.WriteLine("Use /F to shorten long protein names and generate a new, fixed .Fasta file.  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
@@ -341,9 +352,13 @@ Module modMain
             Console.WriteLine(" /SkipDupeSeqCheck disables duplicate sequence checking (large memory footprint)")
             Console.WriteLine(" /SkipDupeNameCheck disables duplicate name checking (small memory footprint)")
             Console.WriteLine()
-            Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates).  This is useful for parsing a large fasta file to obtain the sequence hash for each protein (hash values are not cached in memory, thus small memory footprint)")
+            Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates).  This is useful for parsing a large fasta file to obtain the sequence hash for each protein (hash values are not cached in memory, thus small memory footprint).")
             Console.WriteLine()
-            Console.WriteLine("The parameter file path is optional.  If included, it should point to a valid XML parameter file.")
+            Console.WriteLine("To remove duplicates from huge fasta files, first create the ProteinHashes.txt file by calling this program with:")
+            Console.WriteLine("  Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck")
+            Console.WriteLine("Next call the program again, providing the name of the ProteinHashes file")
+            Console.WriteLine("  Proteins.fasta /HashFile:ProteinHashes.txt")
+            Console.WriteLine()
             Console.WriteLine("Use /X to specify that a model XML parameter file should be created.")
             Console.WriteLine("Use /S to process all valid files in the input folder and subfolders. Include a number after /S (like /S:2) to limit the level of subfolders to examine.")
             Console.WriteLine("The optional /Q switch will suppress all error messages.")

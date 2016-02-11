@@ -24,8 +24,7 @@
     <OptionExplicit>On</OptionExplicit>
     <OptionStrict>On</OptionStrict>
     <RootNamespace>ValidateFastaFile</RootNamespace>
-    <StartupObject>
-    </StartupObject>
+    <StartupObject>ValidateFastaFile.modMain</StartupObject>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <MyType>Console</MyType>
@@ -47,7 +46,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -97,6 +96,9 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FlexibleFileSortUtility">
+      <HintPath>Lib\FlexibleFileSortUtility.dll</HintPath>
+    </Reference>
     <Reference Include="System">
       <Name>System</Name>
     </Reference>
@@ -118,6 +120,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsMemoryUsageLogger.vb" />
+    <Compile Include="clsNestedList.vb" />
     <Compile Include="clsNestedStringDictionary.vb" />
     <Compile Include="clsParseCommandLine.vb">
       <SubType>Code</SubType>
