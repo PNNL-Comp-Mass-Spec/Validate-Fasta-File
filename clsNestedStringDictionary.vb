@@ -70,9 +70,9 @@ Public Class clsNestedStringDictionary(Of T)
 
         mIgnoreCase = ignoreCaseForKeys
         If mIgnoreCase Then
-            mComparer = StringComparer.InvariantCultureIgnoreCase
+            mComparer = StringComparer.OrdinalIgnoreCase
         Else
-            mComparer = StringComparer.InvariantCulture
+            mComparer = StringComparer.Ordinal
         End If
 
         mData = New Dictionary(Of String, Dictionary(Of String, T))(mComparer)
@@ -105,7 +105,7 @@ Public Class clsNestedStringDictionary(Of T)
         subDictionary.Add(key, value)
 
     End Sub
-
+    
     ''' <summary>
     ''' Remove the stored items
     ''' </summary>
@@ -154,7 +154,7 @@ Public Class clsNestedStringDictionary(Of T)
 
         Dim keyNames = mData.Keys.ToList()
 
-        keyNames.Sort()
+        keyNames.Sort(mComparer)
 
         If keyNames.Count = 1 Then
             summary = "1 spanning key:  " &

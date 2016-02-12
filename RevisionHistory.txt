@@ -1,5 +1,12 @@
 Validate Fasta File Change Log
 
+Version 2.1.5885; February 11, 2016
+	- Updated behavior of /HashFile to store protein names in memory; not sequence hash values
+		- Results in decreased memory usage
+	- Updated clsNestedStringDictionary and clsNestedStringIntList to use StringComparer.Ordinal
+	- Now removing leading and trailing whitespace from residues
+	- Now auto-removing any asterisks at the end of protein sequences
+
 Version 2.1.5884; February 10, 2016
 	- Added switch /HashFile for loading a file previously created using /B
 		- When /HashFile is used, the hash values are stored in a list rather than in a dictionary, reducing memory usage
