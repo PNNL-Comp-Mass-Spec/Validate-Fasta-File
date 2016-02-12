@@ -3207,6 +3207,8 @@ Public Class clsValidateFastaFile
                 End If
             End If
 
+            ShowMessage("Determining the best spanner length for protein names")
+
             ' Examine the protein names in the sequence hash file to determine the appropriate spanner length for the names
             Dim spannerCharLength = clsNestedStringIntList.AutoDetermineSpannerCharLength(fiProteinHashFile, proteinNameColumnIndex, True)
             Const RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED = True
