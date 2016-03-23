@@ -33,7 +33,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "February 11, 2016"
+        MyBase.mFileDate = "March 23, 2016"
         InitializeLocalVariables()
     End Sub
 
@@ -90,6 +90,9 @@ Public Class clsValidateFastaFile
     Private Const SEQUENCE_LENGTH_COLUMN = "Sequence_Length"
     Private Const SEQUENCE_HASH_COLUMN = "Sequence_Hash"
     Private Const PROTEIN_HASHES_FILENAME_SUFFIX = "_ProteinHashes.txt"
+
+    Private Const DEFAULT_WARNING_SEVERITY = 3
+    Private Const DEFAULT_ERROR_SEVERITY = 7
 
     ' Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
     ' the values in enum eMessageCodeConstants should all be less than CUSTOM_RULE_ID_START
@@ -1614,6 +1617,7 @@ Public Class clsValidateFastaFile
         Dim linesReadTotal As Int64
 
         If fiFastaFile.Length < fullScanLengthBytes Then
+            fullScanLengthBytes = fiFastaFile.Length
             linesReadTotal = AutoDetermineFastaProteinNameSpannerCharLength(fiFastaFile, intTerminatorSize, proteinStartLetters, 0, fiFastaFile.Length)
         Else
 
@@ -1630,20 +1634,24 @@ Public Class clsValidateFastaFile
             Next
         End If
 
-        Dim preScanProteins = (From item In proteinStartLetters Select item.Value).Sum()
+        If proteinStartLetters.Count = 0 Then
+            mProteinNameSpannerCharLength = 1
+        Else
+            Dim preScanProteinCount = (From item In proteinStartLetters Select item.Value).Sum()
 
-        If showStats Then
-            Dim percentFileProcessed = fullScanLengthBytes / fiFastaFile.Length * 100
-            Console.WriteLine("  parsed {0}% of the file, reading {1} lines and finding {2} proteins",
-                              percentFileProcessed.ToString("0"), linesReadTotal.ToString("#,##0"), preScanProteins.ToString("#,##0"))
+            If showStats Then               
+                Dim percentFileProcessed = fullScanLengthBytes / fiFastaFile.Length * 100
+                Console.WriteLine("  parsed {0}% of the file, reading {1} lines and finding {2} proteins",
+                                  percentFileProcessed.ToString("0"), linesReadTotal.ToString("#,##0"), preScanProteinCount.ToString("#,##0"))
+            End If
+
+            ' Determine the appropriate spanner length given the observation counts of the base names
+            mProteinNameSpannerCharLength = clsNestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(proteinStartLetters)
         End If
-
-        ' Determine the appropriate spanner length given the observation counts of the base names
-        mProteinNameSpannerCharLength = clsNestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(proteinStartLetters)
 
         ShowMessage("Using ProteinNameSpannerCharLength = " & mProteinNameSpannerCharLength)
         Console.WriteLine()
-        
+
     End Sub
 
     ''' <summary>
@@ -1709,7 +1717,7 @@ Public Class clsValidateFastaFile
                             Exit Do
                         End If
 
-                        If Not strLineIn.Chars(0) = (mProteinLineStartChar) Then
+                        If Not strLineIn.Chars(0) = mProteinLineStartChar Then
                             Continue Do
                         End If
 
@@ -1769,6 +1777,8 @@ Public Class clsValidateFastaFile
                             End If
                         End If
 
+                        previousProteinName = String.Copy(strProteinName)
+                        previousProteinLength = previousProteinName.Length
                     Loop
 
                 End Using
@@ -4902,13 +4912,15 @@ Public Class clsValidateFastaFile
 
         Me.ClearAllRules()
 
+        ' For the rules, severity level 1 to 4 is warning; severity 5 or higher is an error
+
         ' Header line errors
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t]*$", True, "Line starts with > but does not contain a protein name", 7)
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", 7)
+        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t]*$", True, "Line starts with > but does not contain a protein name", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", DEFAULT_ERROR_SEVERITY)
 
         ' Header line warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, 3)
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", 3)
+        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY)
 
         ' Protein Name error characters
         Dim allowedChars = "A-Za-z0-9.\-_:,\|/()\[\]\=\+#"
@@ -4919,41 +4931,60 @@ Public Class clsValidateFastaFile
 
         Dim allowedCharsMatchSpec = "[^" & allowedChars & "]"
 
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", 7, True)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, True)
 
         ' Protein name warnings
 
         ' Note that .*? changes .* from being greedy to being lazy
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", 4, True)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", DEFAULT_WARNING_SEVERITY + 1, True)
 
         If Not mAllowAllSymbolsInProteinNames Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", 3, True)
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", DEFAULT_WARNING_SEVERITY, True)
         End If
 
         ' Protein description warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", 3)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", 3)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", 3)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", 7)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, 4, False)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, False)
 
         ' Protein sequence errors
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", 7)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY)
 
         If Not mAllowAsteriskInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, 7)
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
         End If
 
         If Not mAllowDashInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, 7)
+            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
         End If
 
-        ' Note: we look for a space, tab, asterisk, and dash with separate rules (defined above), so we
-        ' therefore include them in this RegEx
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[^A-IK-Z \t\*\-]", True, "Invalid residues found", 7, True)
+        ' Note: we look for a space, tab, asterisk, and dash with separate rules (defined above)
+        ' Thus they are "allowed" by this RegEx, even though we may flag them as warnings with a different RegEx
+        ' We look for non-standard amino acids with warning rules (defined below)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[^A-Z \t\*\-]", True, "Invalid residues found", DEFAULT_ERROR_SEVERITY, True)
 
-        ' Protein sequence warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "U", True, "Residues line contains U (selenocysteine); this residue is unsupported by Sequest", 3)
+        ' Protein residue warnings
+        ' MSGF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
+
+        ' SEQUEST uses mass 114.53494 for B (average of N and D)        
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "B", True, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1)
+
+        ' Unsupported by SEQUEST
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "J", True, "Residues line contains J (non-standard amino acid)", DEFAULT_WARNING_SEVERITY - 1)
+
+        ' SEQUEST uses mass 114.07931 for O
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "O", True, "Residues line contains O (non-standard amino acid, ornithine)", DEFAULT_WARNING_SEVERITY - 1)
+
+        ' Unsupported by SEQUEST
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "U", True, "Residues line contains U (non-standard amino acid, selenocysteine)", DEFAULT_WARNING_SEVERITY)
+
+        ' SEQUEST uses mass 113.08406 for X (same as L and I)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "X", True, "Residues line contains X (non-standard amino acid for L or I)", DEFAULT_WARNING_SEVERITY - 1)
+
+        ' SEQUEST uses mass 128.55059 for Z (average of Q and E)
+        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "Z", True, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1)
 
     End Sub
 

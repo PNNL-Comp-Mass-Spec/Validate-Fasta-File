@@ -1,5 +1,9 @@
 Validate Fasta File Change Log
 
+Version 2.1.5926; March 23, 2016
+	- Fix bug determining the spanner key length for protein names
+	- Add warnings for protein residues B, J, O, U, X, or Z (previously treated J as an error and X as a warning)
+
 Version 2.1.5885; February 11, 2016
 	- Updated behavior of /HashFile to store protein names in memory; not sequence hash values
 		- Results in decreased memory usage

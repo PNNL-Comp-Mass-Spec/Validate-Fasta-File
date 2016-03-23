@@ -27,7 +27,7 @@ Imports System.Runtime.CompilerServices
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "February 11, 2016"
+    Public Const PROGRAM_DATE As String = "March 23, 2016"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
