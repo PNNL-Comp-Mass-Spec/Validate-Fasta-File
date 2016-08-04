@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.1.6060; August 4, 2016
+	- Increase default maximum protein name length from 34 to 60 characters
+
 Version 2.1.5926; March 23, 2016
 	- Fix bug determining the spanner key length for protein names
 	- Add warnings for protein residues B, J, O, U, X, or Z (previously treated J as an error and X as a warning)

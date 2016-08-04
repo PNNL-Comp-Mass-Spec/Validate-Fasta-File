@@ -51,7 +51,7 @@ Public Class clsValidateFastaFile
     ''' In contrast, MSGF+ supports long protein names
     ''' </summary>
     ''' <remarks></remarks>
-    Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 34
+    Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 60
     Private Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
 
     Public Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
