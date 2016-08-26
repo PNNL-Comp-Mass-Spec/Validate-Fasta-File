@@ -19,7 +19,7 @@ Version 2.1.5884; February 10, 2016
 		- When /HashFile is used, the hash values are stored in a list rather than in a dictionary, reducing memory usage
 
 Version 2.1.5877; February 3, 2016
-	- Replaced dictionaries with clsNestedStringDictionary to allow for increased memory usage
+	- Replaced dictionaries with clsNestedStringDictionary to allow for decreased memory usage
 	- Replaced struct with a class for better memory allocation
 	- Now reporting memory usage at regular intervals
 	- Added clsStackTraceFormatter
