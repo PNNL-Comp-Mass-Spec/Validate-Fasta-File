@@ -1,6 +1,10 @@
 Option Strict On
 
+Imports System.Reflection
 Imports System.Runtime.CompilerServices
+Imports System.Text
+Imports System.Threading
+Imports PRISM
 ' This program will read in a Fasta file and write out stats on the number of proteins and number of residues
 ' It will also validate the protein name, descriptions, and sequences in the file
 
@@ -11,18 +15,18 @@ Imports System.Runtime.CompilerServices
 ' E-mail: matthew.monroe@pnnl.gov or matt@alchemistmatt.com
 ' Website: http://omics.pnl.gov/ or http://www.sysbio.org/resources/staff/ or http://panomics.pnnl.gov/
 ' -------------------------------------------------------------------------------
-' 
+'
 ' Licensed under the Apache License, Version 2.0; you may not use this file except
-' in compliance with the License.  You may obtain a copy of the License at 
+' in compliance with the License.  You may obtain a copy of the License at
 ' http://www.apache.org/licenses/LICENSE-2.0
 '
-' Notice: This computer software was prepared by Battelle Memorial Institute, 
-' hereinafter the Contractor, under Contract No. DE-AC05-76RL0 1830 with the 
-' Department of Energy (DOE).  All rights in the computer software are reserved 
-' by DOE on behalf of the United States Government and the Contractor as 
-' provided in the Contract.  NEITHER THE GOVERNMENT NOR THE CONTRACTOR MAKES ANY 
-' WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS 
-' SOFTWARE.  This notice including this sentence must appear on any copies of 
+' Notice: This computer software was prepared by Battelle Memorial Institute,
+' hereinafter the Contractor, under Contract No. DE-AC05-76RL0 1830 with the
+' Department of Energy (DOE).  All rights in the computer software are reserved
+' by DOE on behalf of the United States Government and the Contractor as
+' provided in the Contract.  NEITHER THE GOVERNMENT NOR THE CONTRACTOR MAKES ANY
+' WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS
+' SOFTWARE.  This notice including this sentence must appear on any copies of
 ' this computer software.
 
 Module modMain
@@ -61,8 +65,8 @@ Module modMain
 
     Private WithEvents mValidateFastaFile As clsValidateFastaFile
 
-    Private mLastProgressReportPctTime As System.DateTime
-    Private mLastProgressReportTime As System.DateTime
+    Private mLastProgressReportPctTime As DateTime
+    Private mLastProgressReportTime As DateTime
     Private mLastProgressReportValue As Integer
 
     Public Function Main() As Integer
@@ -113,7 +117,7 @@ Module modMain
 
             If blnProceed And Not objParseCommandLine.NeedToShowHelp And mCreateModelXMLParameterFile Then
                 If mParameterFilePath Is Nothing OrElse mParameterFilePath.Length = 0 Then
-                    mParameterFilePath = System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetExecutingAssembly().Location) & "_ModelSettings.xml"
+                    mParameterFilePath = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location) & "_ModelSettings.xml"
                 End If
 
                 mValidateFastaFile = New clsValidateFastaFile
@@ -202,7 +206,7 @@ Module modMain
 
     End Function
 
-    Private Sub DisplayProgressPercent(ByVal intPercentComplete As Integer, ByVal blnAddCarriageReturn As Boolean)
+    Private Sub DisplayProgressPercent(intPercentComplete As Integer, blnAddCarriageReturn As Boolean)
         If blnAddCarriageReturn Then
             Console.WriteLine()
         End If
@@ -217,7 +221,7 @@ Module modMain
         Return clsProcessFilesBaseClass.GetAppVersion(PROGRAM_DATE)
     End Function
 
-    Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
+    Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
         Dim strValue As String = String.Empty
@@ -299,8 +303,8 @@ Module modMain
         WriteToErrorStream(strMessage)
     End Sub
 
-    Private Sub ShowErrorMessage(ByVal strTitle As String, ByVal items As List(Of String))
-        Dim strSeparator As String = "------------------------------------------------------------------------------"
+    Private Sub ShowErrorMessage(strTitle As String, items As List(Of String))
+        Dim strSeparator = "------------------------------------------------------------------------------"
         Dim strMessage As String
 
         Console.WriteLine()
@@ -336,7 +340,7 @@ Module modMain
             Console.WriteLine()
             Console.WriteLine("== Program syntax ==")
             Console.WriteLine()
-            Console.WriteLine(IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location))
+            Console.WriteLine(Path.GetFileName(Assembly.GetExecutingAssembly().Location))
             Console.WriteLine(" /I:InputFilePath.fasta [/O:OutputFolderPath]")
             Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
             Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
@@ -383,13 +387,12 @@ Module modMain
             Console.WriteLine()
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
-            System.Threading.Thread.Sleep(750)
-
         Catch ex As Exception
             ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
         End Try
 
     End Sub
+            Thread.Sleep(750)
 
     Private Sub TestNestedStringDictionary()
 
@@ -482,7 +485,7 @@ Module modMain
 
     Private Sub WriteToErrorStream(strErrorMessage As String)
         Try
-            Using swErrorStream As System.IO.StreamWriter = New System.IO.StreamWriter(Console.OpenStandardError())
+            Using swErrorStream = New StreamWriter(Console.OpenStandardError())
                 swErrorStream.WriteLine(strErrorMessage)
             End Using
         Catch ex As Exception
@@ -490,7 +493,7 @@ Module modMain
         End Try
     End Sub
 
-    Private Sub mValidateFastaFile_ProgressChanged(ByVal taskDescription As String, ByVal percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
+    Private Sub mValidateFastaFile_ProgressChanged(taskDescription As String, percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
         Const PERCENT_REPORT_INTERVAL = 25
         Const PROGRESS_DOT_INTERVAL_MSEC = 500
 

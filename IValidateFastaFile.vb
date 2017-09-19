@@ -1,67 +1,67 @@
 Public Interface IValidateFastaFile
 
     Event ProgressChanged(
-        ByVal taskDescription As String,
-        ByVal percentComplete As Single)
+        taskDescription As String,
+        percentComplete As Single)
     Event ProgressCompleted()
-    Event WroteLineEndNormalizedFASTA(ByVal newFilePath As String)
+    Event WroteLineEndNormalizedFASTA(newFilePath As String)
 
-    Function ValidateFASTAFile(ByVal filePath As String) As Boolean
+    Function ValidateFASTAFile(filePath As String) As Boolean
 
     Function ValidateFASTAFile(
-        ByVal filePath As String,
-        ByVal errorDumpOutputPath As String,
-        ByVal parameterFilePath As String,
-        ByVal resetErrorCodes As Boolean) As Boolean
+        filePath As String,
+        errorDumpOutputPath As String,
+        parameterFilePath As String,
+        resetErrorCodes As Boolean) As Boolean
 
     Function GetDefaultExtensionsToParse() As String()
     Function GetCurrentErrorMessage() As String
 
-    Function SaveParameterSettingsToParameterFile(ByVal parameterFilePath As String) As Boolean
-    Function LoadParameterFileSettings(ByVal parameterFilePath As String) As Boolean
+    Function SaveParameterSettingsToParameterFile(parameterFilePath As String) As Boolean
+    Function LoadParameterFileSettings(parameterFilePath As String) As Boolean
 
-    Function LookupMessageDescription(ByVal errorMessageCode As Integer) As String
-    Function LookupMessageDescription(ByVal errorMessageCode As Integer, ByVal ExtraInfo As String) As String
-    Function LookupMessageTypeString(ByVal entryType As eMsgTypeConstants) As String
+    Function LookupMessageDescription(errorMessageCode As Integer) As String
+    Function LookupMessageDescription(errorMessageCode As Integer, ExtraInfo As String) As String
+    Function LookupMessageTypeString(entryType As eMsgTypeConstants) As String
 
 
     Sub AbortProcessingNow()
 
     Sub ClearAllRules()
-    Sub ClearRules(ByVal ruleType As RuleTypes)
+    Sub ClearRules(ruleType As RuleTypes)
 
     Sub SetDefaultRules()
 
     Sub SetRule(
-        ByVal ruleType As RuleTypes,
-        ByVal regexToMatch As String,
-        ByVal doesMatchIndicateProblem As Boolean,
-        ByVal problemReturnMessage As String,
-        ByVal severityLevel As Short)
+        ruleType As RuleTypes,
+        regexToMatch As String,
+        doesMatchIndicateProblem As Boolean,
+        problemReturnMessage As String,
+        severityLevel As Short)
     Sub SetRule(
-        ByVal ruleType As RuleTypes,
-        ByVal regexToMatch As String,
-        ByVal doesMatchIndicateProblem As Boolean,
-        ByVal problemReturnMessage As String,
-        ByVal severityLevel As Short,
-        ByVal displayMatchAsExtraInfo As Boolean)
+        ruleType As RuleTypes,
+        regexToMatch As String,
+        doesMatchIndicateProblem As Boolean,
+        problemReturnMessage As String,
+        severityLevel As Short,
+        displayMatchAsExtraInfo As Boolean)
 
-    Property OptionSwitches(ByVal SwitchName As SwitchOptions) As Boolean
+    Property OptionSwitches(SwitchName As SwitchOptions) As Boolean
 
     ReadOnly Property FixedFASTAFileStats(
-        ByVal ValueType As FixedFASTAFileValues) As Integer
-    
+        ValueType As FixedFASTAFileValues) As Integer
+
 
     ReadOnly Property ErrorMessageTextByIndex(
-        ByVal errorIndex As Integer,
-        ByVal valueSeparator As String) As String
-    ReadOnly Property FileErrorByIndex(ByVal errorIndex As Integer) As udtMsgInfoType
+        errorIndex As Integer,
+        valueSeparator As String) As String
+    ReadOnly Property FileErrorByIndex(errorIndex As Integer) As udtMsgInfoType
     ReadOnly Property FileErrorList As udtMsgInfoType()
 
     ReadOnly Property WarningMessageTextByIndex(
-        ByVal warningIndex As Integer,
-        ByVal valueSeparator As String) As String
-    ReadOnly Property FileWarningByIndex(ByVal warningIndex As Integer) As udtMsgInfoType
+        warningIndex As Integer,
+        valueSeparator As String) As String
+    ReadOnly Property FileWarningByIndex(warningIndex As Integer) As udtMsgInfoType
     ReadOnly Property FileWarningList As udtMsgInfoType()
 
     ReadOnly Property LocalErrorCode As eValidateFastaFileErrorCodes
@@ -124,7 +124,7 @@ Public Interface IValidateFastaFile
         FixedFastaWrapLongResidueLines
         FixedFastaRemoveInvalidResidues
         SaveBasicProteinHashInfoFile
-		AllowDashInResidues
+        AllowDashInResidues
         FixedFastaKeepDuplicateNamedProteins        ' Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
         AllowAllSymbolsInProteinNames
     End Enum
