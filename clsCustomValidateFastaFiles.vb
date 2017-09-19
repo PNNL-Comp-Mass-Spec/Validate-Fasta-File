@@ -12,16 +12,16 @@ Public Interface ICustomValidation
         WarningMsg = 1
     End Enum
 
-    ReadOnly Property FullErrorCollection As Hashtable
-    ReadOnly Property FullWarningCollection As Hashtable
+    ReadOnly Property FullErrorCollection As Dictionary(Of String, List(Of udtErrorInfoExtended))
+    ReadOnly Property FullWarningCollection As Dictionary(Of String, List(Of udtErrorInfoExtended))
 
-    ReadOnly Property RecordedFASTAFileErrors(ByVal FASTAFileName As String) As ArrayList
-    ReadOnly Property RecordedFASTAFileWarnings(ByVal FASTAFileName As String) As ArrayList
+    ReadOnly Property RecordedFASTAFileErrors(FASTAFileName As String) As List(Of udtErrorInfoExtended)
+    ReadOnly Property RecordedFASTAFileWarnings(FASTAFileName As String) As List(Of udtErrorInfoExtended)
 
-    ReadOnly Property FASTAFileValid(ByVal FASTAFileName As String) As Boolean
+    ReadOnly Property FASTAFileValid(FASTAFileName As String) As Boolean
     ReadOnly Property NumberOfFilesWithErrors As Integer
 
-    ReadOnly Property FASTAFileHasWarnings(ByVal FASTAFileName As String) As Boolean
+    ReadOnly Property FASTAFileHasWarnings(FASTAFileName As String) As Boolean
 
     Sub ClearErrorList()
 
@@ -57,11 +57,20 @@ Public Class clsCustomValidateFastaFiles
     Inherits clsValidateFastaFile
     Implements ICustomValidation
 
-    Protected m_FileErrorList As Hashtable
-    Protected m_FileWarningList As Hashtable
+    ''' <summary>
+    ''' Keys are fasta filename
+    ''' Values are the list of fasta file errors
+    ''' </summary>
+    Private ReadOnly m_FileErrorList As Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended))
 
-    Protected m_CurrentFileErrors As ArrayList
-    Protected m_CurrentFileWarnings As ArrayList
+    ''' <summary>
+    ''' Keys are fasta filename
+    ''' Values are the list of fasta file warnings
+    ''' </summary>
+    Private ReadOnly m_FileWarningList As Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended))
+
+    Private ReadOnly m_CurrentFileErrors As List(Of ICustomValidation.udtErrorInfoExtended)
+    Private ReadOnly m_CurrentFileWarnings As List(Of ICustomValidation.udtErrorInfoExtended)
 
     Protected m_CachedFastaFilePath As String
 
@@ -72,8 +81,12 @@ Public Class clsCustomValidateFastaFiles
 
     Public Sub New()
         MyBase.New()
-        Me.m_FileErrorList = New Hashtable  'key is fasta filename, value is CurrentFileErrors HashTable for that file
-        Me.m_FileWarningList = New Hashtable  'key is fasta filename, value is CurrentFileWarnings HashTable for that file
+
+        m_FileErrorList = New Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended))
+        m_FileWarningList = New Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended))
+
+        m_CurrentFileErrors = New List(Of ICustomValidation.udtErrorInfoExtended)
+        m_CurrentFileWarnings = New List(Of ICustomValidation.udtErrorInfoExtended)
 
         ' Reserve space for tracking up to 10 validation updates (expand later if needed)
         ReDim mValidationOptions(10)
@@ -89,15 +102,15 @@ Public Class clsCustomValidateFastaFiles
         End If
     End Sub
 
-    Public ReadOnly Property FullErrorCollection As Hashtable _
+    Public ReadOnly Property FullErrorCollection As Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended)) _
         Implements ICustomValidation.FullErrorCollection
         Get
             Return Me.m_FileErrorList
         End Get
     End Property
 
-    Public ReadOnly Property FullWarningCollection As Hashtable _
-     Implements ICustomValidation.FullWarningCollection
+    Public ReadOnly Property FullWarningCollection As Dictionary(Of String, List(Of ICustomValidation.udtErrorInfoExtended)) _
+        Implements ICustomValidation.FullWarningCollection
         Get
             Return Me.m_FileWarningList
         End Get
@@ -126,17 +139,25 @@ Public Class clsCustomValidateFastaFiles
     End Property
 
 
-    Public ReadOnly Property RecordedFASTAFileErrors(ByVal FASTAFileName As String) As ArrayList _
+    Public ReadOnly Property RecordedFASTAFileErrors(FASTAFileName As String) As List(Of ICustomValidation.udtErrorInfoExtended) _
         Implements ICustomValidation.RecordedFASTAFileErrors
         Get
-            Return DirectCast(Me.m_FileErrorList(FASTAFileName), ArrayList)
+            Dim errorList As List(Of ICustomValidation.udtErrorInfoExtended) = Nothing
+            If m_FileErrorList.TryGetValue(FASTAFileName, errorList) Then
+                Return errorList
+            End If
+            Return New List(Of ICustomValidation.udtErrorInfoExtended)
         End Get
     End Property
 
-    Public ReadOnly Property RecordedFASTAFileWarnings(ByVal FASTAFileName As String) As ArrayList _
-    Implements ICustomValidation.RecordedFASTAFileWarnings
+    Public ReadOnly Property RecordedFASTAFileWarnings(FASTAFileName As String) As List(Of ICustomValidation.udtErrorInfoExtended) _
+        Implements ICustomValidation.RecordedFASTAFileWarnings
         Get
-            Return DirectCast(Me.m_FileWarningList(FASTAFileName), ArrayList)
+            Dim warningList As List(Of ICustomValidation.udtErrorInfoExtended) = Nothing
+            If m_FileWarningList.TryGetValue(FASTAFileName, warningList) Then
+                Return warningList
+            End If
+            Return New List(Of ICustomValidation.udtErrorInfoExtended)
         End Get
     End Property
 
@@ -183,8 +204,8 @@ Public Class clsCustomValidateFastaFiles
 
         If Not Me.mFastaFilePath.Equals(Me.m_CachedFastaFilePath) Then
             ' New File being analyzed
-            Me.m_CurrentFileErrors = New ArrayList
-            Me.m_CurrentFileWarnings = New ArrayList
+            m_CurrentFileErrors.Clear()
+            m_CurrentFileWarnings.Clear()
 
             Me.m_CachedFastaFilePath = String.Copy(mFastaFilePath)
         End If

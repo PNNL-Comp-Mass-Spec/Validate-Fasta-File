@@ -149,7 +149,7 @@ Public Class clsValidateFastaFile
     Private Structure udtItemSummaryIndexedType
         Public ErrorStatsCount As Integer
         Public ErrorStats() As udtErrorStatsType        ' Note: This array ranges from 0 to .ErrorStatsCount since it is Dimmed with extra space
-        Public htMessageCodeToArrayIndex As Hashtable
+        Public MessageCodeToArrayIndex As Dictionary(Of Integer, Integer)
     End Structure
 
     Public Structure udtRuleDefinitionType
@@ -4753,10 +4753,10 @@ Public Class clsValidateFastaFile
         With udtItemSummary
             .ErrorStatsCount = 0
             ReDim .ErrorStats(-1)
-            If .htMessageCodeToArrayIndex Is Nothing Then
-                .htMessageCodeToArrayIndex = New Hashtable
+            If .MessageCodeToArrayIndex Is Nothing Then
+                .MessageCodeToArrayIndex = New Dictionary(Of Integer, Integer)
             Else
-                .htMessageCodeToArrayIndex.Clear()
+                .MessageCodeToArrayIndex.Clear()
             End If
         End With
 
