@@ -1,5 +1,11 @@
 Validate Fasta File Change Log
 
+Version 2.2.6471; September 19, 2017
+	- Update to .NET 4.6.2
+	- Use methods in PRISM.dll
+	- Convert from Hashtable to Dictionary
+	- Convert from ArrayList to generic lists
+
 Version 2.1.6060; August 4, 2016
 	- Increase default maximum protein name length from 34 to 60 characters
 
