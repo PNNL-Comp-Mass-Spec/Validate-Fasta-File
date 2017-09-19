@@ -12,7 +12,7 @@ Imports System.Collections.Generic
 ''' <remarks>
 ''' Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
 ''' Created in October 2013
-''' Last updated in October 2015
+''' Last updated in January 2017
 ''' </remarks>
 Public MustInherit Class clsProcessFilesOrFoldersBase
 
@@ -151,7 +151,6 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
         mLogDataCache = New Dictionary(Of String, DateTime)
     End Sub
 
-
     Public Overridable Sub AbortProcessingNow()
         mAbortProcessing = True
     End Sub
@@ -215,7 +214,7 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
     ''' </summary>
     ''' <remarks></remarks>
     Public Shared Sub GarbageCollectNow()
-        Const intMaxWaitTimeMSec As Integer = 1000
+        Const intMaxWaitTimeMSec = 1000
         GarbageCollectNow(intMaxWaitTimeMSec)
     End Sub
 
@@ -225,7 +224,7 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
     ''' <param name="intMaxWaitTimeMSec"></param>
     ''' <remarks></remarks>
     Public Shared Sub GarbageCollectNow(intMaxWaitTimeMSec As Integer)
-        Const THREAD_SLEEP_TIME_MSEC As Integer = 100
+        Const THREAD_SLEEP_TIME_MSEC = 100
 
         Dim intTotalThreadWaitTimeMsec As Integer
         If intMaxWaitTimeMSec < 100 Then intMaxWaitTimeMSec = 100
@@ -448,7 +447,7 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
         End If
 
         If Not mLogFile Is Nothing Then
-            Dim blnWriteToLog As Boolean = True
+            Dim blnWriteToLog = True
 
             Dim strLogKey As String = strMessageType & "_" & strMessage
             Dim dtLastLogTime As DateTime
@@ -546,7 +545,7 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
     End Sub
 
     Protected Sub ShowErrorMessage(strMessage As String, blnAllowLogToFile As Boolean, intDuplicateHoldoffHours As Integer)
-        Const strSeparator As String = "------------------------------------------------------------------------------"
+        Const strSeparator = "------------------------------------------------------------------------------"
 
         Console.WriteLine()
         Console.WriteLine(strSeparator)
@@ -662,7 +661,7 @@ Public MustInherit Class clsProcessFilesOrFoldersBase
             mLogDataCache.Clear()
 
             Using srLogFile = New StreamReader(New FileStream(strLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                While srLogFile.Peek > -1
+                While Not srLogFile.EndOfStream
                     Dim strLineIn = srLogFile.ReadLine()
                     Dim reMatch = reParseLine.Match(strLineIn)
 
