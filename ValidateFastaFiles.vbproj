@@ -46,7 +46,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -110,6 +110,7 @@
     <Import Include="System.Collections" />
     <Import Include="System.Collections.Generic" />
     <Import Include="System.Diagnostics" />
+    <Import Include="System.IO" />
     <Import Include="System.Linq" />
   </ItemGroup>
   <ItemGroup>
@@ -122,19 +123,12 @@
     <Compile Include="clsMemoryUsageLogger.vb" />
     <Compile Include="clsNestedList.vb" />
     <Compile Include="clsNestedStringDictionary.vb" />
-    <Compile Include="clsParseCommandLine.vb">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="clsProcessFilesBaseClass.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsProcessFilesOrFoldersBase.vb" />
     <Compile Include="clsProteinHashInfo.vb" />
-    <Compile Include="clsStackTraceFormatter.vb" />
     <Compile Include="clsValidateFastaFile.vb">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="clsXmlSettingsFileAccessor.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="IValidateFastaFile.vb">
@@ -176,6 +170,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PRISM-Library">
+      <Version>2.4.32</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />
   <PropertyGroup>

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectType>Local</ProjectType>
     <ProductVersion>9.0.30729</ProductVersion>
@@ -46,7 +46,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -69,6 +69,7 @@
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\DLL\</OutputPath>
@@ -89,6 +90,7 @@
     <NoWarn>42353,42354,42355</NoWarn>
     <DebugType>none</DebugType>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <OptionInfer>On</OptionInfer>
@@ -110,6 +112,7 @@
     <Import Include="System.Collections" />
     <Import Include="System.Collections.Generic" />
     <Import Include="System.Diagnostics" />
+    <Import Include="System.IO" />
     <Import Include="System.Linq" />
   </ItemGroup>
   <ItemGroup>
@@ -125,19 +128,12 @@
     <Compile Include="clsMemoryUsageLogger.vb" />
     <Compile Include="clsNestedList.vb" />
     <Compile Include="clsNestedStringDictionary.vb" />
-    <Compile Include="clsParseCommandLine.vb">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="clsProcessFilesBaseClass.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsProcessFilesOrFoldersBase.vb" />
     <Compile Include="clsProteinHashInfo.vb" />
-    <Compile Include="clsStackTraceFormatter.vb" />
     <Compile Include="clsValidateFastaFile.vb">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="clsXmlSettingsFileAccessor.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="IValidateFastaFile.vb">
@@ -173,6 +169,11 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PRISM-Library">
+      <Version>2.4.32</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />
   <PropertyGroup>
