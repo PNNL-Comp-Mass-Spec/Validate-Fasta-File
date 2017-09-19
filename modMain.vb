@@ -105,10 +105,6 @@ Module modMain
         mLastProgressReportPctTime = DateTime.UtcNow
         mLastProgressReportTime = DateTime.UtcNow
 
-        ' Uncomment to preview a stack trace output
-        ' TestStackTraceFormatter()
-        ' TestNestedStringDictionary()
-
         Try
             blnProceed = False
             If objParseCommandLine.ParseCommandLine Then
@@ -380,99 +376,11 @@ Module modMain
             Console.WriteLine()
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
-        Catch ex As Exception
-        End Try
-
-    End Sub
             Thread.Sleep(750)
 
-    Private Sub TestNestedStringDictionary()
-
-        Dim testData = New clsNestedStringDictionary(Of Integer)(True, 2)
-
-        testData.Add("apple", 5)
-        testData.Add("orange", 4)
-        testData.Add("pear", 2)
-        testData.Add("penne", 7)
-        testData.Add("watermelon", 3)
-        testData.Add("pizza", 1)
-        testData.Add("pie", 4)
-        testData.Add("squash", 1)
-        testData.Add("avodado", 2)
-        testData.Add("a", 2)
-        testData.Add("pine nuts", 8)
-        testData.Add("", 4)
-
-        Console.WriteLine(testData.GetSizeSummary())
-
-        Try
-            ' This should throw an exception if we instantiated clsNestedStringDictionary using ignoreCaseForKeys=True
-            testData.Add("Apple", 8)
         Catch ex As Exception
-            If testData.IgnoreCase Then
-                Console.WriteLine(ex.Message & " Apple cannot be added (this is to be expected)")
-            Else
-                Console.WriteLine(ex.Message & " Apple cannot be added (this is unexpected; it should have worked)")
-            End If
-
             ShowErrorMessage("Error displaying the program syntax: " & ex.Message, ex)
         End Try
-        
-        Console.WriteLine()
-
-        For Each item In testData.GetSpanningKeys()
-            Dim itemDictionary = testData.GetDictionaryForSpanningKey(item)
-            Console.WriteLine(item & ": " & itemDictionary.Count & " item(s), starting with " & itemDictionary.First().Key & ": " & itemDictionary.First().Value)
-        Next
-
-        Console.WriteLine()
-    End Sub
-
-    Private Sub TestStackTraceFormatter()
-
-        Dim test = ""
-        test &= "   at System.Collections.Generic.Dictionary`2.Resize(Int32 newSize, Boolean forceNewHashCodes)" & Environment.NewLine
-        test &= "   at System.Collections.Generic.Dictionary`2.Insert(TKey key, TValue value, Boolean add)" & Environment.NewLine
-        test &= "   at ValidateFastaFile.clsValidateFastaFile.ProcessSequenceHashInfo(String strProteinName, StringBuilder& sbCurrentResidues, Dictionary`2& lstProteinSequenceHashes, Int32& intProteinSequenceHashCount, udtProteinHashInfoType[]& udtProteinSeqHashInfo, Boolean blnConsolidateDupsIgnoreILDiff, StreamWriter& swProteinSequenceHashBasic) in F:\My Documents\Projects\DataMining\Validate_Fasta_File\clsValidateFastaFile.vb:line 3172" & Environment.NewLine
-        test &= "   at ValidateFastaFile.clsValidateFastaFile.ProcessResiduesForPreviousProtein(String strProteinName, StringBuilder& sbCurrentResidues, Dictionary`2& lstProteinSequenceHashes, Int32& intProteinSequenceHashCount, udtProteinHashInfoType[]& udtProteinSeqHashInfo, Boolean blnConsolidateDupsIgnoreILDiff, StreamWriter& swFixedFastaOut, Int32 intCurrentValidResidueLineLengthMax, StreamWriter& swProteinSequenceHashBasic) in F:\My Documents\Projects\DataMining\Validate_Fasta_File\clsValidateFastaFile.vb:line 3070" & Environment.NewLine
-        test &= "   at ValidateFastaFile.clsValidateFastaFile.AnalyzeFastaFile(String strFastaFilePath) in F:\My Documents\Projects\DataMining\Validate_Fasta_File\clsValidateFastaFile.vb:line 986"
-
-        Dim stackTraceData As IEnumerable(Of String) = clsStackTraceFormatter.GetExceptionStackTraceData(test)
-
-        Dim sbStackTrace = New Text.StringBuilder()
-        sbStackTrace.AppendLine(clsStackTraceFormatter.STACK_TRACE_TITLE)
-
-        For index = 0 To stackTraceData.Count - 1
-            sbStackTrace.AppendLine("  " & stackTraceData(index))
-        Next
-
-        Console.WriteLine(sbStackTrace.ToString())
-        Console.WriteLine()
-
-        TestThrowException()
-
-    End Sub
-
-    Public Sub TestThrowException()
-        TestThrowException(0)
-    End Sub
-
-    Private Sub TestThrowException(recursionLevel As Integer)
-        If recursionLevel > 3 Then
-            Dim testData = New Dictionary(Of String, String)
-            Try
-                testData.Add("a", "apple")
-                testData.Add("d", "donut")
-                testData.Add("e", "egg")
-                testData.Add("a", "avodcado")
-            Catch ex As Exception
-                Console.WriteLine(clsStackTraceFormatter.GetExceptionStackTrace(ex))
-                Console.WriteLine()
-                Console.WriteLine(clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex))
-            End Try
-        Else
-            TestThrowException(recursionLevel + 1)
-        End If
 
     End Sub
 
