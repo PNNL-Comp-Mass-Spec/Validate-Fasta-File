@@ -198,7 +198,7 @@ Module modMain
             End If
 
         Catch ex As Exception
-            ShowErrorMessage("Error occurred in modMain->Main: " & System.Environment.NewLine & ex.Message)
+            ShowErrorMessage("Error occurred in modMain->Main: " & ex.Message, ex)
             intReturnCode = -1
         End Try
 
@@ -285,21 +285,14 @@ Module modMain
             End If
 
         Catch ex As Exception
-            ShowErrorMessage("Error parsing the command line parameters: " & System.Environment.NewLine & ex.Message)
+            ShowErrorMessage("Error parsing the command line parameters: " & ex.Message, ex)
         End Try
         Return False
 
     End Function
 
-    Private Sub ShowErrorMessage(ByVal strMessage As String)
-        Dim strSeparator As String = "------------------------------------------------------------------------------"
-
-        Console.WriteLine()
-        Console.WriteLine(strSeparator)
-        Console.WriteLine(strMessage)
-        Console.WriteLine(strSeparator)
-        Console.WriteLine()
-
+    Private Sub ShowErrorMessage(strMessage As String, Optional ex As Exception = Nothing)
+        ConsoleMsgUtils.ShowError(strMessage, ex)
         WriteToErrorStream(strMessage)
     End Sub
 
@@ -388,7 +381,6 @@ Module modMain
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
         Catch ex As Exception
-            ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
         End Try
 
     End Sub
@@ -423,6 +415,7 @@ Module modMain
                 Console.WriteLine(ex.Message & " Apple cannot be added (this is unexpected; it should have worked)")
             End If
 
+            ShowErrorMessage("Error displaying the program syntax: " & ex.Message, ex)
         End Try
         
         Console.WriteLine()
