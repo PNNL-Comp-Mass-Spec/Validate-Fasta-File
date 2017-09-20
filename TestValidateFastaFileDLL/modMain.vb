@@ -1,5 +1,6 @@
 Option Strict On
 
+Imports PRISM
 Imports ValidateFastaFile
 ' Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
 ' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
@@ -12,9 +13,9 @@ Module modMain
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
 
-        Dim strTestFilePath As String = "JunkTest.fasta"
+        Dim strTestFilePath = "JunkTest.fasta"
 
-        Dim objValidateFastaFile As ValidateFastaFile.clsValidateFastaFile
+        Dim objValidateFastaFile As clsValidateFastaFile
 
         Dim strParameters() As String
 
@@ -28,7 +29,7 @@ Module modMain
             ' See if the user provided a custom filepath at the command line
             Try
                 ' This command will fail if the program is called from a network share
-                strParameters = System.Environment.GetCommandLineArgs()
+                strParameters = Environment.GetCommandLineArgs()
 
                 If Not strParameters Is Nothing AndAlso strParameters.Length > 1 Then
                     ' Note that strParameters(0) is the path to the Executable for the calling program
@@ -41,19 +42,19 @@ Module modMain
 
             Console.WriteLine("Examining file: " & strTestFilePath)
 
-            objValidateFastaFile = New ValidateFastaFile.clsValidateFastaFile
+            objValidateFastaFile = New clsValidateFastaFile()
             With objValidateFastaFile
-                .SetOptionSwitch(ValidateFastaFile.IValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
+                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
 
                 ' Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
-                .SetOptionSwitch(ValidateFastaFile.IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, False)
-                .SetOptionSwitch(ValidateFastaFile.IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, True)
+                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, False)
+                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, True)
 
                 .MaximumFileErrorsToTrack = 5               ' The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
                 .MinimumProteinNameLength = 3
                 .MaximumProteinNameLength = 34
 
-                .SetOptionSwitch(ValidateFastaFile.IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, False)
+                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, False)
             End With
 
             ' Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
@@ -62,14 +63,14 @@ Module modMain
             If blnSuccess Then
                 With objValidateFastaFile
 
-                    intCount = .ErrorWarningCounts(ValidateFastaFile.IValidateFastaFile.eMsgTypeConstants.ErrorMsg, ValidateFastaFile.IValidateFastaFile.ErrorWarningCountTypes.Total)
+                    intCount = .ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.ErrorMsg, IValidateFastaFile.ErrorWarningCountTypes.Total)
                     If intCount = 0 Then
                         Console.WriteLine(" No errors were found")
                     Else
                         Console.WriteLine(" " & intCount.ToString & " errors were found")
                     End If
 
-                    intCount = .ErrorWarningCounts(ValidateFastaFile.IValidateFastaFile.eMsgTypeConstants.WarningMsg, ValidateFastaFile.IValidateFastaFile.ErrorWarningCountTypes.Total)
+                    intCount = .ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.WarningMsg, IValidateFastaFile.ErrorWarningCountTypes.Total)
                     If intCount = 0 Then
                         Console.WriteLine(" No warnings were found")
                     Else
@@ -77,18 +78,17 @@ Module modMain
                     End If
 
                     '' Could enumerate the errors using the following
-                    'For intIndex = 0 To .FileErrorCountSpecified - 1
-                    '    Console.WriteLine(.GetFileErrorTextByIndex(intIndex, ControlChars.Tab))
-                    'Next intIndex
+                    For intIndex = 0 To intCount - 1
+                        Console.WriteLine(.ErrorMessageTextByIndex(intIndex, ControlChars.Tab))
+                    Next intIndex
 
                 End With
             Else
-                Console.WriteLine("Error calling objValidateFastaFile.ProcessFile: " & objValidateFastaFile.GetErrorMessage())
+                ConsoleMsgUtils.ShowError("Error calling objValidateFastaFile.ProcessFile: " & objValidateFastaFile.GetErrorMessage())
             End If
 
         Catch ex As Exception
-            Console.WriteLine("Error occurred: " & ex.Message)
-            Console.WriteLine(clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex))
+            ConsoleMsgUtils.ShowError("Error occurred: " & ex.Message)
             intReturnCode = -1
         End Try
 
