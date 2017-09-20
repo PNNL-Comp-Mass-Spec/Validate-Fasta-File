@@ -236,26 +236,16 @@ Public Class clsCustomValidateFastaFiles
         ' This function calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
         ' The function returns true if the file was successfully processed (even if it contains errors)
 
-        Dim udtErrors() As IValidateFastaFile.udtMsgInfoType
-        Dim udtWarnings() As IValidateFastaFile.udtMsgInfoType
-
-        Dim intIndex As Integer
-
-        Dim strErrorMessage As String
-
-        Dim blnIgnoreError As Boolean
-        Dim blnSuccess As Boolean
-
-        blnSuccess = SimpleProcessFile(filePath)
+        Dim blnSuccess = SimpleProcessFile(filePath)
 
         If blnSuccess Then
             If MyBase.ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.WarningMsg, IValidateFastaFile.ErrorWarningCountTypes.Total) > 0 Then
                 ' The file has warnings; we need to record them using RecordFastaFileProblem
 
-                udtWarnings = MyBase.GetFileWarnings()
+                Dim lstWarnings = MyBase.GetFileWarnings()
 
-                For intIndex = 0 To udtWarnings.Length - 1
-                    With udtWarnings(intIndex)
+                For Each item In lstWarnings
+                    With item
                         RecordFastaFileProblem(.LineNumber, .ProteinName, .MessageCode, String.Empty, ICustomValidation.eValidationMessageTypes.WarningMsg)
                     End With
                 Next
@@ -267,13 +257,13 @@ Public Class clsCustomValidateFastaFiles
                 ' The file has errors; we need to record them using RecordFastaFileProblem
                 ' However, we might ignore some of the errors
 
-                udtErrors = MyBase.GetFileErrors()
+                Dim lstErrors = MyBase.GetFileErrors()
 
-                For intIndex = 0 To udtErrors.Length - 1
-                    With udtErrors(intIndex)
-                        strErrorMessage = LookupMessageDescription(.MessageCode, .ExtraInfo)
+                For Each item In lstErrors
+                    With item
+                        Dim strErrorMessage = LookupMessageDescription(.MessageCode, .ExtraInfo)
 
-                        blnIgnoreError = False
+                        Dim blnIgnoreError = False
                         Select Case strErrorMessage
                             Case MESSAGE_TEXT_ASTERISK_IN_RESIDUES
                                 If mValidationOptions(ICustomValidation.eValidationOptionConstants.AllowAsterisksInResidues) Then

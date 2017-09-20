@@ -56,13 +56,13 @@ Public Interface IValidateFastaFile
         errorIndex As Integer,
         valueSeparator As String) As String
     ReadOnly Property FileErrorByIndex(errorIndex As Integer) As udtMsgInfoType
-    ReadOnly Property FileErrorList As udtMsgInfoType()
+    ReadOnly Property FileErrorList As List(Of udtMsgInfoType)
 
     ReadOnly Property WarningMessageTextByIndex(
         warningIndex As Integer,
         valueSeparator As String) As String
     ReadOnly Property FileWarningByIndex(warningIndex As Integer) As udtMsgInfoType
-    ReadOnly Property FileWarningList As udtMsgInfoType()
+    ReadOnly Property FileWarningList As List(Of udtMsgInfoType)
 
     ReadOnly Property LocalErrorCode As eValidateFastaFileErrorCodes
 

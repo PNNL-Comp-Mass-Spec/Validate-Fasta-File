@@ -33,7 +33,7 @@ Public Class clsValidateFastaFile
     Implements IValidateFastaFile
 
     Public Sub New()
-        MyBase.mFileDate = "March 23, 2016"
+        MyBase.mFileDate = "September 19, 2017"
         InitializeLocalVariables()
     End Sub
 
@@ -718,14 +718,14 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public ReadOnly Property FileWarningList() As IValidateFastaFile.udtMsgInfoType() _
+    Public ReadOnly Property FileWarningList As List(Of IValidateFastaFile.udtMsgInfoType) _
      Implements IValidateFastaFile.FileWarningList
         Get
             Return GetFileWarnings()
         End Get
     End Property
 
-    Public ReadOnly Property FileErrorList() As IValidateFastaFile.udtMsgInfoType() _
+    Public ReadOnly Property FileErrorList As List(Of IValidateFastaFile.udtMsgInfoType) _
      Implements IValidateFastaFile.FileErrorList
         Get
             Return GetFileErrors()
@@ -2882,18 +2882,15 @@ Public Class clsValidateFastaFile
     ''' </summary>
     ''' <returns></returns>
     ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileErrors() As IValidateFastaFile.udtMsgInfoType()
+    Protected Function GetFileErrors() As List(Of IValidateFastaFile.udtMsgInfoType)
 
-        Dim udtFileErrors() As IValidateFastaFile.udtMsgInfoType
+        Dim lstFileErrors = New List(Of IValidateFastaFile.udtMsgInfoType)
 
-        If mFileErrorCount > 0 Then
-            ReDim udtFileErrors(mFileErrorCount - 1)
-            Array.Copy(mFileErrors, udtFileErrors, mFileErrorCount)
-        Else
-            ReDim udtFileErrors(0)
-        End If
+        For i = 0 To mFileErrorCount - 1
+            lstFileErrors.Add(mFileErrors(i))
+        Next
 
-        Return udtFileErrors
+        Return lstFileErrors
 
     End Function
 
@@ -2938,18 +2935,15 @@ Public Class clsValidateFastaFile
     ''' </summary>
     ''' <returns></returns>
     ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileWarnings() As IValidateFastaFile.udtMsgInfoType()
+    Protected Function GetFileWarnings() As List(Of IValidateFastaFile.udtMsgInfoType)
 
-        Dim udtFileWarnings() As IValidateFastaFile.udtMsgInfoType
+        Dim lstFileWarnings = New List(Of IValidateFastaFile.udtMsgInfoType)
 
-        If mFileWarningCount > 0 Then
-            ReDim udtFileWarnings(mFileWarningCount - 1)
-            Array.Copy(mFileWarnings, udtFileWarnings, mFileWarningCount)
-        Else
-            ReDim udtFileWarnings(0)
-        End If
+        For i = 0 To mFileWarningCount - 1
+            lstFileWarnings.Add(mFileWarnings(i))
+        Next
 
-        Return udtFileWarnings
+        Return lstFileWarnings
 
     End Function
 
