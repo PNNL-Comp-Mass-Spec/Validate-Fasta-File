@@ -44,17 +44,17 @@ Module modMain
 
             objValidateFastaFile = New clsValidateFastaFile()
             With objValidateFastaFile
-                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
+                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
 
                 ' Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
-                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, False)
-                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, True)
+                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, False)
+                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, True)
 
                 .MaximumFileErrorsToTrack = 5               ' The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
                 .MinimumProteinNameLength = 3
                 .MaximumProteinNameLength = 34
 
-                .SetOptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, False)
+                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, False)
             End With
 
             ' Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
@@ -63,14 +63,14 @@ Module modMain
             If blnSuccess Then
                 With objValidateFastaFile
 
-                    intCount = .ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.ErrorMsg, IValidateFastaFile.ErrorWarningCountTypes.Total)
+                    intCount = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
                     If intCount = 0 Then
                         Console.WriteLine(" No errors were found")
                     Else
                         Console.WriteLine(" " & intCount.ToString & " errors were found")
                     End If
 
-                    intCount = .ErrorWarningCounts(IValidateFastaFile.eMsgTypeConstants.WarningMsg, IValidateFastaFile.ErrorWarningCountTypes.Total)
+                    intCount = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
                     If intCount = 0 Then
                         Console.WriteLine(" No warnings were found")
                     Else

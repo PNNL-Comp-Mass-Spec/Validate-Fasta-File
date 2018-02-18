@@ -29,11 +29,10 @@ Imports System.Text.RegularExpressions
 Imports PRISM
 
 Public Class clsValidateFastaFile
-    Inherits clsProcessFilesBaseClass
-    Implements IValidateFastaFile
+    Inherits FileProcessor.ProcessFilesBase
 
     Public Sub New()
-        MyBase.mFileDate = "September 19, 2017"
+        mFileDate = "February 17, 2017"
         InitializeLocalVariables()
     End Sub
 
@@ -132,6 +131,84 @@ Public Class clsValidateFastaFile
         DuplicateProteinNameRetained = 21
     End Enum
 
+    Structure udtMsgInfoType
+        Public LineNumber As Integer
+        Public ColNumber As Integer
+        Public ProteinName As String
+        Public MessageCode As Integer
+        Public ExtraInfo As String
+        Public Context As String
+    End Structure
+
+    Enum RuleTypes
+        HeaderLine
+        ProteinName
+        ProteinDescription
+        ProteinSequence
+    End Enum
+
+    Enum SwitchOptions
+        AddMissingLinefeedatEOF
+        AllowAsteriskInResidues
+        CheckForDuplicateProteinNames
+        GenerateFixedFASTAFile
+        SplitOutMultipleRefsInProteinName
+        OutputToStatsFile
+        WarnBlankLinesBetweenProteins
+        WarnLineStartsWithSpace
+        NormalizeFileLineEndCharacters
+        CheckForDuplicateProteinSequences
+        FixedFastaRenameDuplicateNameProteins
+        SaveProteinSequenceHashInfoFiles
+        FixedFastaConsolidateDuplicateProteinSeqs
+        FixedFastaConsolidateDupsIgnoreILDiff
+        FixedFastaTruncateLongProteinNames
+        FixedFastaSplitOutMultipleRefsForKnownAccession
+        FixedFastaWrapLongResidueLines
+        FixedFastaRemoveInvalidResidues
+        SaveBasicProteinHashInfoFile
+        AllowDashInResidues
+        FixedFastaKeepDuplicateNamedProteins        ' Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
+        AllowAllSymbolsInProteinNames
+    End Enum
+
+    Enum FixedFASTAFileValues
+        DuplicateProteinNamesSkippedCount
+        ProteinNamesInvalidCharsReplaced
+        ProteinNamesMultipleRefsRemoved
+        TruncatedProteinNameCount
+        UpdatedResidueLines
+        DuplicateProteinNamesRenamedCount
+        DuplicateProteinSeqsSkippedCount
+    End Enum
+
+    Enum ErrorWarningCountTypes
+        Specified
+        Unspecified
+        Total
+    End Enum
+
+    Enum eMsgTypeConstants
+        ErrorMsg = 0
+        WarningMsg = 1
+        StatusMsg = 2
+    End Enum
+
+    Enum eValidateFastaFileErrorCodes
+        NoError = 0
+        OptionsSectionNotFound = 1
+        ErrorReadingInputFile = 2
+        ErrorCreatingStatsFile = 4
+        ErrorVerifyingLinefeedAtEOF = 8
+        UnspecifiedError = -1
+    End Enum
+
+    Enum eLineEndingCharacters
+        CRLF  'Windows
+        CR    'Old Style Mac
+        LF    'Unix/Linux/OS X
+        LFCR  'Oddball (Just for completeness!)
+    End Enum
 #End Region
 
 #Region "Structures"
@@ -225,12 +302,12 @@ Public Class clsValidateFastaFile
     Private mFixedFastaStats As udtFixedFastaStatsType
 
     Private mFileErrorCount As Integer
-    Private mFileErrors() As IValidateFastaFile.udtMsgInfoType
+    Private mFileErrors() As udtMsgInfoType
     Private mFileErrorStats As udtItemSummaryIndexedType
 
     Private mFileWarningCount As Integer
 
-    Private mFileWarnings() As IValidateFastaFile.udtMsgInfoType
+    Private mFileWarnings() As udtMsgInfoType
     Private mFileWarningStats As udtItemSummaryIndexedType
 
     Private mHeaderLineRules() As udtRuleDefinitionType
@@ -286,14 +363,13 @@ Public Class clsValidateFastaFile
     ''' </remarks>
     Private mProteinNameSpannerCharLength As Byte = 1
 
-    Private mLocalErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes
+    Private mLocalErrorCode As eValidateFastaFileErrorCodes
 
     Private mMemoryUsageLogger As clsMemoryUsageLogger
 
     Private mProcessMemoryUsageMBAtStart As Single
 
     Private mSortUtilityErrorMessage As String
-    Private mLastSortUtilityProgress As DateTime
 
     Private mTempFilesToDelete As List(Of String)
 
@@ -308,8 +384,7 @@ Public Class clsValidateFastaFile
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-    Public Property OptionSwitch(SwitchName As IValidateFastaFile.SwitchOptions) As Boolean _
-     Implements IValidateFastaFile.OptionSwitches
+    Public Property OptionSwitch(SwitchName As SwitchOptions) As Boolean
         Get
             Return GetOptionSwitchValue(SwitchName)
         End Get
@@ -324,103 +399,103 @@ Public Class clsValidateFastaFile
     ''' <param name="SwitchName"></param>
     ''' <param name="State"></param>
     ''' <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-    Public Sub SetOptionSwitch(SwitchName As IValidateFastaFile.SwitchOptions, State As Boolean)
+    Public Sub SetOptionSwitch(SwitchName As SwitchOptions, State As Boolean)
 
         Select Case SwitchName
-            Case IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF
+            Case SwitchOptions.AddMissingLinefeedatEOF
                 mAddMissingLinefeedAtEOF = State
-            Case IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues
+            Case SwitchOptions.AllowAsteriskInResidues
                 mAllowAsteriskInResidues = State
-            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames
+            Case SwitchOptions.CheckForDuplicateProteinNames
                 mCheckForDuplicateProteinNames = State
-            Case IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile
+            Case SwitchOptions.GenerateFixedFASTAFile
                 mGenerateFixedFastaFile = State
-            Case IValidateFastaFile.SwitchOptions.OutputToStatsFile
+            Case SwitchOptions.OutputToStatsFile
                 mOutputToStatsFile = State
-            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName
+            Case SwitchOptions.SplitOutMultipleRefsInProteinName
                 mFixedFastaOptions.SplitOutMultipleRefsInProteinName = State
-            Case IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins
+            Case SwitchOptions.WarnBlankLinesBetweenProteins
                 mWarnBlankLinesBetweenProteins = State
-            Case IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace
+            Case SwitchOptions.WarnLineStartsWithSpace
                 mWarnLineStartsWithSpace = State
-            Case IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters
+            Case SwitchOptions.NormalizeFileLineEndCharacters
                 mNormalizeFileLineEndCharacters = State
-            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
+            Case SwitchOptions.CheckForDuplicateProteinSequences
                 mCheckForDuplicateProteinSequences = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
+            Case SwitchOptions.FixedFastaRenameDuplicateNameProteins
                 mFixedFastaOptions.RenameProteinsWithDuplicateNames = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins
+            Case SwitchOptions.FixedFastaKeepDuplicateNamedProteins
                 mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence = State
-            Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
+            Case SwitchOptions.SaveProteinSequenceHashInfoFiles
                 mSaveProteinSequenceHashInfoFiles = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
+            Case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
                 mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
+            Case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
                 mFixedFastaOptions.ConsolidateDupsIgnoreILDiff = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames
+            Case SwitchOptions.FixedFastaTruncateLongProteinNames
                 mFixedFastaOptions.TruncateLongProteinNames = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
+            Case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
                 mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines
+            Case SwitchOptions.FixedFastaWrapLongResidueLines
                 mFixedFastaOptions.WrapLongResidueLines = State
-            Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
+            Case SwitchOptions.FixedFastaRemoveInvalidResidues
                 mFixedFastaOptions.RemoveInvalidResidues = State
-            Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
+            Case SwitchOptions.SaveBasicProteinHashInfoFile
                 mSaveBasicProteinHashInfoFile = State
-            Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
+            Case SwitchOptions.AllowDashInResidues
                 mAllowDashInResidues = State
-            Case IValidateFastaFile.SwitchOptions.AllowAllSymbolsInProteinNames
+            Case SwitchOptions.AllowAllSymbolsInProteinNames
                 mAllowAllSymbolsInProteinNames = State
         End Select
 
     End Sub
 
-    Public Function GetOptionSwitchValue(SwitchName As IValidateFastaFile.SwitchOptions) As Boolean
+    Public Function GetOptionSwitchValue(SwitchName As SwitchOptions) As Boolean
 
         Select Case SwitchName
-            Case IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF
+            Case SwitchOptions.AddMissingLinefeedatEOF
                 Return mAddMissingLinefeedAtEOF
-            Case IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues
+            Case SwitchOptions.AllowAsteriskInResidues
                 Return mAllowAsteriskInResidues
-            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames
+            Case SwitchOptions.CheckForDuplicateProteinNames
                 Return mCheckForDuplicateProteinNames
-            Case IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile
+            Case SwitchOptions.GenerateFixedFASTAFile
                 Return mGenerateFixedFastaFile
-            Case IValidateFastaFile.SwitchOptions.OutputToStatsFile
+            Case SwitchOptions.OutputToStatsFile
                 Return mOutputToStatsFile
-            Case IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName
+            Case SwitchOptions.SplitOutMultipleRefsInProteinName
                 Return mFixedFastaOptions.SplitOutMultipleRefsInProteinName
-            Case IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins
+            Case SwitchOptions.WarnBlankLinesBetweenProteins
                 Return mWarnBlankLinesBetweenProteins
-            Case IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace
+            Case SwitchOptions.WarnLineStartsWithSpace
                 Return mWarnLineStartsWithSpace
-            Case IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters
+            Case SwitchOptions.NormalizeFileLineEndCharacters
                 Return mNormalizeFileLineEndCharacters
-            Case IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences
+            Case SwitchOptions.CheckForDuplicateProteinSequences
                 Return mCheckForDuplicateProteinSequences
-            Case IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins
+            Case SwitchOptions.FixedFastaRenameDuplicateNameProteins
                 Return mFixedFastaOptions.RenameProteinsWithDuplicateNames
-            Case IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins
+            Case SwitchOptions.FixedFastaKeepDuplicateNamedProteins
                 Return mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence
-            Case IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles
+            Case SwitchOptions.SaveProteinSequenceHashInfoFiles
                 Return mSaveProteinSequenceHashInfoFiles
-            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
+            Case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
                 Return mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs
-            Case IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
+            Case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
                 Return mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
-            Case IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames
+            Case SwitchOptions.FixedFastaTruncateLongProteinNames
                 Return mFixedFastaOptions.TruncateLongProteinNames
-            Case IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
+            Case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
                 Return mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession
-            Case IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines
+            Case SwitchOptions.FixedFastaWrapLongResidueLines
                 Return mFixedFastaOptions.WrapLongResidueLines
-            Case IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues
+            Case SwitchOptions.FixedFastaRemoveInvalidResidues
                 Return mFixedFastaOptions.RemoveInvalidResidues
-            Case IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile
+            Case SwitchOptions.SaveBasicProteinHashInfoFile
                 Return mSaveBasicProteinHashInfoFile
-            Case IValidateFastaFile.SwitchOptions.AllowDashInResidues
+            Case SwitchOptions.AllowDashInResidues
                 Return mAllowDashInResidues
-            Case IValidateFastaFile.SwitchOptions.AllowAllSymbolsInProteinNames
+            Case SwitchOptions.AllowAllSymbolsInProteinNames
                 Return mAllowAllSymbolsInProteinNames
         End Select
 
@@ -429,37 +504,37 @@ Public Class clsValidateFastaFile
     End Function
 
     Public ReadOnly Property ErrorWarningCounts(
-      messageType As IValidateFastaFile.eMsgTypeConstants,
-      CountType As IValidateFastaFile.ErrorWarningCountTypes) As Integer
+      messageType As eMsgTypeConstants,
+      CountType As ErrorWarningCountTypes) As Integer
 
         Get
             Dim tmpValue As Integer
             Select Case CountType
-                Case IValidateFastaFile.ErrorWarningCountTypes.Total
+                Case ErrorWarningCountTypes.Total
                     Select Case messageType
-                        Case IValidateFastaFile.eMsgTypeConstants.ErrorMsg
+                        Case eMsgTypeConstants.ErrorMsg
                             tmpValue = mFileErrorCount + ComputeTotalUnspecifiedCount(mFileErrorStats)
-                        Case IValidateFastaFile.eMsgTypeConstants.WarningMsg
+                        Case eMsgTypeConstants.WarningMsg
                             tmpValue = mFileWarningCount + ComputeTotalUnspecifiedCount(mFileWarningStats)
-                        Case IValidateFastaFile.eMsgTypeConstants.StatusMsg
+                        Case eMsgTypeConstants.StatusMsg
                             tmpValue = 0
                     End Select
-                Case IValidateFastaFile.ErrorWarningCountTypes.Unspecified
+                Case ErrorWarningCountTypes.Unspecified
                     Select Case messageType
-                        Case IValidateFastaFile.eMsgTypeConstants.ErrorMsg
+                        Case eMsgTypeConstants.ErrorMsg
                             tmpValue = ComputeTotalUnspecifiedCount(mFileErrorStats)
-                        Case IValidateFastaFile.eMsgTypeConstants.WarningMsg
+                        Case eMsgTypeConstants.WarningMsg
                             tmpValue = ComputeTotalSpecifiedCount(mFileWarningStats)
-                        Case IValidateFastaFile.eMsgTypeConstants.StatusMsg
+                        Case eMsgTypeConstants.StatusMsg
                             tmpValue = 0
                     End Select
-                Case IValidateFastaFile.ErrorWarningCountTypes.Specified
+                Case ErrorWarningCountTypes.Specified
                     Select Case messageType
-                        Case IValidateFastaFile.eMsgTypeConstants.ErrorMsg
+                        Case eMsgTypeConstants.ErrorMsg
                             tmpValue = mFileErrorCount
-                        Case IValidateFastaFile.eMsgTypeConstants.WarningMsg
+                        Case eMsgTypeConstants.WarningMsg
                             tmpValue = mFileWarningCount
-                        Case IValidateFastaFile.eMsgTypeConstants.StatusMsg
+                        Case eMsgTypeConstants.StatusMsg
                             tmpValue = 0
                     End Select
             End Select
@@ -469,25 +544,25 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property FixedFASTAFileStats(
-     ValueType As IValidateFastaFile.FixedFASTAFileValues) As Integer _
-     Implements IValidateFastaFile.FixedFASTAFileStats
+     ValueType As FixedFASTAFileValues) As Integer
+
 
         Get
             Dim tmpValue As Integer
             Select Case ValueType
-                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
+                Case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
                     tmpValue = mFixedFastaStats.DuplicateNameProteinsSkipped
-                Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
+                Case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
                     tmpValue = mFixedFastaStats.ProteinNamesInvalidCharsReplaced
-                Case IValidateFastaFile.FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved
+                Case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved
                     tmpValue = mFixedFastaStats.ProteinNamesMultipleRefsRemoved
-                Case IValidateFastaFile.FixedFASTAFileValues.TruncatedProteinNameCount
+                Case FixedFASTAFileValues.TruncatedProteinNameCount
                     tmpValue = mFixedFastaStats.TruncatedProteinNameCount
-                Case IValidateFastaFile.FixedFASTAFileValues.UpdatedResidueLines
+                Case FixedFASTAFileValues.UpdatedResidueLines
                     tmpValue = mFixedFastaStats.UpdatedResidueLines
-                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinNamesRenamedCount
+                Case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount
                     tmpValue = mFixedFastaStats.DuplicateNameProteinsRenamed
-                Case IValidateFastaFile.FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount
+                Case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount
                     tmpValue = mFixedFastaStats.DuplicateSequenceProteinsSkipped
             End Select
             Return tmpValue
@@ -495,32 +570,32 @@ Public Class clsValidateFastaFile
         End Get
     End Property
 
-    Public ReadOnly Property ProteinCount() As Integer Implements IValidateFastaFile.ProteinCount
+    Public ReadOnly Property ProteinCount() As Integer
         Get
             Return mProteinCount
         End Get
     End Property
 
-    Public ReadOnly Property LineCount() As Integer Implements IValidateFastaFile.FileLineCount
+    Public ReadOnly Property LineCount() As Integer
         Get
             Return mLineCount
         End Get
     End Property
 
-    Public ReadOnly Property LocalErrorCode() As IValidateFastaFile.eValidateFastaFileErrorCodes _
-     Implements IValidateFastaFile.LocalErrorCode
+    Public ReadOnly Property LocalErrorCode() As eValidateFastaFileErrorCodes
+
         Get
             Return mLocalErrorCode
         End Get
     End Property
 
-    Public ReadOnly Property ResidueCount() As Long Implements IValidateFastaFile.ResidueCount
+    Public ReadOnly Property ResidueCount() As Long
         Get
             Return mResidueCount
         End Get
     End Property
 
-    Public ReadOnly Property FastaFilePath() As String Implements IValidateFastaFile.FASTAFilePath
+    Public ReadOnly Property FastaFilePath() As String
         Get
             Return mFastaFilePath
         End Get
@@ -528,8 +603,8 @@ Public Class clsValidateFastaFile
 
     Public ReadOnly Property ErrorMessageTextByIndex(
      index As Integer,
-     valueSeparator As String) As String _
-      Implements IValidateFastaFile.ErrorMessageTextByIndex
+     valueSeparator As String) As String
+
         Get
             Return GetFileErrorTextByIndex(index, valueSeparator)
         End Get
@@ -537,22 +612,22 @@ Public Class clsValidateFastaFile
 
     Public ReadOnly Property WarningMessageTextByIndex(
      index As Integer,
-     valueSeparator As String) As String _
-      Implements IValidateFastaFile.WarningMessageTextByIndex
+     valueSeparator As String) As String
+
         Get
             Return GetFileWarningTextByIndex(index, valueSeparator)
         End Get
     End Property
 
-    Public ReadOnly Property ErrorsByIndex(errorIndex As Integer) As IValidateFastaFile.udtMsgInfoType _
-     Implements IValidateFastaFile.FileErrorByIndex
+    Public ReadOnly Property ErrorsByIndex(errorIndex As Integer) As udtMsgInfoType
+
         Get
             Return (GetFileErrorByIndex(errorIndex))
         End Get
     End Property
 
-    Public ReadOnly Property WarningsByIndex(warningIndex As Integer) As IValidateFastaFile.udtMsgInfoType _
-     Implements IValidateFastaFile.FileWarningByIndex
+    Public ReadOnly Property WarningsByIndex(warningIndex As Integer) As udtMsgInfoType
+
         Get
             Return GetFileWarningByIndex(warningIndex)
         End Get
@@ -566,8 +641,8 @@ Public Class clsValidateFastaFile
     ''' <remarks></remarks>
     Public Property ExistingProteinHashFile As String
 
-    Public Property MaximumFileErrorsToTrack() As Integer _
-     Implements IValidateFastaFile.MaximumFileErrorsToTrack
+    Public Property MaximumFileErrorsToTrack() As Integer
+
         Get
             Return mMaximumFileErrorsToTrack
         End Get
@@ -577,8 +652,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property MaximumProteinNameLength() As Integer _
-     Implements IValidateFastaFile.MaximumProteinNameLength
+    Public Property MaximumProteinNameLength() As Integer
+
         Get
             Return mMaximumProteinNameLength
         End Get
@@ -591,8 +666,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property MinimumProteinNameLength() As Integer _
-     Implements IValidateFastaFile.MinimumProteinNameLength
+    Public Property MinimumProteinNameLength() As Integer
+
         Get
             Return mMinimumProteinNameLength
         End Get
@@ -602,8 +677,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property MaximumResiduesPerLine() As Integer _
-     Implements IValidateFastaFile.MaximumResiduesPerLine
+    Public Property MaximumResiduesPerLine() As Integer
+
         Get
             Return mMaximumResiduesPerLine
         End Get
@@ -618,8 +693,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinLineStartChar() As Char _
-     Implements IValidateFastaFile.ProteinLineStartCharacter
+    Public Property ProteinLineStartChar() As Char
+
         Get
             Return mProteinLineStartChar
         End Get
@@ -638,8 +713,8 @@ Public Class clsValidateFastaFile
         End Get
     End Property
 
-    Public Property ProteinNameInvalidCharsToRemove() As String _
-     Implements IValidateFastaFile.ProteinNameInvalidCharactersToRemove
+    Public Property ProteinNameInvalidCharsToRemove() As String
+
         Get
             Return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
         End Get
@@ -659,8 +734,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinNameFirstRefSepChars() As String _
-       Implements IValidateFastaFile.ProteinNameFirstRefSepChars
+    Public Property ProteinNameFirstRefSepChars() As String
+
         Get
             Return CharArrayToString(mProteinNameFirstRefSepChars)
         End Get
@@ -680,8 +755,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinNameSubsequentRefSepChars() As String _
-       Implements IValidateFastaFile.ProteinNameSubsequentRefSepChars
+    Public Property ProteinNameSubsequentRefSepChars() As String
+
         Get
             Return CharArrayToString(mProteinNameSubsequentRefSepChars)
         End Get
@@ -701,8 +776,8 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property LongProteinNameSplitChars() As String _
-     Implements IValidateFastaFile.LongProteinNameSplitChars
+    Public Property LongProteinNameSplitChars() As String
+
         Get
             Return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars)
         End Get
@@ -718,49 +793,29 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public ReadOnly Property FileWarningList As List(Of IValidateFastaFile.udtMsgInfoType) _
-     Implements IValidateFastaFile.FileWarningList
+    Public ReadOnly Property FileWarningList As List(Of udtMsgInfoType)
+
         Get
             Return GetFileWarnings()
         End Get
     End Property
 
-    Public ReadOnly Property FileErrorList As List(Of IValidateFastaFile.udtMsgInfoType) _
-     Implements IValidateFastaFile.FileErrorList
+    Public ReadOnly Property FileErrorList As List(Of udtMsgInfoType)
+
         Get
             Return GetFileErrors()
         End Get
     End Property
 
-    Public Shadows Property ShowMessages() As Boolean Implements IValidateFastaFile.ShowMessages
-        Get
-            Return MyBase.ShowMessages
-        End Get
-        Set(Value As Boolean)
-            MyBase.ShowMessages = Value
-        End Set
-    End Property
-
 #End Region
 
-    Private Event ProgressUpdated(
-     taskDescription As String,
-     percentComplete As Single) Implements IValidateFastaFile.ProgressChanged
+    Public Event ProgressCompleted()
 
-    Private Event ProgressCompleted() Implements IValidateFastaFile.ProgressCompleted
-
-    Private Event WroteLineEndNormalizedFASTA(newFilePath As String) Implements IValidateFastaFile.WroteLineEndNormalizedFASTA
-
-    Private Sub OnProgressUpdate(
-     taskDescription As String,
-     percentComplete As Single) Handles MyBase.ProgressChanged
-
-        RaiseEvent ProgressUpdated(taskDescription, percentComplete)
-
-    End Sub
+    Public Event WroteLineEndNormalizedFASTA(newFilePath As String)
 
     Private Sub OnProgressComplete() Handles MyBase.ProgressComplete
         RaiseEvent ProgressCompleted()
+        OperationComplete()
     End Sub
 
     Private Sub OnWroteLineEndNormalizedFASTA(newFilePath As String)
@@ -839,7 +894,7 @@ Public Class clsValidateFastaFile
                 mFastaFilePath = NormalizeFileLineEndings(
                  strFastaFilePath,
                  "CRLF_" & Path.GetFileName(strFastaFilePath),
-                 IValidateFastaFile.eLineEndingCharacters.CRLF)
+                 eLineEndingCharacters.CRLF)
 
                 If mFastaFilePath <> strFastaFilePath Then
                     strFastaFilePath = String.Copy(mFastaFilePath)
@@ -946,8 +1001,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strFastaFilePathOut & ": " & ex.Message, String.Empty)
-                        ShowMessage(ex.Message)
-                        ShowExceptionStackTrace("AnalyzeFastaFile (Create _new.fasta)", ex)
+                        OnErrorEvent("Error creating output file (Create _new.fasta)", ex)
                         Return False
                     End Try
                 End If
@@ -974,8 +1028,7 @@ Public Class clsValidateFastaFile
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
                          "Error creating output file " & strBasicProteinHashInfoFilePath & ": " & ex.Message, String.Empty)
-                        ShowMessage(ex.Message)
-                        ShowExceptionStackTrace("AnalyzeFastaFile (Create " & PROTEIN_HASHES_FILENAME_SUFFIX & ")", ex)
+                        OnErrorEvent("Error creating output file (Create " & PROTEIN_HASHES_FILENAME_SUFFIX & ")", ex)
                     End Try
 
                 End If
@@ -1021,26 +1074,31 @@ Public Class clsValidateFastaFile
                 Dim intCurrentValidResidueLineLengthMax = 0
                 Dim blnProcessingDuplicateOrInvalidProtein = False
 
+                Dim lastProgressReport = DateTime.UtcNow
+
                 Do While Not srFastaInFile.EndOfStream
 
                     Dim strLineIn = srFastaInFile.ReadLine()
                     lngBytesRead += strLineIn.Length + intTerminatorSize
 
-                    If mLineCount Mod 50 = 0 Then
+                    If mLineCount Mod 250 = 0 Then
                         If MyBase.AbortProcessing Then Exit Do
 
-                        Dim sngPercentComplete = CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
-                        If blnConsolidateDuplicateProteinSeqsInFasta OrElse blnKeepDuplicateNamedProteinsUnlessMatchingSequence Then
-                            ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
-                            ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
-                            sngPercentComplete = sngPercentComplete * 3 / 4
-                        End If
+                        If DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5 Then
+                            lastProgressReport = DateTime.UtcNow
+                            Dim sngPercentComplete = CType(lngBytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
+                            If blnConsolidateDuplicateProteinSeqsInFasta OrElse blnKeepDuplicateNamedProteinsUnlessMatchingSequence Then
+                                ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
+                                ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
+                                sngPercentComplete = sngPercentComplete * 3 / 4
+                            End If
 
-                        MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
+                            MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(sngPercentComplete, 0) & "% Done)", sngPercentComplete)
 
-                        If DateTime.UtcNow.Subtract(dtLastMemoryUsageReport).TotalMinutes >= 1 Then
-                            dtLastMemoryUsageReport = DateTime.UtcNow
-                            ReportMemoryUsage(lstPreloadedProteinNamesToKeep, lstProteinSequenceHashes, lstProteinNames, oProteinSeqHashInfo)
+                            If DateTime.UtcNow.Subtract(dtLastMemoryUsageReport).TotalMinutes >= 1 Then
+                                dtLastMemoryUsageReport = DateTime.UtcNow
+                                ReportMemoryUsage(lstPreloadedProteinNamesToKeep, lstProteinSequenceHashes, lstProteinNames, oProteinSeqHashInfo)
+                            End If
                         End If
                     End If
 
@@ -1297,12 +1355,7 @@ Public Class clsValidateFastaFile
             End If
 
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in AnalyzeFastaFile:" & ex.Message)
-                ShowExceptionStackTrace("AnalyzeFastaFile", ex)
-            Else
-                Throw New Exception("Error in AnalyzeFastaFile", ex)
-            End If
+            OnErrorEvent("Error in AnalyzeFastaFile", ex)
             blnSuccess = False
         Finally
             ' These close statements will typically be redundant,
@@ -1440,8 +1493,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error parsing protein header line '" & strLineIn & "': " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("AnalyzeFastaFileProcesssProteinHeader", ex)
+            OnErrorEvent("Error parsing protein header line", ex)
         End Try
 
 
@@ -1481,8 +1533,7 @@ Public Class clsValidateFastaFile
             ' Error opening output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating output file " & strUniqueProteinSeqsFileOut & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqs.txt)", ex)
+            OnErrorEvent("Error creating output file (SaveHashInfo to _UniqueProteinSeqs.txt)", ex)
             Return False
         End Try
 
@@ -1500,8 +1551,7 @@ Public Class clsValidateFastaFile
             ' Error deleting output file
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error deleting output file " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo (to _UniqueProteinSeqDuplicates.txt)", ex)
+            OnErrorEvent("Error deleting output file (SaveHashInfo to _UniqueProteinSeqDuplicates.txt)", ex)
             Return False
         End Try
 
@@ -1576,8 +1626,7 @@ Public Class clsValidateFastaFile
             ' Error writing results
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing results to " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("AnalyzeFastaSaveHashInfo", ex)
+            OnErrorEvent("Error writing results to " & strUniqueProteinSeqsFileOut & " or " & strDuplicateProteinMappingFileOut, ex)
             blnSuccess = False
         End Try
 
@@ -1786,11 +1835,7 @@ Public Class clsValidateFastaFile
             End Using
 
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in AutoDetermineProteinNameSpannerCharLength:" & ex.Message)
-            Else
-                Throw New Exception("Error in AutoDetermineProteinNameSpannerCharLength", ex)
-            End If
+            OnErrorEvent("Error in AutoDetermineProteinNameSpannerCharLength", ex)
         End Try
 
         Return linesRead
@@ -1980,10 +2025,6 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Shadows Sub AbortProcessingNow() Implements IValidateFastaFile.AbortProcessingNow
-        MyBase.AbortProcessingNow()
-    End Sub
-
     Private Function BoolToStringInt(value As Boolean) As String
         If value Then
             Return "1"
@@ -1997,24 +2038,24 @@ Public Class clsValidateFastaFile
     End Function
 
 
-    Private Sub ClearAllRules() Implements IValidateFastaFile.ClearAllRules
-        Me.ClearRules(IValidateFastaFile.RuleTypes.HeaderLine)
-        Me.ClearRules(IValidateFastaFile.RuleTypes.ProteinDescription)
-        Me.ClearRules(IValidateFastaFile.RuleTypes.ProteinName)
-        Me.ClearRules(IValidateFastaFile.RuleTypes.ProteinSequence)
+    Private Sub ClearAllRules()
+        Me.ClearRules(RuleTypes.HeaderLine)
+        Me.ClearRules(RuleTypes.ProteinDescription)
+        Me.ClearRules(RuleTypes.ProteinName)
+        Me.ClearRules(RuleTypes.ProteinSequence)
 
         mMasterCustomRuleID = CUSTOM_RULE_ID_START
     End Sub
 
-    Private Sub ClearRules(ruleType As IValidateFastaFile.RuleTypes) Implements IValidateFastaFile.ClearRules
+    Private Sub ClearRules(ruleType As RuleTypes)
         Select Case ruleType
-            Case IValidateFastaFile.RuleTypes.HeaderLine
+            Case RuleTypes.HeaderLine
                 Me.ClearRulesDataStructure(mHeaderLineRules)
-            Case IValidateFastaFile.RuleTypes.ProteinDescription
+            Case RuleTypes.ProteinDescription
                 Me.ClearRulesDataStructure(mProteinDescriptionRules)
-            Case IValidateFastaFile.RuleTypes.ProteinName
+            Case RuleTypes.ProteinName
                 Me.ClearRulesDataStructure(mProteinNameRules)
-            Case IValidateFastaFile.RuleTypes.ProteinSequence
+            Case RuleTypes.ProteinSequence
                 Me.ClearRulesDataStructure(mProteinSequenceRules)
         End Select
     End Sub
@@ -2151,8 +2192,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error renaming " & strFixedFastaFilePath & " to " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (rename fixed fasta to .tempfixed)", ex)
+            OnErrorEvent("Error renameing fixed fasta to .tempfixed", ex)
             Return False
         End Try
 
@@ -2174,8 +2214,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error opening " & strFixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastafilePathTemp)", ex)
+            OnErrorEvent("Error opening strFixedFastaFilePathTemp", ex)
             Return False
         End Try
 
@@ -2185,8 +2224,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating consolidated fasta output file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (create strFixedFastaFilePath)", ex)
+            OnErrorEvent("Error creating consolidated fasta output file", ex)
         End Try
 
         Try
@@ -2196,7 +2234,7 @@ Public Class clsValidateFastaFile
             ' Populate htDuplicateProteinList with the protein names in oProteinSeqHashInfo().AdditionalProteins
             lstDuplicateProteinList = New clsNestedStringDictionary(Of String)(True, mProteinNameSpannerCharLength)
 
-            For intIndex As Integer = 0 To intProteinSequenceHashCount - 1
+            For intIndex = 0 To intProteinSequenceHashCount - 1
                 With oProteinSeqHashInfo(intIndex)
 
                     If Not lstProteinNameFirst.ContainsKey(.ProteinNameFirst) Then
@@ -2315,8 +2353,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error writing to consolidated fasta file " & strFixedFastaFilePath & ": " & ex.Message, String.Empty)
-            ShowMessage(ex.Message)
-            ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta", ex)
+            OnErrorEvent("Error writing to consolidated fasta file", ex)
             Return False
         Finally
             Try
@@ -2328,8 +2365,7 @@ Public Class clsValidateFastaFile
                 File.Delete(strFixedFastaFilePathTemp)
             Catch ex As Exception
                 ' Ignore errors here
-                ShowMessage(ex.Message)
-                ShowExceptionStackTrace("CorrectForDuplicateProteinSeqsInFasta (closing file handles)", ex)
+                OnWarningEvent("Error closing file handles in CorrectForDuplicateProteinSeqsInFasta: " & ex.Message)
             End Try
         End Try
 
@@ -2386,16 +2422,16 @@ Public Class clsValidateFastaFile
 
     Private Function DetermineLineTerminatorSize(strInputFilePath As String) As Integer
 
-        Dim endCharType As IValidateFastaFile.eLineEndingCharacters = Me.DetermineLineTerminatorType(strInputFilePath)
+        Dim endCharType As eLineEndingCharacters = Me.DetermineLineTerminatorType(strInputFilePath)
 
         Select Case endCharType
-            Case IValidateFastaFile.eLineEndingCharacters.CR
+            Case eLineEndingCharacters.CR
                 Return 1
-            Case IValidateFastaFile.eLineEndingCharacters.LF
+            Case eLineEndingCharacters.LF
                 Return 1
-            Case IValidateFastaFile.eLineEndingCharacters.CRLF
+            Case eLineEndingCharacters.CRLF
                 Return 2
-            Case IValidateFastaFile.eLineEndingCharacters.LFCR
+            Case eLineEndingCharacters.LFCR
                 Return 2
         End Select
 
@@ -2403,10 +2439,10 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function DetermineLineTerminatorType(strInputFilePath As String) As IValidateFastaFile.eLineEndingCharacters
+    Private Function DetermineLineTerminatorType(strInputFilePath As String) As eLineEndingCharacters
         Dim intByte As Integer
 
-        Dim endCharacterType As IValidateFastaFile.eLineEndingCharacters
+        Dim endCharacterType As eLineEndingCharacters
 
         Try
             ' Open the input file and look for the first carriage return or line feed
@@ -2422,13 +2458,13 @@ Public Class clsValidateFastaFile
                             intByte = fsInFile.ReadByte()
                             If intByte = 13 Then
                                 ' LfCr
-                                endCharacterType = IValidateFastaFile.eLineEndingCharacters.LFCR
+                                endCharacterType = eLineEndingCharacters.LFCR
                             Else
                                 ' Lf only
-                                endCharacterType = IValidateFastaFile.eLineEndingCharacters.LF
+                                endCharacterType = eLineEndingCharacters.LF
                             End If
                         Else
-                            endCharacterType = IValidateFastaFile.eLineEndingCharacters.LF
+                            endCharacterType = eLineEndingCharacters.LF
                         End If
                         Exit Do
                     ElseIf intByte = 13 Then
@@ -2437,13 +2473,13 @@ Public Class clsValidateFastaFile
                             intByte = fsInFile.ReadByte()
                             If intByte = 10 Then
                                 ' CrLf
-                                endCharacterType = IValidateFastaFile.eLineEndingCharacters.CRLF
+                                endCharacterType = eLineEndingCharacters.CRLF
                             Else
                                 ' Cr only
-                                endCharacterType = IValidateFastaFile.eLineEndingCharacters.CR
+                                endCharacterType = eLineEndingCharacters.CR
                             End If
                         Else
-                            endCharacterType = IValidateFastaFile.eLineEndingCharacters.CR
+                            endCharacterType = eLineEndingCharacters.CR
                         End If
                         Exit Do
                     End If
@@ -2453,7 +2489,7 @@ Public Class clsValidateFastaFile
             End Using
 
         Catch ex As Exception
-            SetLocalErrorCode(IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
+            SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
         End Try
 
         Return endCharacterType
@@ -2480,11 +2516,11 @@ Public Class clsValidateFastaFile
     Private Function NormalizeFileLineEndings(
      pathOfFileToFix As String,
      newFileName As String,
-     desiredLineEndCharacterType As IValidateFastaFile.eLineEndingCharacters) As String
+     desiredLineEndCharacterType As eLineEndingCharacters) As String
 
         Dim newEndChar As String = ControlChars.CrLf
 
-        Dim endCharType As IValidateFastaFile.eLineEndingCharacters =
+        Dim endCharType As eLineEndingCharacters =
          Me.DetermineLineTerminatorType(pathOfFileToFix)
 
         Dim fi As FileInfo
@@ -2499,24 +2535,24 @@ Public Class clsValidateFastaFile
 
         If endCharType <> desiredLineEndCharacterType Then
             Select Case desiredLineEndCharacterType
-                Case IValidateFastaFile.eLineEndingCharacters.CRLF
+                Case eLineEndingCharacters.CRLF
                     newEndChar = ControlChars.CrLf
-                Case IValidateFastaFile.eLineEndingCharacters.CR
+                Case eLineEndingCharacters.CR
                     newEndChar = ControlChars.Cr
-                Case IValidateFastaFile.eLineEndingCharacters.LF
+                Case eLineEndingCharacters.LF
                     newEndChar = ControlChars.Lf
-                Case IValidateFastaFile.eLineEndingCharacters.LFCR
+                Case eLineEndingCharacters.LFCR
                     newEndChar = ControlChars.CrLf
             End Select
 
             Select Case endCharType
-                Case IValidateFastaFile.eLineEndingCharacters.CR
+                Case eLineEndingCharacters.CR
                     origEndCharCount = 2
-                Case IValidateFastaFile.eLineEndingCharacters.CRLF
+                Case eLineEndingCharacters.CRLF
                     origEndCharCount = 1
-                Case IValidateFastaFile.eLineEndingCharacters.LF
+                Case eLineEndingCharacters.LF
                     origEndCharCount = 1
-                Case IValidateFastaFile.eLineEndingCharacters.LFCR
+                Case eLineEndingCharacters.LFCR
                     origEndCharCount = 2
             End Select
 
@@ -2718,14 +2754,6 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function FlattenAdditionalProteinList(oProteinSeqHashEntry As clsProteinHashInfo, chSepChar As Char) As String
-        Return FlattenArray(oProteinSeqHashEntry.AdditionalProteins, chSepChar)
-    End Function
-
-    Private Function FlattenArray(lstItems As IEnumerable(Of String)) As String
-        Return FlattenArray(lstItems, ControlChars.Tab)
-    End Function
-
     Private Function FlattenArray(lstItems As IEnumerable(Of String), chSepChar As Char) As String
         If lstItems Is Nothing Then
             Return String.Empty
@@ -2801,16 +2829,16 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Public Overrides Function GetDefaultExtensionsToParse() As String() Implements IValidateFastaFile.GetDefaultExtensionsToParse
-        Dim strExtensionsToParse(0) As String
-
-        strExtensionsToParse(0) = ".fasta"
+    Public Overrides Function GetDefaultExtensionsToParse() As IList(Of String)
+        Dim strExtensionsToParse = New List(Of String) From {
+            ".fasta"
+        }
 
         Return strExtensionsToParse
 
     End Function
 
-    Public Overrides Function GetErrorMessage() As String Implements IValidateFastaFile.GetCurrentErrorMessage
+    Public Overrides Function GetErrorMessage() As String
         ' Returns "" if no error
 
         Dim strErrorMessage As String
@@ -2818,17 +2846,17 @@ Public Class clsValidateFastaFile
         If MyBase.ErrorCode = eProcessFilesErrorCodes.LocalizedError Or
            MyBase.ErrorCode = eProcessFilesErrorCodes.NoError Then
             Select Case mLocalErrorCode
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.NoError
+                Case eValidateFastaFileErrorCodes.NoError
                     strErrorMessage = ""
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.OptionsSectionNotFound
+                Case eValidateFastaFileErrorCodes.OptionsSectionNotFound
                     strErrorMessage = "The section " & XML_SECTION_OPTIONS & " was not found in the parameter file"
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorReadingInputFile
+                Case eValidateFastaFileErrorCodes.ErrorReadingInputFile
                     strErrorMessage = "Error reading input file"
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorCreatingStatsFile
+                Case eValidateFastaFileErrorCodes.ErrorCreatingStatsFile
                     strErrorMessage = "Error creating stats output file"
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF
+                Case eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF
                     strErrorMessage = "Error verifying linefeed at end of file"
-                Case IValidateFastaFile.eValidateFastaFileErrorCodes.UnspecifiedError
+                Case eValidateFastaFileErrorCodes.UnspecifiedError
                     strErrorMessage = "Unspecified localized error"
                 Case Else
                     ' This shouldn't happen
@@ -2856,7 +2884,7 @@ Public Class clsValidateFastaFile
                     strProteinName = String.Copy(.ProteinName)
                 End If
 
-                Return LookupMessageType(IValidateFastaFile.eMsgTypeConstants.ErrorMsg) & strSepChar &
+                Return LookupMessageType(eMsgTypeConstants.ErrorMsg) & strSepChar &
                  "Line " & .LineNumber.ToString & strSepChar &
                  "Col " & .ColNumber.ToString & strSepChar &
                  strProteinName & strSepChar &
@@ -2867,10 +2895,10 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function GetFileErrorByIndex(intFileErrorIndex As Integer) As IValidateFastaFile.udtMsgInfoType
+    Private Function GetFileErrorByIndex(intFileErrorIndex As Integer) As udtMsgInfoType
 
         If mFileErrorCount <= 0 Or intFileErrorIndex < 0 Or intFileErrorIndex >= mFileErrorCount Then
-            Return New IValidateFastaFile.udtMsgInfoType
+            Return New udtMsgInfoType
         Else
             Return mFileErrors(intFileErrorIndex)
         End If
@@ -2882,9 +2910,9 @@ Public Class clsValidateFastaFile
     ''' </summary>
     ''' <returns></returns>
     ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileErrors() As List(Of IValidateFastaFile.udtMsgInfoType)
+    Protected Function GetFileErrors() As List(Of udtMsgInfoType)
 
-        Dim lstFileErrors = New List(Of IValidateFastaFile.udtMsgInfoType)
+        Dim lstFileErrors = New List(Of udtMsgInfoType)
 
         For i = 0 To mFileErrorCount - 1
             lstFileErrors.Add(mFileErrors(i))
@@ -2908,7 +2936,7 @@ Public Class clsValidateFastaFile
                     strProteinName = String.Copy(.ProteinName)
                 End If
 
-                Return LookupMessageType(IValidateFastaFile.eMsgTypeConstants.WarningMsg) & strSepChar &
+                Return LookupMessageType(eMsgTypeConstants.WarningMsg) & strSepChar &
                  "Line " & .LineNumber.ToString & strSepChar &
                  "Col " & .ColNumber.ToString & strSepChar &
                  strProteinName & strSepChar &
@@ -2920,10 +2948,10 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function GetFileWarningByIndex(intFileWarningIndex As Integer) As IValidateFastaFile.udtMsgInfoType
+    Private Function GetFileWarningByIndex(intFileWarningIndex As Integer) As udtMsgInfoType
 
         If mFileWarningCount <= 0 Or intFileWarningIndex < 0 Or intFileWarningIndex >= mFileWarningCount Then
-            Return New IValidateFastaFile.udtMsgInfoType
+            Return New udtMsgInfoType
         Else
             Return mFileWarnings(intFileWarningIndex)
         End If
@@ -2935,9 +2963,9 @@ Public Class clsValidateFastaFile
     ''' </summary>
     ''' <returns></returns>
     ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileWarnings() As List(Of IValidateFastaFile.udtMsgInfoType)
+    Protected Function GetFileWarnings() As List(Of udtMsgInfoType)
 
-        Dim lstFileWarnings = New List(Of IValidateFastaFile.udtMsgInfoType)
+        Dim lstFileWarnings = New List(Of udtMsgInfoType)
 
         For i = 0 To mFileWarningCount - 1
             lstFileWarnings.Add(mFileWarnings(i))
@@ -2958,11 +2986,9 @@ Public Class clsValidateFastaFile
 
     Private Sub InitializeLocalVariables()
 
-        MyBase.ShowMessages = False
+        mLocalErrorCode = eValidateFastaFileErrorCodes.NoError
 
-        mLocalErrorCode = IValidateFastaFile.eValidateFastaFileErrorCodes.NoError
-
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF) = False
+        Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF) = False
 
         Me.MaximumFileErrorsToTrack = 5
 
@@ -2971,32 +2997,32 @@ Public Class clsValidateFastaFile
         Me.MaximumResiduesPerLine = DEFAULT_MAXIMUM_RESIDUES_PER_LINE
         Me.ProteinLineStartChar = DEFAULT_PROTEIN_LINE_START_CHAR
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues) = False
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues) = False
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins) = False
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace) = True
+        Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues) = False
+        Me.OptionSwitch(SwitchOptions.AllowDashInResidues) = False
+        Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins) = False
+        Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace) = True
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames) = True
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) = True
+        Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames) = True
+        Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences) = True
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) = False
+        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) = True
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) = True
+        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) = False
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = False
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames) = True
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines) = True
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues) = False
+        Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames) = True
+        Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines) = True
+        Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
+        Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
 
-        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile) = False
+        Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile) = False
 
 
         mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray
@@ -3493,20 +3519,15 @@ Public Class clsValidateFastaFile
 
             Return True
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in LoadExistingProteinHashFile: " + ex.Message)
-                ShowExceptionStackTrace("LoadExistingProteinHashFile", ex)
-                Return False
-            Else
-                ShowExceptionStackTrace("LoadExistingProteinHashFile", ex)
-                Throw New Exception("Error in LoadExistingProteinHashFile", ex)
-            End If
+            OnErrorEvent("Error in LoadExistingProteinHashFile", ex)
+            Return False
+
         End Try
 
     End Function
 
     Public Function LoadParameterFileSettings(
-     strParameterFilePath As String) As Boolean Implements IValidateFastaFile.LoadParameterFileSettings
+     strParameterFilePath As String) As Boolean
 
         Dim objSettingsFile As New XmlSettingsFileAccessor
 
@@ -3535,37 +3556,35 @@ Public Class clsValidateFastaFile
 
             If objSettingsFile.LoadSettings(strParameterFilePath) Then
                 If Not objSettingsFile.SectionPresent(XML_SECTION_OPTIONS) Then
-                    If MyBase.ShowMessages Then
-                        ShowErrorMessage("The node '<section name=""" & XML_SECTION_OPTIONS & """> was not found in the parameter file: " & strParameterFilePath)
-                    End If
+                    OnWarningEvent("The node '<section name=""" & XML_SECTION_OPTIONS & """> was not found in the parameter file: " & strParameterFilePath)
                     MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.InvalidParameterFile)
                     Return False
                 Else
                     ' Read customized settings
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF) =
+                    Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF))
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues) =
+                     Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF))
+                    Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues))
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues) =
+                     Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues))
+                    Me.OptionSwitch(SwitchOptions.AllowDashInResidues) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues))
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames) =
+                     Me.OptionSwitch(SwitchOptions.AllowDashInResidues))
+                    Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences) =
+                     Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames))
+                    Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
+                     Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles) =
+                    Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
+                     Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile) =
+                    Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile))
+                     Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile))
 
                     Me.MaximumFileErrorsToTrack = objSettingsFile.GetParam(XML_SECTION_OPTIONS,
                      "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
@@ -3576,76 +3595,76 @@ Public Class clsValidateFastaFile
                     Me.MaximumResiduesPerLine = objSettingsFile.GetParam(XML_SECTION_OPTIONS,
                      "MaximumResiduesPerLine", Me.MaximumResiduesPerLine)
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins) =
+                    Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins))
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace) =
+                     Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins))
+                    Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace))
+                     Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile) =
+                    Me.OptionSwitch(SwitchOptions.OutputToStatsFile) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile))
+                     Me.OptionSwitch(SwitchOptions.OutputToStatsFile))
 
-                    Me.OptionSwitch(IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters) =
+                    Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters) =
                      objSettingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
-                     Me.OptionSwitch(IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters))
+                     Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters))
 
 
                     If Not objSettingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS) Then
                         ' "ValidateFastaFixedFASTAFileOptions" section not present
                         ' Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) =
+                        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) =
                          objSettingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
+                         Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) =
+                        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) =
                          objSettingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
+                         Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
 
                     Else
                         ' "ValidateFastaFixedFASTAFileOptions" section is present
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile) =
+                        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
+                         Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName) =
+                        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
+                         Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines))
 
-                        Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues) =
+                        Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues) =
                          objSettingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
-                         Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues))
+                         Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues))
 
                         ' Look for the special character lists
                         ' If defined, then update the default values
@@ -3692,11 +3711,7 @@ Public Class clsValidateFastaFile
                 End If
             End If
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in LoadParameterFileSettings: " & ex.Message)
-            Else
-                Throw New Exception("Error in LoadParameterFileSettings", ex)
-            End If
+            OnErrorEvent("Error in LoadParameterFileSettings", ex)
             Return False
         End Try
 
@@ -3708,13 +3723,13 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Public Function LookupMessageDescription(intErrorMessageCode As Integer) As String _
-     Implements IValidateFastaFile.LookupMessageDescription
+    Public Function LookupMessageDescription(intErrorMessageCode As Integer) As String
+
         Return Me.LookupMessageDescription(intErrorMessageCode, Nothing)
     End Function
 
-    Public Function LookupMessageDescription(intErrorMessageCode As Integer, strExtraInfo As String) As String _
-     Implements IValidateFastaFile.LookupMessageDescription
+    Public Function LookupMessageDescription(intErrorMessageCode As Integer, strExtraInfo As String) As String
+
 
         Dim strMessage As String
         Dim blnMatchFound As Boolean
@@ -3840,12 +3855,12 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Private Function LookupMessageType(EntryType As IValidateFastaFile.eMsgTypeConstants) As String _
-     Implements IValidateFastaFile.LookupMessageTypeString
+    Private Function LookupMessageType(EntryType As eMsgTypeConstants) As String
+
         Select Case EntryType
-            Case IValidateFastaFile.eMsgTypeConstants.ErrorMsg
+            Case eMsgTypeConstants.ErrorMsg
                 Return "Error"
-            Case IValidateFastaFile.eMsgTypeConstants.WarningMsg
+            Case eMsgTypeConstants.WarningMsg
                 Return "Warning"
             Case Else
                 Return "Status"
@@ -3860,7 +3875,7 @@ Public Class clsValidateFastaFile
     ''' Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
     ''' Used by clsCustomValidateFastaFiles
     ''' </remarks>
-    Protected Function SimpleProcessFile(strInputFilePath As String) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
+    Protected Function SimpleProcessFile(strInputFilePath As String) As Boolean
         Return Me.ProcessFile(strInputFilePath, Nothing, Nothing, False)
     End Function
 
@@ -3868,7 +3883,7 @@ Public Class clsValidateFastaFile
      strInputFilePath As String,
      strOutputFolderPath As String,
      strParameterFilePath As String,
-     blnResetErrorCode As Boolean) As Boolean Implements IValidateFastaFile.ValidateFASTAFile
+     blnResetErrorCode As Boolean) As Boolean
 
         'Returns True if success, False if failure
 
@@ -3879,12 +3894,12 @@ Public Class clsValidateFastaFile
         Dim strStatusMessage As String
 
         If blnResetErrorCode Then
-            SetLocalErrorCode(IValidateFastaFile.eValidateFastaFileErrorCodes.NoError)
+            SetLocalErrorCode(eValidateFastaFileErrorCodes.NoError)
         End If
 
         If Not LoadParameterFileSettings(strParameterFilePath) Then
             strStatusMessage = "Parameter file load error: " & strParameterFilePath
-            If MyBase.ShowMessages Then ShowErrorMessage(strStatusMessage)
+            OnWarningEvent(strStatusMessage)
             If MyBase.ErrorCode = eProcessFilesErrorCodes.NoError Then
                 MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.InvalidParameterFile)
             End If
@@ -3945,25 +3960,13 @@ Public Class clsValidateFastaFile
                         End If
 
                     Catch ex As Exception
-                        If MyBase.ShowMessages Then
-                            ShowErrorMessage("Error calling AnalyzeFastaFile: " + ex.Message)
-                            ShowExceptionStackTrace("ProcessFile (AnalyzeFastaFile)", ex)
-                        Else
-                            ShowExceptionStackTrace("ProcessFile (AnalyzeFastaFile)", ex)
-                            Throw New Exception("Error calling AnalyzeFastaFile", ex)
-                        End If
+                        OnErrorEvent("Error calling AnalyzeFastaFile", ex)
                         Return False
                     End Try
                 End If
             End If
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in ProcessFile:" & ex.Message)
-                ShowExceptionStackTrace("ProcessFile", ex)
-            Else
-                ShowExceptionStackTrace("ProcessFile", ex)
-                Throw New Exception("Error in ProcessFile", ex)
-            End If
+            OnErrorEvent("Error in ProcessFile", ex)
             Return False
         End Try
 
@@ -4109,7 +4112,6 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             ' Error caught; pass it up to the calling function
             ShowMessage(ex.Message)
-            ShowExceptionStackTrace("ProcessSequenceHashInfo", ex)
             Throw
         End Try
 
@@ -4252,7 +4254,7 @@ Public Class clsValidateFastaFile
     Private Sub RecordFastaFileProblemWork(
      ByRef udtItemSummaryIndexed As udtItemSummaryIndexedType,
      ByRef intItemCountSpecified As Integer,
-     ByRef udtItems() As IValidateFastaFile.udtMsgInfoType,
+     ByRef udtItems() As udtMsgInfoType,
      intLineNumber As Integer,
      intCharIndex As Integer,
      strProteinName As String,
@@ -4328,8 +4330,7 @@ Public Class clsValidateFastaFile
 
         Catch ex As Exception
             ' Ignore any errors that occur, but output the error to the console
-            ShowMessage("Error in RecordFastaFileProblemWork: " & ex.Message)
-            ShowExceptionStackTrace("RecordFastaFileProblemWork", ex)
+            OnWarningEvent("Error in RecordFastaFileProblemWork: " & ex.Message)
         End Try
 
     End Sub
@@ -4376,12 +4377,7 @@ Public Class clsValidateFastaFile
             File.Move(strOutputFilePath, strParameterFilePath)
 
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in ReplaceXMLCodesWithText:" & ex.Message)
-                ShowExceptionStackTrace("ReplaceXMLCodesWithText", ex)
-            Else
-                Throw New Exception("Error in ReplaceXMLCodesWithText", ex)
-            End If
+            OnErrorEvent("Error in ReplaceXMLCodesWithText", ex)
         End Try
 
     End Sub
@@ -4504,7 +4500,7 @@ Public Class clsValidateFastaFile
                 Else
                     strSepChar = ", "
                     outputToStatsFile = False
-                    SetLocalErrorCode(IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorCreatingStatsFile)
+                    SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorCreatingStatsFile)
                 End If
             Else
                 strSepChar = ", "
@@ -4512,7 +4508,7 @@ Public Class clsValidateFastaFile
 
             ReportResultAddEntry(
              strSourceFile,
-             IValidateFastaFile.eMsgTypeConstants.StatusMsg,
+             eMsgTypeConstants.StatusMsg,
              "Full path to file",
              mFastaFilePath,
              String.Empty,
@@ -4522,7 +4518,7 @@ Public Class clsValidateFastaFile
 
             ReportResultAddEntry(
              strSourceFile,
-             IValidateFastaFile.eMsgTypeConstants.StatusMsg,
+             eMsgTypeConstants.StatusMsg,
              "Protein count",
              mProteinCount.ToString("#,##0"),
              String.Empty,
@@ -4532,7 +4528,7 @@ Public Class clsValidateFastaFile
 
             ReportResultAddEntry(
              strSourceFile,
-             IValidateFastaFile.eMsgTypeConstants.StatusMsg,
+             eMsgTypeConstants.StatusMsg,
              "Residue count",
              mResidueCount.ToString("#,##0"),
              String.Empty,
@@ -4543,11 +4539,11 @@ Public Class clsValidateFastaFile
             If mFileErrorCount > 0 Then
                 ReportResultAddEntry(
                  strSourceFile,
-                 IValidateFastaFile.eMsgTypeConstants.ErrorMsg,
+                 eMsgTypeConstants.ErrorMsg,
                  "Error count",
                  Me.ErrorWarningCounts(
-                  IValidateFastaFile.eMsgTypeConstants.ErrorMsg,
-                  IValidateFastaFile.ErrorWarningCountTypes.Total).ToString,
+                  eMsgTypeConstants.ErrorMsg,
+                  ErrorWarningCountTypes.Total).ToString,
                  String.Empty,
                  outputToStatsFile,
                  srOutFile, strSepChar)
@@ -4568,7 +4564,7 @@ Public Class clsValidateFastaFile
                         Dim messageDescription = LookupMessageDescription(.MessageCode, .ExtraInfo)
 
                         ReportResultAddEntry(strSourceFile,
-                           IValidateFastaFile.eMsgTypeConstants.ErrorMsg,
+                           eMsgTypeConstants.ErrorMsg,
                            .LineNumber,
                            .ColNumber,
                            strProteinName,
@@ -4585,11 +4581,11 @@ Public Class clsValidateFastaFile
             If mFileWarningCount > 0 Then
                 ReportResultAddEntry(
                  strSourceFile,
-                 IValidateFastaFile.eMsgTypeConstants.WarningMsg,
+                 eMsgTypeConstants.WarningMsg,
                  "Warning count",
                  Me.ErrorWarningCounts(
-                  IValidateFastaFile.eMsgTypeConstants.WarningMsg,
-                  IValidateFastaFile.ErrorWarningCountTypes.Total).ToString,
+                  eMsgTypeConstants.WarningMsg,
+                  ErrorWarningCountTypes.Total).ToString,
                  String.Empty,
                  outputToStatsFile,
                  srOutFile,
@@ -4609,7 +4605,7 @@ Public Class clsValidateFastaFile
                         End If
 
                         ReportResultAddEntry(strSourceFile,
-                          IValidateFastaFile.eMsgTypeConstants.WarningMsg,
+                          eMsgTypeConstants.WarningMsg,
                           .LineNumber,
                           .ColNumber,
                           strProteinName,
@@ -4628,7 +4624,7 @@ Public Class clsValidateFastaFile
             ' # Proteins, # Peptides, FileSizeKB
             ReportResultAddEntry(
               strSourceFile,
-              IValidateFastaFile.eMsgTypeConstants.StatusMsg,
+              eMsgTypeConstants.StatusMsg,
               "Summary line",
               mProteinCount.ToString() & " proteins, " & mResidueCount.ToString() & " residues, " & (fiFastaFile.Length / 1024.0).ToString("0") & " KB",
               String.Empty,
@@ -4641,21 +4637,14 @@ Public Class clsValidateFastaFile
             End If
 
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in ReportResults:" & ex.Message)
-                ShowExceptionStackTrace("ReportResults", ex)
-            Else
-                ShowExceptionStackTrace("ReportResults", ex)
-                Throw New Exception("Error in ReportResults", ex)
-            End If
-
+            OnErrorEvent("Error in ReportResults", ex)
         End Try
 
     End Sub
 
     Private Sub ReportResultAddEntry(
       strSourceFile As String,
-      EntryType As IValidateFastaFile.eMsgTypeConstants,
+      EntryType As eMsgTypeConstants,
       strDescriptionOrProteinName As String,
       strInfo As String,
       strContext As String,
@@ -4675,7 +4664,7 @@ Public Class clsValidateFastaFile
 
     Private Sub ReportResultAddEntry(
       strSourceFile As String,
-      EntryType As IValidateFastaFile.eMsgTypeConstants,
+      EntryType As eMsgTypeConstants,
       intLineNumber As Integer,
       intColNumber As Integer,
       strDescriptionOrProteinName As String,
@@ -4773,7 +4762,7 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Public Function SaveSettingsToParameterFile(strParameterFilePath As String) As Boolean Implements IValidateFastaFile.SaveParameterSettingsToParameterFile
+    Public Function SaveSettingsToParameterFile(strParameterFilePath As String) As Boolean
         ' Save a model parameter file
 
         Dim srOutFile As StreamWriter
@@ -4804,39 +4793,39 @@ Public Class clsValidateFastaFile
 
             ' Save the general settings
 
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", Me.OptionSwitch(SwitchOptions.AllowDashInResidues))
 
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile))
 
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", Me.MinimumProteinNameLength)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumProteinNameLength", Me.MaximumProteinNameLength)
             objSettingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumResiduesPerLine", Me.MaximumResiduesPerLine)
 
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.WarnLineStartsWithSpace))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile))
-            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.NormalizeFileLineEndCharacters))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", Me.OptionSwitch(SwitchOptions.OutputToStatsFile))
+            objSettingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters))
 
 
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.SplitOutMultipleRefsInProteinName))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
 
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
 
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
 
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaTruncateLongProteinNames))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaWrapLongResidueLines))
-            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", Me.OptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines))
+            objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues))
 
 
             objSettingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", Me.LongProteinNameSplitChars)
@@ -4858,11 +4847,7 @@ Public Class clsValidateFastaFile
             ReplaceXMLCodesWithText(strParameterFilePath)
 
         Catch ex As Exception
-            If MyBase.ShowMessages Then
-                ShowErrorMessage("Error in SaveSettingsToParameterFile:" & ex.Message)
-            Else
-                Throw New Exception("Error in SaveSettingsToParameterFile", ex)
-            End If
+            OnErrorEvent("Error in SaveSettingsToParameterFile", ex)
             Return False
         End Try
 
@@ -4893,19 +4878,19 @@ Public Class clsValidateFastaFile
     ''' Updates the validation rules using the current options
     ''' </summary>
     ''' <remarks>Call this function after setting new options using SetOptionSwitch</remarks>
-    Public Sub SetDefaultRules() Implements IValidateFastaFile.SetDefaultRules
+    Public Sub SetDefaultRules()
 
         Me.ClearAllRules()
 
         ' For the rules, severity level 1 to 4 is warning; severity 5 or higher is an error
 
         ' Header line errors
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t]*$", True, "Line starts with > but does not contain a protein name", DEFAULT_ERROR_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(RuleTypes.HeaderLine, "^>[ \t]*$", True, "Line starts with > but does not contain a protein name", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", DEFAULT_ERROR_SEVERITY)
 
         ' Header line warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY)
 
         ' Protein Name error characters
         Dim allowedChars = "A-Za-z0-9.\-_:,\|/()\[\]\=\+#"
@@ -4916,77 +4901,77 @@ Public Class clsValidateFastaFile
 
         Dim allowedCharsMatchSpec = "[^" & allowedChars & "]"
 
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, True)
+        Me.SetRule(RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, True)
 
         ' Protein name warnings
 
         ' Note that .*? changes .* from being greedy to being lazy
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", DEFAULT_WARNING_SEVERITY + 1, True)
+        Me.SetRule(RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", DEFAULT_WARNING_SEVERITY + 1, True)
 
         If Not mAllowAllSymbolsInProteinNames Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", DEFAULT_WARNING_SEVERITY, True)
+            Me.SetRule(RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", DEFAULT_WARNING_SEVERITY, True)
         End If
 
         ' Protein description warnings
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, False)
+        Me.SetRule(RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, False)
 
         ' Protein sequence errors
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY)
 
         If Not mAllowAsteriskInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
+            Me.SetRule(RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
         End If
 
         If Not mAllowDashInResidues Then
-            Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
+            Me.SetRule(RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
         End If
 
         ' Note: we look for a space, tab, asterisk, and dash with separate rules (defined above)
         ' Thus they are "allowed" by this RegEx, even though we may flag them as warnings with a different RegEx
         ' We look for non-standard amino acids with warning rules (defined below)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "[^A-Z \t\*\-]", True, "Invalid residues found", DEFAULT_ERROR_SEVERITY, True)
+        Me.SetRule(RuleTypes.ProteinSequence, "[^A-Z \t\*\-]", True, "Invalid residues found", DEFAULT_ERROR_SEVERITY, True)
 
         ' Protein residue warnings
         ' MSGF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
 
         ' SEQUEST uses mass 114.53494 for B (average of N and D)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "B", True, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1)
+        Me.SetRule(RuleTypes.ProteinSequence, "B", True, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1)
 
         ' Unsupported by SEQUEST
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "J", True, "Residues line contains J (non-standard amino acid)", DEFAULT_WARNING_SEVERITY - 1)
+        Me.SetRule(RuleTypes.ProteinSequence, "J", True, "Residues line contains J (non-standard amino acid)", DEFAULT_WARNING_SEVERITY - 1)
 
         ' SEQUEST uses mass 114.07931 for O
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "O", True, "Residues line contains O (non-standard amino acid, ornithine)", DEFAULT_WARNING_SEVERITY - 1)
+        Me.SetRule(RuleTypes.ProteinSequence, "O", True, "Residues line contains O (non-standard amino acid, ornithine)", DEFAULT_WARNING_SEVERITY - 1)
 
         ' Unsupported by SEQUEST
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "U", True, "Residues line contains U (non-standard amino acid, selenocysteine)", DEFAULT_WARNING_SEVERITY)
+        Me.SetRule(RuleTypes.ProteinSequence, "U", True, "Residues line contains U (non-standard amino acid, selenocysteine)", DEFAULT_WARNING_SEVERITY)
 
         ' SEQUEST uses mass 113.08406 for X (same as L and I)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "X", True, "Residues line contains X (non-standard amino acid for L or I)", DEFAULT_WARNING_SEVERITY - 1)
+        Me.SetRule(RuleTypes.ProteinSequence, "X", True, "Residues line contains X (non-standard amino acid for L or I)", DEFAULT_WARNING_SEVERITY - 1)
 
         ' SEQUEST uses mass 128.55059 for Z (average of Q and E)
-        Me.SetRule(IValidateFastaFile.RuleTypes.ProteinSequence, "Z", True, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1)
+        Me.SetRule(RuleTypes.ProteinSequence, "Z", True, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1)
 
     End Sub
 
-    Private Sub SetLocalErrorCode(eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes)
+    Private Sub SetLocalErrorCode(eNewErrorCode As eValidateFastaFileErrorCodes)
         SetLocalErrorCode(eNewErrorCode, False)
     End Sub
 
     Private Sub SetLocalErrorCode(
-      eNewErrorCode As IValidateFastaFile.eValidateFastaFileErrorCodes,
+      eNewErrorCode As eValidateFastaFileErrorCodes,
       blnLeaveExistingErrorCodeUnchanged As Boolean)
 
-        If blnLeaveExistingErrorCodeUnchanged AndAlso mLocalErrorCode <> IValidateFastaFile.eValidateFastaFileErrorCodes.NoError Then
+        If blnLeaveExistingErrorCodeUnchanged AndAlso mLocalErrorCode <> eValidateFastaFileErrorCodes.NoError Then
             ' An error code is already defined; do not change it
         Else
             mLocalErrorCode = eNewErrorCode
 
-            If eNewErrorCode = IValidateFastaFile.eValidateFastaFileErrorCodes.NoError Then
+            If eNewErrorCode = eValidateFastaFileErrorCodes.NoError Then
                 If MyBase.ErrorCode = eProcessFilesErrorCodes.LocalizedError Then
                     MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.NoError)
                 End If
@@ -4998,11 +4983,11 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub SetRule(
-      ruleType As IValidateFastaFile.RuleTypes,
+      ruleType As RuleTypes,
       regexToMatch As String,
       doesMatchIndicateProblem As Boolean,
       problemReturnMessage As String,
-      severityLevel As Short) Implements IValidateFastaFile.SetRule
+      severityLevel As Short)
 
         Me.SetRule(
          ruleType, regexToMatch,
@@ -5013,21 +4998,21 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub SetRule(
-      ruleType As IValidateFastaFile.RuleTypes,
+      ruleType As RuleTypes,
       regexToMatch As String,
       doesMatchIndicateProblem As Boolean,
       problemReturnMessage As String,
       severityLevel As Short,
-      displayMatchAsExtraInfo As Boolean) Implements IValidateFastaFile.SetRule
+      displayMatchAsExtraInfo As Boolean)
 
         Select Case ruleType
-            Case IValidateFastaFile.RuleTypes.HeaderLine
+            Case RuleTypes.HeaderLine
                 SetRule(Me.mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case IValidateFastaFile.RuleTypes.ProteinDescription
+            Case RuleTypes.ProteinDescription
                 SetRule(Me.mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case IValidateFastaFile.RuleTypes.ProteinName
+            Case RuleTypes.ProteinName
                 SetRule(Me.mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case IValidateFastaFile.RuleTypes.ProteinSequence
+            Case RuleTypes.ProteinSequence
                 SetRule(Me.mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
         End Select
 
@@ -5060,24 +5045,10 @@ Public Class clsValidateFastaFile
 
     End Sub
 
-    Private Sub ShowExceptionStackTrace(callingFunction As String, ex As Exception)
-
-        Console.WriteLine()
-
-        Dim stackTraceInfo = clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex)
-        If (String.IsNullOrEmpty(callingFunction)) Then
-            Console.WriteLine(stackTraceInfo)
-        Else
-            Console.WriteLine(callingFunction & ": " & stackTraceInfo)
-        End If
-
-    End Sub
-
     Private Function SortFile(fiProteinHashFile As FileInfo, sortColumnIndex As Integer, sortedFilePath As String) As Boolean
 
         Dim sortUtility = New FlexibleFileSortUtility.TextFileSorter
 
-        mLastSortUtilityProgress = DateTime.UtcNow
         mSortUtilityErrorMessage = String.Empty
 
         sortUtility.WorkingDirectoryPath = fiProteinHashFile.Directory.FullName
@@ -5091,10 +5062,8 @@ Public Class clsValidateFastaFile
         ' The sort utility uses CompareOrdinal (StringComparison.Ordinal)
         sortUtility.IgnoreCase = False
 
-        AddHandler sortUtility.ProgressChanged, AddressOf mSortUtility_ProgressChanged
+        RegisterEvents(sortUtility)
         AddHandler sortUtility.ErrorEvent, AddressOf mSortUtility_ErrorEvent
-        AddHandler sortUtility.WarningEvent, AddressOf mSortUtility_WarningEvent
-        AddHandler sortUtility.MessageEvent, AddressOf mSortUtility_MessageEvent
 
         Dim success = sortUtility.SortFile(fiProteinHashFile.FullName, sortedFilePath)
 
@@ -5192,7 +5161,7 @@ Public Class clsValidateFastaFile
             blnSuccess = True
 
         Catch ex As Exception
-            SetLocalErrorCode(IValidateFastaFile.eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
+            SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
             blnSuccess = False
         End Try
 
@@ -5384,25 +5353,10 @@ Public Class clsValidateFastaFile
 
 #Region "Event Handlers"
 
-    Private Sub mSortUtility_ErrorEvent(sender As Object, e As FlexibleFileSortUtility.MessageEventArgs)
-        mSortUtilityErrorMessage = e.Message
-        ShowErrorMessage(e.Message)
+    Private Sub mSortUtility_ErrorEvent(message As String, ex As Exception)
+        mSortUtilityErrorMessage = message
     End Sub
 
-    Private Sub mSortUtility_MessageEvent(sender As Object, e As FlexibleFileSortUtility.MessageEventArgs)
-        ' The FlexibleFileSortUtility DLL already displays these messages at the console; no need to repeat them
-    End Sub
-
-    Private Sub mSortUtility_ProgressChanged(sender As Object, e As FlexibleFileSortUtility.ProgressChangedEventArgs)
-        If ShowMessages AndAlso DateTime.UtcNow.Subtract(mLastSortUtilityProgress).TotalSeconds >= 15 Then
-            mLastSortUtilityProgress = DateTime.UtcNow
-            Console.WriteLine(e.taskDescription & ": " & e.percentComplete.ToString("0.0") & "% complete")
-        End If
-    End Sub
-
-    Private Sub mSortUtility_WarningEvent(sender As Object, e As FlexibleFileSortUtility.MessageEventArgs)
-        ShowMessage("Sort tool warning: " & e.Message)
-    End Sub
 #End Region
 
     ' IComparer class to allow comparison of udtMsgInfoType items
@@ -5411,10 +5365,10 @@ Public Class clsValidateFastaFile
 
         Public Function Compare(x As Object, y As Object) As Integer Implements IComparer.Compare
 
-            Dim udtErrorInfo1, udtErrorInfo2 As IValidateFastaFile.udtMsgInfoType
+            Dim udtErrorInfo1, udtErrorInfo2 As udtMsgInfoType
 
-            udtErrorInfo1 = CType(x, IValidateFastaFile.udtMsgInfoType)
-            udtErrorInfo2 = CType(y, IValidateFastaFile.udtMsgInfoType)
+            udtErrorInfo1 = CType(x, udtMsgInfoType)
+            udtErrorInfo2 = CType(y, udtMsgInfoType)
 
             If udtErrorInfo1.MessageCode > udtErrorInfo2.MessageCode Then
                 Return 1

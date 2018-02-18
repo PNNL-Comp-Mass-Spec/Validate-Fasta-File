@@ -1,8 +1,6 @@
 Option Strict On
 
 Imports System.Reflection
-Imports System.Runtime.CompilerServices
-Imports System.Text
 Imports System.Threading
 Imports PRISM
 ' This program will read in a Fasta file and write out stats on the number of proteins and number of residues
@@ -31,7 +29,7 @@ Imports PRISM
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "September 19, 2017"
+    Public Const PROGRAM_DATE As String = "February 18, 2018"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -61,8 +59,6 @@ Module modMain
     Private mRecurseFolders As Boolean
     Private mRecurseFoldersMaxLevels As Integer
 
-    Private mQuietMode As Boolean
-
     Private WithEvents mValidateFastaFile As clsValidateFastaFile
 
     Private mLastProgressReportPctTime As DateTime
@@ -73,7 +69,7 @@ Module modMain
         ' Returns 0 if no error, error code if an error
 
         Dim intReturnCode As Integer
-        Dim objParseCommandLine As New clsParseCommandLine
+        Dim commandLineParser As New clsParseCommandLine
         Dim blnProceed As Boolean
 
         intReturnCode = 0
@@ -107,11 +103,11 @@ Module modMain
 
         Try
             blnProceed = False
-            If objParseCommandLine.ParseCommandLine Then
-                If SetOptionsUsingCommandLineParameters(objParseCommandLine) Then blnProceed = True
+            If commandLineParser.ParseCommandLine Then
+                If SetOptionsUsingCommandLineParameters(commandLineParser) Then blnProceed = True
             End If
 
-            If blnProceed And Not objParseCommandLine.NeedToShowHelp And mCreateModelXMLParameterFile Then
+            If blnProceed And Not commandLineParser.NeedToShowHelp And mCreateModelXMLParameterFile Then
                 If mParameterFilePath Is Nothing OrElse mParameterFilePath.Length = 0 Then
                     mParameterFilePath = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location) & "_ModelSettings.xml"
                 End If
@@ -123,36 +119,35 @@ Module modMain
                 Console.WriteLine("  " & mParameterFilePath)
                 Console.WriteLine()
 
-            ElseIf Not blnProceed OrElse objParseCommandLine.NeedToShowHelp OrElse mInputFilePath.Length = 0 Then
+            ElseIf Not blnProceed OrElse commandLineParser.NeedToShowHelp OrElse mInputFilePath.Length = 0 Then
                 ShowProgramHelp()
                 intReturnCode = -1
             Else
 
                 mValidateFastaFile = New clsValidateFastaFile
                 With mValidateFastaFile
-                    .ShowMessages = Not mQuietMode
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, mUseStatsFile)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile)
 
                     ' Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins, mFixedFastaKeepDuplicateNamedProteins)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.FixedFastaKeepDuplicateNamedProteins, mFixedFastaKeepDuplicateNamedProteins)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, mAllowAsterisk)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowDashInResidues, mAllowDash)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, mAllowAsterisk)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowDashInResidues, mAllowDash)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile)
 
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames, mCheckForDuplicateProteinNames)
-                    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, mCheckForDuplicateProteinSequences)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.CheckForDuplicateProteinNames, mCheckForDuplicateProteinNames)
+                    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, mCheckForDuplicateProteinSequences)
 
                     ' Update the rules based on the options that were set above
                     .SetDefaultRules()
@@ -161,16 +156,18 @@ Module modMain
 
                 End With
 
+                mValidateFastaFile.SkipConsoleWriteIfNoProgressListener = True
+
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
                 'With objValidateFastaFile
-                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, )
-                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, )
                 '    .MaximumFileErrorsToTrack()
                 '    .MinimumProteinNameLength()
                 '    .MaximumProteinNameLength()
-                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, )
-                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, )
-                '    .SetOptionSwitch(IValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.CheckForDuplicateProteinSequences, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
                 'End With
 
                 If mRecurseFolders Then
@@ -184,7 +181,7 @@ Module modMain
                         intReturnCode = 0
                     Else
                         intReturnCode = mValidateFastaFile.ErrorCode
-                        If intReturnCode <> 0 AndAlso Not mQuietMode Then
+                        If intReturnCode <> 0 Then
                             ShowErrorMessage("Error while processing: " & mValidateFastaFile.GetErrorMessage())
                         End If
                     End If
@@ -214,10 +211,10 @@ Module modMain
     End Sub
 
     Private Function GetAppVersion() As String
-        Return clsProcessFilesBaseClass.GetAppVersion(PROGRAM_DATE)
+        Return FileProcessor.ProcessFilesOrFoldersBase.GetAppVersion(PROGRAM_DATE)
     End Function
 
-    Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
+    Private Function SetOptionsUsingCommandLineParameters(commandLineParser As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
         Dim strValue As String = String.Empty
@@ -227,18 +224,18 @@ Module modMain
             "F", "R", "D", "L", "V",
             "KeepSameName", "AllowDash", "AllowAsterisk",
             "B", "HashFile",
-            "X", "S", "Q"}
+            "X", "S"}
         Dim intValue As Integer
 
         Try
             ' Make sure no invalid parameters are present
-            If objParseCommandLine.InvalidParametersPresent(lstValidParameters) Then
+            If commandLineParser.InvalidParametersPresent(lstValidParameters) Then
                 ShowErrorMessage("Invalid commmand line parameters",
-                  (From item In objParseCommandLine.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
+                  (From item In commandLineParser.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
                 Return False
             Else
-                With objParseCommandLine
-                    ' Query objParseCommandLine to see if various parameters are present
+                With commandLineParser
+                    ' Query commandLineParser to see if various parameters are present
                     If .RetrieveValueForParameter("I", strValue) Then
                         mInputFilePath = strValue
                     ElseIf .NonSwitchParameterCount > 0 Then
@@ -274,7 +271,6 @@ Module modMain
                         End If
                     End If
 
-                    If .RetrieveValueForParameter("Q", strValue) Then mQuietMode = True
                 End With
 
                 Return True
@@ -289,26 +285,10 @@ Module modMain
 
     Private Sub ShowErrorMessage(strMessage As String, Optional ex As Exception = Nothing)
         ConsoleMsgUtils.ShowError(strMessage, ex)
-        WriteToErrorStream(strMessage)
     End Sub
 
-    Private Sub ShowErrorMessage(strTitle As String, items As List(Of String))
-        Dim strSeparator = "------------------------------------------------------------------------------"
-        Dim strMessage As String
-
-        Console.WriteLine()
-        Console.WriteLine(strSeparator)
-        Console.WriteLine(strTitle)
-        strMessage = strTitle & ":"
-
-        For Each item As String In items
-            Console.WriteLine("   " + item)
-            strMessage &= " " & item
-        Next
-        Console.WriteLine(strSeparator)
-        Console.WriteLine()
-
-        WriteToErrorStream(strMessage)
+    Private Sub ShowErrorMessage(title As String, items As List(Of String))
+        ConsoleMsgUtils.ShowErrors(title, items)
     End Sub
 
     Private Sub ShowProgramHelp()
@@ -336,7 +316,7 @@ Module modMain
             Console.WriteLine(" [/AllowDash] [/AllowAsterisk]")
             Console.WriteLine(" [/SkipDupeNameCheck] [/SkipDupeSeqCheck]")
             Console.WriteLine(" [/B] [/HashFile]")
-            Console.WriteLine(" [/X] [/S:[MaxLevel]] [/Q]")
+            Console.WriteLine(" [/X] [/S:[MaxLevel]]")
             Console.WriteLine()
             Console.WriteLine("The input file path can contain the wildcard character * and should point to a fasta file.")
             Console.WriteLine("The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file.")
@@ -364,7 +344,6 @@ Module modMain
             Console.WriteLine()
             Console.WriteLine("Use /X to specify that a model XML parameter file should be created.")
             Console.WriteLine("Use /S to process all valid files in the input folder and subfolders. Include a number after /S (like /S:2) to limit the level of subfolders to examine.")
-            Console.WriteLine("The optional /Q switch will suppress all error messages.")
             Console.WriteLine()
 
             Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2012")
@@ -384,17 +363,7 @@ Module modMain
 
     End Sub
 
-    Private Sub WriteToErrorStream(strErrorMessage As String)
-        Try
-            Using swErrorStream = New StreamWriter(Console.OpenStandardError())
-                swErrorStream.WriteLine(strErrorMessage)
-            End Using
-        Catch ex As Exception
-            ' Ignore errors here
-        End Try
-    End Sub
-
-    Private Sub mValidateFastaFile_ProgressChanged(taskDescription As String, percentComplete As Single) Handles mValidateFastaFile.ProgressChanged
+    Private Sub mValidateFastaFile_ProgressChanged(taskDescription As String, percentComplete As Single) Handles mValidateFastaFile.ProgressUpdate
         Const PERCENT_REPORT_INTERVAL = 25
         Const PROGRESS_DOT_INTERVAL_MSEC = 500
 

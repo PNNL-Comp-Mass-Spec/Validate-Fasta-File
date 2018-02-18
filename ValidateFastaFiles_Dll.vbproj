@@ -128,15 +128,8 @@
     <Compile Include="clsMemoryUsageLogger.vb" />
     <Compile Include="clsNestedList.vb" />
     <Compile Include="clsNestedStringDictionary.vb" />
-    <Compile Include="clsProcessFilesBaseClass.vb">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="clsProcessFilesOrFoldersBase.vb" />
     <Compile Include="clsProteinHashInfo.vb" />
     <Compile Include="clsValidateFastaFile.vb">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="IValidateFastaFile.vb">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -172,7 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="PRISM-Library">
-      <Version>2.4.32</Version>
+      <Version>2.4.74</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />
