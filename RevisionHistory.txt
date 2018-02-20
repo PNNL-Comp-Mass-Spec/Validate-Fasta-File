@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.2.6622; February 17, 2018
+	- Remove interfaces and use FileProcessor classes in PRISM.dll
+
 Version 2.2.6471; September 19, 2017
 	- Update to .NET 4.6.2
 	- Use methods in PRISM.dll
