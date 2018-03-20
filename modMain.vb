@@ -20,7 +20,7 @@ Imports PRISM
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "February 18, 2018"
+    Public Const PROGRAM_DATE As String = "March 20, 2018"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -285,22 +285,29 @@ Module modMain
     Private Sub ShowProgramHelp()
 
         Try
+            Dim exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location)
 
             Console.WriteLine("== Overview ==")
             Console.WriteLine()
-            Console.WriteLine("This program will read a Fasta File and display statistics on the number of proteins and number of residues.  It will also check that the protein names, descriptions, and sequences are in the correct format.")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "This program will read a Fasta File and display statistics on the number of proteins and number of residues. " &
+                "It will also check that the protein names, descriptions, and sequences are in the correct format."))
             Console.WriteLine()
-            Console.WriteLine("The program can optionally create a new, fixed version of a fasta file where proteins with duplicate sequences have been consolidated, and proteins with duplicate names have been renamed.")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "The program can optionally create a new, fixed version of a fasta file where proteins with duplicate sequences " &
+                "have been consolidated, and proteins with duplicate names have been renamed."))
             Console.WriteLine()
-            Console.WriteLine("To remove duplicates from huge fasta files (over 1 GB in size), first create the ProteinHashes.txt file by calling this program with:")
-            Console.WriteLine("  ValidateFastaFile.exe Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "To remove duplicates from huge fasta files (over 1 GB in size), " &
+                "first create the ProteinHashes.txt file by calling this program with:"))
+            Console.WriteLine("  {0} Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck", exeName)
             Console.WriteLine()
             Console.WriteLine("Next call the program again, providing the name of the ProteinHashes file:")
-            Console.WriteLine("  ValidateFastaFile.exe Proteins.fasta /HashFile:Proteins_ProteinHashes.txt")
+            Console.WriteLine("  {0} Proteins.fasta /HashFile:Proteins_ProteinHashes.txt", exeName)
             Console.WriteLine()
             Console.WriteLine("== Program syntax ==")
             Console.WriteLine()
-            Console.WriteLine(Path.GetFileName(Assembly.GetExecutingAssembly().Location))
+            Console.WriteLine(exeName)
             Console.WriteLine(" /I:InputFilePath.fasta [/O:OutputFolderPath]")
             Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
             Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
@@ -309,32 +316,67 @@ Module modMain
             Console.WriteLine(" [/B] [/HashFile]")
             Console.WriteLine(" [/X] [/S:[MaxLevel]]")
             Console.WriteLine()
-            Console.WriteLine("The input file path can contain the wildcard character * and should point to a fasta file.")
-            Console.WriteLine("The output folder path is optional, and is only used if /C is used.  If omitted, the output stats file will be created in the folder containing the .Exe file.")
-            Console.WriteLine("The parameter file path is optional.  If included, it should point to a valid XML parameter file.")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "The input file path can contain the wildcard character * and should point to a fasta file."))
             Console.WriteLine()
-            Console.WriteLine("Use /C to specify that an output file should be created, rather than displaying the results on the screen.")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "The output folder path is optional, and is only used if /C is used. If omitted, the output stats file " &
+                "will be created in the folder containing the .Exe file."))
             Console.WriteLine()
-            Console.WriteLine("Use /F to generate a new, fixed .Fasta file (long protein names will be auto-shortened).  At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt).  This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  If duplicate sequences are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt).")
-            Console.WriteLine("Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file.")
-            Console.WriteLine("Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file.")
-            Console.WriteLine("Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins with duplicate protein sequences while generating a fixed fasta file.")
-            Console.WriteLine("Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file.")
-            Console.WriteLine("Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file (if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "The parameter file path is optional. If included, it should point to a valid XML parameter file."))
+
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /C to specify that an output file should be created, rather than displaying the results on the screen."))
+
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /F to generate a new, fixed .Fasta file (long protein names will be auto-shortened). " &
+                "At the same time, a file with protein names and hash values for each unique protein sequences " &
+                "will be generated (_UniqueProteinSeqs.txt). This file will also list the other proteins " &
+                "that have duplicate sequences as the first protein mapped to each sequence. If duplicate sequences " &
+                "are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)."))
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file."))
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file."))
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins " &
+                "with duplicate protein sequences while generating a fixed fasta file."))
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file."))
+            Console.WriteLine()
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file " &
+                "(if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used"))
+            Console.WriteLine()
             Console.WriteLine("Use /AllowDash to allow a - in residues")
-            Console.WriteLine("use /AllowAsterisk to allow * in residues")
+            Console.WriteLine("Use /AllowAsterisk to allow * in residues")
             Console.WriteLine()
-            Console.WriteLine("When parsing large fasta files, you can reduce the memory used by disabling the checking for duplicates")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "When parsing large fasta files, you can reduce the memory used by disabling the checking for duplicates"))
+
             Console.WriteLine(" /SkipDupeSeqCheck disables duplicate sequence checking (large memory footprint)")
             Console.WriteLine(" /SkipDupeNameCheck disables duplicate name checking (small memory footprint)")
             Console.WriteLine()
-            Console.WriteLine("Use /B to save a hash info file (even if not consolidating duplicates).  This is useful for parsing a large fasta file to obtain the sequence hash for each protein (hash values are not cached in memory, thus small memory footprint).")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /B to save a hash info file (even if not consolidating duplicates). " &
+                "This is useful for parsing a large fasta file to obtain the sequence hash for each protein " &
+                "(hash values are not cached in memory, thus small memory footprint)."))
             Console.WriteLine()
-            Console.WriteLine("Use /HashFile to specify a pre-computed hash file to use for determining which proteins to keep when generating a fixed fasta file")
-            Console.WriteLine("Use of /HashFile automatically enables /F and automatically disables /D, /R, and /B")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /HashFile to specify a pre-computed hash file to use for determining which proteins to keep when generating a fixed fasta file"))
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph("Use of /HashFile automatically enables /F and automatically disables /D, /R, and /B"))
             Console.WriteLine()
             Console.WriteLine("Use /X to specify that a model XML parameter file should be created.")
-            Console.WriteLine("Use /S to process all valid files in the input folder and subfolders. Include a number after /S (like /S:2) to limit the level of subfolders to examine.")
+            Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                "Use /S to process all valid files in the input folder and subfolders. " &
+                "Include a number after /S (like /S:2) to limit the level of subfolders to examine."))
             Console.WriteLine()
 
             Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2012")
