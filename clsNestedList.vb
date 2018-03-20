@@ -9,7 +9,6 @@
 Public Class clsNestedStringIntList
 
     Private ReadOnly mData As Dictionary(Of String, List(Of KeyValuePair(Of String, Integer)))
-    Private ReadOnly mSpannerCharLength As Byte
     Private ReadOnly mRaiseExceptionIfAddedDataNotSorted As Boolean
 
     Private mDataIsSorted As Boolean
@@ -39,14 +38,10 @@ Public Class clsNestedStringIntList
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks>
-    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance 
+    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance
     ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
     ''' </remarks>
     Public ReadOnly Property SpannerCharLength As Byte
-        Get
-            Return mSpannerCharLength
-        End Get
-    End Property
 
     ''' <summary>
     ''' Constructor
@@ -61,9 +56,9 @@ Public Class clsNestedStringIntList
         mData = New Dictionary(Of String, List(Of KeyValuePair(Of String, Integer)))(StringComparer.InvariantCulture)
 
         If spannerCharLength < 1 Then
-            mSpannerCharLength = 1
+            Me.SpannerCharLength = 1
         Else
-            mSpannerCharLength = spannerCharLength
+            Me.SpannerCharLength = spannerCharLength
         End If
 
         mRaiseExceptionIfAddedDataNotSorted = raiseExceptionIfAddedDataNotSorted
@@ -103,9 +98,9 @@ Public Class clsNestedStringIntList
         End If
 
     End Sub
-    
+
     ''' <summary>
-    ''' Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines 
+    ''' Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines
     ''' to determine the appropriate spanner length when instantiating a new instance of this class
     ''' </summary>
     ''' <param name="fiDataFile"></param>
@@ -118,6 +113,7 @@ Public Class clsNestedStringIntList
       keyColumnIndex As Integer,
       hasHeaderLine As Boolean) As Byte
 
+        ' ReSharper disable once NotAccessedVariable
         Dim linesRead = 0L
 
         Try
@@ -200,7 +196,7 @@ Public Class clsNestedStringIntList
     ''' Determine the appropriate spanner length given the observation counts of the base names
     ''' </summary>
     ''' <param name="keyStartLetters">
-    ''' Dictionary where keys are base names (characters in common between adjacent items) 
+    ''' Dictionary where keys are base names (characters in common between adjacent items)
     ''' and values are the observation count of each base name</param>
     ''' <returns>Spanner key length that fits the majority of the entries in keyStartLetters</returns>
     ''' <remarks></remarks>
@@ -481,11 +477,11 @@ Public Class clsNestedStringIntList
             Throw New ArgumentNullException(key, "Key cannot be null")
         End If
 
-        If key.Length <= mSpannerCharLength Then
+        If key.Length <= SpannerCharLength Then
             Return key
         End If
 
-        Return key.Substring(0, mSpannerCharLength)
+        Return key.Substring(0, SpannerCharLength)
     End Function
 
     Private Class clsKeySearchComparer
