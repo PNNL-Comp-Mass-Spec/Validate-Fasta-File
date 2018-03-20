@@ -131,6 +131,13 @@ Public Class clsValidateFastaFile
         Public Context As String
     End Structure
 
+    Structure udtOutputOptionsType
+        Public SourceFile As String
+        Public OutputToStatsFile As Boolean
+        Public OutFile As StreamWriter
+        Public SepChar As String
+    End Structure
+
     Enum RuleTypes
         HeaderLine
         ProteinName
@@ -4426,14 +4433,9 @@ Public Class clsValidateFastaFile
      outputFolderPath As String,
      outputToStatsFile As Boolean)
 
-        Dim srOutFile As StreamWriter = Nothing
-
         Dim iErrorInfoComparerClass As ErrorInfoComparerClass
 
-        Dim strSourceFile As String
-        Dim strProteinName As String
-
-        Dim strSepChar As String
+        Dim proteinName As String
 
         Dim intIndex As Integer
         Dim intRetryCount As Integer
@@ -4442,10 +4444,14 @@ Public Class clsValidateFastaFile
         Dim blnFileAlreadyExists As Boolean
 
         Try
+            Dim outputOptions = New udtOutputOptionsType()
+            outputOptions.OutputToStatsFile = outputToStatsFile
+            outputOptions.SepChar = ControlChars.Tab
+
             Try
-                strSourceFile = Path.GetFileName(mFastaFilePath)
+                outputOptions.SourceFile = Path.GetFileName(mFastaFilePath)
             Catch ex As Exception
-                strSourceFile = "Unknown_filename_due_to_error.fasta"
+                outputOptions.SourceFile = "Unknown_filename_due_to_error.fasta"
             End Try
 
             If outputToStatsFile Then
@@ -4459,12 +4465,13 @@ Public Class clsValidateFastaFile
                     Dim objOutStream As FileStream = Nothing
                     Try
                         objOutStream = New FileStream(mStatsFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
-                        srOutFile = New StreamWriter(objOutStream)
+                        Dim outFileWriter = New StreamWriter(objOutStream)
+
+                        outputOptions.OutFile = outFileWriter
+
                         blnSuccess = True
                     Catch ex As Exception
                         ' Failed to open file, wait 1 second, then try again
-
-                        srOutFile = Nothing
                         If Not objOutStream Is Nothing Then
                             objOutStream.Close()
                         End If
@@ -4475,69 +4482,48 @@ Public Class clsValidateFastaFile
                 Loop
 
                 If blnSuccess Then
-                    strSepChar = ControlChars.Tab
+                    outputOptions.SepChar = ControlChars.Tab
                     If Not blnFileAlreadyExists Then
                         ' Write the header line
-                        srOutFile.WriteLine(
-                         "Date" & strSepChar &
-                         "SourceFile" & strSepChar &
-                         "MessageType" & strSepChar &
-                         "LineNumber" & strSepChar &
-                         "ColumnNumber" & strSepChar &
-                         "Description_or_Protein" & strSepChar &
-                         "Info" & strSepChar &
-                         "Context")
+                        Dim headers = New List(Of String) From {
+                                "Date",
+                                "SourceFile",
+                                "MessageType",
+                                "LineNumber",
+                                "ColumnNumber",
+                                "Description_or_Protein",
+                                "Info",
+                                "Context"
+                        }
+
+                        outputOptions.OutFile.WriteLine(String.Join(outputOptions.SepChar, headers))
+
                     End If
                 Else
-                    strSepChar = ", "
+                    outputOptions.SepChar = ", "
                     outputToStatsFile = False
                     SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorCreatingStatsFile)
                 End If
             Else
-                strSepChar = ", "
+                outputOptions.SepChar = ", "
             End If
 
             ReportResultAddEntry(
-             strSourceFile,
-             eMsgTypeConstants.StatusMsg,
-             "Full path to file",
-             mFastaFilePath,
-             String.Empty,
-             outputToStatsFile,
-             srOutFile,
-             strSepChar)
+                outputOptions, eMsgTypeConstants.StatusMsg,
+                "Full path to file", mFastaFilePath)
 
             ReportResultAddEntry(
-             strSourceFile,
-             eMsgTypeConstants.StatusMsg,
-             "Protein count",
-             mProteinCount.ToString("#,##0"),
-             String.Empty,
-             outputToStatsFile,
-             srOutFile,
-             strSepChar)
+                outputOptions, eMsgTypeConstants.StatusMsg,
+                "Protein count", mProteinCount.ToString("#,##0"))
 
             ReportResultAddEntry(
-             strSourceFile,
-             eMsgTypeConstants.StatusMsg,
-             "Residue count",
-             mResidueCount.ToString("#,##0"),
-             String.Empty,
-             outputToStatsFile,
-             srOutFile,
-             strSepChar)
+                outputOptions, eMsgTypeConstants.StatusMsg,
+                "Residue count", mResidueCount.ToString("#,##0"))
 
             If mFileErrorCount > 0 Then
                 ReportResultAddEntry(
-                 strSourceFile,
-                 eMsgTypeConstants.ErrorMsg,
-                 "Error count",
-                 Me.ErrorWarningCounts(
-                  eMsgTypeConstants.ErrorMsg,
-                  ErrorWarningCountTypes.Total).ToString,
-                 String.Empty,
-                 outputToStatsFile,
-                 srOutFile, strSepChar)
+                    outputOptions, eMsgTypeConstants.ErrorMsg,
+                    "Error count", Me.ErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString)
 
                 If mFileErrorCount > 1 Then
                     iErrorInfoComparerClass = New ErrorInfoComparerClass
@@ -4547,23 +4533,20 @@ Public Class clsValidateFastaFile
                 For intIndex = 0 To mFileErrorCount - 1
                     With mFileErrors(intIndex)
                         If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                            strProteinName = "N/A"
+                            proteinName = "N/A"
                         Else
-                            strProteinName = String.Copy(.ProteinName)
+                            proteinName = String.Copy(.ProteinName)
                         End If
 
                         Dim messageDescription = LookupMessageDescription(.MessageCode, .ExtraInfo)
 
-                        ReportResultAddEntry(strSourceFile,
-                           eMsgTypeConstants.ErrorMsg,
-                           .LineNumber,
-                           .ColNumber,
-                           strProteinName,
-                           messageDescription,
-                           .Context,
-                           outputToStatsFile,
-                           srOutFile,
-                           strSepChar)
+                        ReportResultAddEntry(
+                            outputOptions, eMsgTypeConstants.ErrorMsg,
+                            .LineNumber,
+                            .ColNumber,
+                            proteinName,
+                            messageDescription,
+                           .Context)
 
                     End With
                 Next intIndex
@@ -4571,16 +4554,9 @@ Public Class clsValidateFastaFile
 
             If mFileWarningCount > 0 Then
                 ReportResultAddEntry(
-                 strSourceFile,
-                 eMsgTypeConstants.WarningMsg,
-                 "Warning count",
-                 Me.ErrorWarningCounts(
-                  eMsgTypeConstants.WarningMsg,
-                  ErrorWarningCountTypes.Total).ToString,
-                 String.Empty,
-                 outputToStatsFile,
-                 srOutFile,
-                 strSepChar)
+                    outputOptions, eMsgTypeConstants.WarningMsg,
+                    "Warning count",
+                    Me.ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString)
 
                 If mFileWarningCount > 1 Then
                     iErrorInfoComparerClass = New ErrorInfoComparerClass
@@ -4590,21 +4566,18 @@ Public Class clsValidateFastaFile
                 For intIndex = 0 To mFileWarningCount - 1
                     With mFileWarnings(intIndex)
                         If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                            strProteinName = "N/A"
+                            proteinName = "N/A"
                         Else
-                            strProteinName = String.Copy(.ProteinName)
+                            proteinName = String.Copy(.ProteinName)
                         End If
 
-                        ReportResultAddEntry(strSourceFile,
-                          eMsgTypeConstants.WarningMsg,
-                          .LineNumber,
-                          .ColNumber,
-                          strProteinName,
-                          LookupMessageDescription(.MessageCode, .ExtraInfo),
-                          .Context,
-                          outputToStatsFile,
-                          srOutFile,
-                          strSepChar)
+                        ReportResultAddEntry(
+                            outputOptions, eMsgTypeConstants.WarningMsg,
+                            .LineNumber,
+                            .ColNumber,
+                            proteinName,
+                            LookupMessageDescription(.MessageCode, .ExtraInfo),
+                            .Context)
 
                     End With
                 Next intIndex
@@ -4614,17 +4587,12 @@ Public Class clsValidateFastaFile
 
             ' # Proteins, # Peptides, FileSizeKB
             ReportResultAddEntry(
-              strSourceFile,
-              eMsgTypeConstants.StatusMsg,
-              "Summary line",
-              mProteinCount.ToString() & " proteins, " & mResidueCount.ToString() & " residues, " & (fiFastaFile.Length / 1024.0).ToString("0") & " KB",
-              String.Empty,
-              outputToStatsFile,
-              srOutFile,
-              strSepChar)
+                outputOptions, eMsgTypeConstants.StatusMsg,
+                "Summary line",
+                 mProteinCount.ToString() & " proteins, " & mResidueCount.ToString() & " residues, " & (fiFastaFile.Length / 1024.0).ToString("0") & " KB")
 
-            If outputToStatsFile AndAlso Not srOutFile Is Nothing Then
-                srOutFile.Close()
+            If outputToStatsFile AndAlso Not outputOptions.OutFile Is Nothing Then
+                outputOptions.OutFile.Close()
             End If
 
         Catch ex As Exception
@@ -4634,54 +4602,48 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ReportResultAddEntry(
-      strSourceFile As String,
-      EntryType As eMsgTypeConstants,
-      strDescriptionOrProteinName As String,
-      strInfo As String,
-      strContext As String,
-      blnOutputToStatsFile As Boolean,
-      srOutFile As TextWriter,
-      strSepChar As String)
+      outputOptions As udtOutputOptionsType,
+      entryType As eMsgTypeConstants,
+      descriptionOrProteinName As String,
+      info As String,
+      Optional context As String = "")
 
         ReportResultAddEntry(
-         strSourceFile,
-         EntryType, 0, 0,
-         strDescriptionOrProteinName,
-         strInfo,
-         strContext,
-         blnOutputToStatsFile,
-         srOutFile, strSepChar)
+            outputOptions,
+            entryType, 0, 0,
+            descriptionOrProteinName,
+            info,
+            context)
     End Sub
 
     Private Sub ReportResultAddEntry(
-      strSourceFile As String,
-      EntryType As eMsgTypeConstants,
-      intLineNumber As Integer,
-      intColNumber As Integer,
-      strDescriptionOrProteinName As String,
-      strInfo As String,
-      strContext As String,
-      blnOutputToStatsFile As Boolean,
-      srOutFile As TextWriter,
-      strSepChar As String)
+      outputOptions As udtOutputOptionsType,
+      entryType As eMsgTypeConstants,
+      lineNumber As Integer,
+      colNumber As Integer,
+      descriptionOrProteinName As String,
+      info As String,
+      context As String)
 
-        Dim strMessage As String
+        Dim dataColumns = New List(Of String) From {
+            outputOptions.SourceFile,
+            LookupMessageType(entryType),
+            lineNumber.ToString,
+            colNumber.ToString,
+            descriptionOrProteinName,
+            info
+        }
 
-        strMessage = strSourceFile & strSepChar &
-         LookupMessageType(EntryType) & strSepChar &
-         intLineNumber.ToString & strSepChar &
-         intColNumber.ToString & strSepChar &
-         strDescriptionOrProteinName & strSepChar &
-         strInfo
-
-        If Not strContext Is Nothing AndAlso strContext.Length > 0 Then
-            strMessage &= strSepChar & strContext
+        If Not context Is Nothing AndAlso context.Length > 0 Then
+            dataColumns.Add(context)
         End If
 
-        If blnOutputToStatsFile Then
-            srOutFile.WriteLine(GetTimeStamp() & strSepChar & strMessage)
+        Dim message = String.Join(outputOptions.SepChar, dataColumns)
+
+        If outputOptions.OutputToStatsFile Then
+            outputOptions.OutFile.WriteLine(GetTimeStamp() & outputOptions.SepChar & message)
         Else
-            Console.WriteLine(strMessage)
+            Console.WriteLine(message)
         End If
 
     End Sub
