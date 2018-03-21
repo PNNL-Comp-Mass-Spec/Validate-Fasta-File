@@ -3040,6 +3040,7 @@ Public Class clsValidateFastaFile
         mMemoryUsageLogger = New clsMemoryUsageLogger(String.Empty)
         mProcessMemoryUsageMBAtStart = clsMemoryUsageLogger.GetProcessMemoryUsageMB()
 
+        ' ReSharper disable once VbUnreachableCode
         If REPORT_DETAILED_MEMORY_USAGE Then
             ' mMemoryUsageMBAtStart = mMemoryUsageLogger.GetFreeMemoryMB()
             Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageHeader())
@@ -3843,7 +3844,7 @@ Public Class clsValidateFastaFile
                 End If
 
                 If Not matchFound Then
-                    matchFound = SearchRulesForID(mProteinSequenceRules, errorMessageCode, message)
+                    SearchRulesForID(mProteinSequenceRules, errorMessageCode, message)
                 End If
 
         End Select
@@ -4390,6 +4391,7 @@ Public Class clsValidateFastaFile
 
     Private Sub ReportMemoryUsage()
 
+        ' ReSharper disable once VbUnreachableCode
         If REPORT_DETAILED_MEMORY_USAGE Then
             Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageSummary())
         Else
