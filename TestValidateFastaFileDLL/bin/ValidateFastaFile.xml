@@ -108,7 +108,7 @@ ValidateFastaFile
  <value></value>
  <returns></returns>
  <remarks>
- If this value is too short, all of the items added to the clsNestedStringDictionary instance 
+ If this value is too short, all of the items added to the clsNestedStringDictionary instance
  will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
  </remarks>
 </member>
@@ -131,7 +131,7 @@ ValidateFastaFile
 </member>
 <member name="M:ValidateFastaFile.clsNestedStringIntList.AutoDetermineSpannerCharLength(System.IO.FileInfo,System.Int32,System.Boolean)">
  <summary>
- Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines 
+ Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines
  to determine the appropriate spanner length when instantiating a new instance of this class
  </summary>
  <param name="fiDataFile"></param>
@@ -145,7 +145,7 @@ ValidateFastaFile
  Determine the appropriate spanner length given the observation counts of the base names
  </summary>
  <param name="keyStartLetters">
- Dictionary where keys are base names (characters in common between adjacent items) 
+ Dictionary where keys are base names (characters in common between adjacent items)
  and values are the observation count of each base name</param>
  <returns>Spanner key length that fits the majority of the entries in keyStartLetters</returns>
  <remarks></remarks>
@@ -443,20 +443,20 @@ ValidateFastaFile
  Optionally create a new, fixed fasta file
  Optionally also consolidate proteins with duplicate sequences
  </summary>
- <param name="strFastaFilePath"></param>
- <param name="lstPreloadedProteinNamesToKeep">
+ <param name="fastaFilePathToCheck"></param>
+ <param name="preloadedProteinNamesToKeep">
  Preloaded list of protein names to include in the fixed fasta file
  Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
  </param>
  <returns>True if the file was successfully analyzed (even if errors were found)</returns>
- <remarks>Assumes strFastaFilePath exists</remarks>
+ <remarks>Assumes fastaFilePathToCheck exists</remarks>
 </member>
 <member name="M:ValidateFastaFile.clsValidateFastaFile.AutoDetermineFastaProteinNameSpannerCharLength(System.String,System.Int32)">
  <summary>
  Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
  </summary>
  <param name="fastaFilePathToTest">Fasta file to examine</param>
- <param name="intTerminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
+ <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
  <remarks>
  Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
  Keeps track of the portion of protein names in common between adjacent proteins
@@ -467,8 +467,8 @@ ValidateFastaFile
  <summary>
  Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
  </summary>
- <param name="fiFastaFile"></param>
- <param name="intTerminatorSize"></param>
+ <param name="fastaFile"></param>
+ <param name="terminatorSize"></param>
  <param name="proteinStartLetters"></param>
  <param name="startOffset"></param>
  <param name="bytesToRead"></param>
@@ -479,12 +479,12 @@ ValidateFastaFile
  <summary>
  Looks for duplicate proteins in the Fasta file
  Creates a new fasta file that has exact duplicates removed
- Will consolidate proteins with the same sequence if blnConsolidateDuplicateProteinSeqsInFasta=True
+ Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
  </summary>
- <param name="blnConsolidateDuplicateProteinSeqsInFasta"></param>
- <param name="strFixedFastaFilePath"></param>
- <param name="intProteinSequenceHashCount"></param>
- <param name="oProteinSeqHashInfo"></param>
+ <param name="consolidateDuplicateProteinSeqsInFasta"></param>
+ <param name="fixedFastaFilePath"></param>
+ <param name="proteinSequenceHashCount"></param>
+ <param name="proteinSeqHashInfo"></param>
  <returns></returns>
  <remarks></remarks>
 </member>
@@ -500,7 +500,7 @@ ValidateFastaFile
  <summary>
  Find the first space (or first tab) in the protein header line
  </summary>
- <param name="strHeaderLine"></param>
+ <param name="headerLine"></param>
  <returns></returns>
  <remarks>Used for determining protein name</remarks>
 </member>
@@ -527,6 +527,16 @@ ValidateFastaFile
  Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
  Used by clsCustomValidateFastaFiles
  </remarks>
+</member>
+<member name="M:ValidateFastaFile.clsValidateFastaFile.ProcessFile(System.String,System.String,System.String,System.Boolean)">
+ <summary>
+ Main processing function
+ </summary>
+ <param name="inputFilePath"></param>
+ <param name="outputFolderPath"></param>
+ <param name="parameterFilePath"></param>
+ <param name="resetErrorCode"></param>
+ <returns>True if success, False if failure</returns>
 </member>
 <member name="M:ValidateFastaFile.clsValidateFastaFile.SetDefaultRules">
  <summary>
