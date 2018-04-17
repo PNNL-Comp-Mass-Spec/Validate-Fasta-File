@@ -1,22 +1,48 @@
-== Overview ==
 
-ValidateFastaFile.exe reads a Fasta File and displays statistics on the 
-number of proteins and number of residues.  It also verifies that the 
-protein names, descriptions, and sequences are in the correct format.
+# Validate Fasta File
 
-The program can optionally create a new, fixed version of the fasta file
+This program reads a [FASTA file](https://en.wikipedia.org/wiki/FASTA_format) 
+and displays statistics on the number of proteins and number of residues.
+It also verifies that the protein names, descriptions, and sequences are in the correct format.
+
+This is a command line program.  For a graphical (GUI) program, see the
+[Protein Digestion Simulator](https://github.com/PNNL-Comp-Mass-Spec/Protein-Digestion-Simulator)
+which includes a FASTA file validation window.  The executable for 
+Protein Digestion Simulator is
+[available on AppVeyor](https://ci.appveyor.com/project/PNNLCompMassSpec/protein-digestion-simulator/build/artifacts)
+
+### Continuous Integration
+
+The latest version of the application is available on the [AppVeyor CI server](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/artifacts)
+
+[![Build status](https://ci.appveyor.com/api/projects/status/placeholder?svg=true)](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file)
+
+## Additional Features
+
+The program can optionally create a new, fixed version of the FASTA file
 where proteins with duplicate sequences have been consolidated, and
-proteins with duplicate names have been renamed.  
+proteins with duplicate names have been renamed.
 
 To remove duplicates from huge fasta files (over 1 GB in size), first 
 create the ProteinHashes.txt file by calling this program with:
-  ValidateFastaFile.exe Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck
+```
+ValidateFastaFile.exe Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck
+```
 
 Next call the program again, providing the name of the ProteinHashes file:
-  ValidateFastaFile.exe Proteins.fasta /HashFile:Proteins_ProteinHashes.txt
+```
+ValidateFastaFile.exe Proteins.fasta /HashFile:Proteins_ProteinHashes.txt
+```
 
-== Program syntax ==
+## Installation
 
+* Download Validate-Fasta-File.zip from [AppVeyor](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/build/artifacts)
+* Extract the files
+* Run ValidateFastaFile.exe from the the command prompt
+
+## Console Switches
+
+```
 ValidateFastaFile.exe
  /I:InputFilePath.fasta [/O:OutputFolderPath]
  [/P:ParameterFilePath] [/C]
@@ -25,11 +51,12 @@ ValidateFastaFile.exe
  [/SkipDupeNameCheck] [/SkipDupeSeqCheck]
  [/B] [/HashFile]
  [/X] [/S:[MaxLevel]] [/Q]
+```
 
 The input file path can contain the wildcard character * and should point 
 to a fasta file.
 
-The output folder path is optional, and is only used if /C is used.  
+The output folder path is optional, and is only used if /C is used.
 If omitted, the output stats file will be created in the folder 
 containing the .Exe file.
 
@@ -39,10 +66,10 @@ valid XML parameter file.
 Use /C to specify that an output file should be created, rather than 
 displaying the results on the screen.
 
-Use /F to generate a new, fixed .Fasta file (long protein names will be 
-auto-shortened).  At the same time, a file with protein names and hash values
+Use /F to generate a new, fixed .Fasta file (long protein names will be auto-shortened).
+At the same time, a file with protein names and hash values
 for each unique protein sequences will be generated (_UniqueProteinSeqs.txt). 
-This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.  
+This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.
 If duplicate sequences are found, then an easily parseable mapping file will
 also be created (_UniqueProteinSeqDuplicates.txt).
 
@@ -72,7 +99,7 @@ the checking for duplicates
  /SkipDupeNameCheck disables duplicate name checking (which typically 
   requires less memory)
 
-Use /B to save a hash info file (even if not consolidating duplicates).  
+Use /B to save a hash info file (even if not consolidating duplicates).
 This is useful for parsing a large fasta file to obtain the sequence hash 
 for each protein (hash values are not cached in memory, thus very little
 memory is required).
@@ -88,12 +115,13 @@ to examine.
 
 The optional /Q switch will suppress all error messages.
 
--------------------------------------------------------------------------------
-Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2012
+## Contacts
 
-E-mail: matthew.monroe@pnnl.gov or matt@alchemistmatt.com
-Website: http://omics.pnnl.gov/ or http://www.sysbio.org/resources/staff/
--------------------------------------------------------------------------------
+Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) \
+E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov\
+Website: https://panomics.pnnl.gov/ or https://omics.pnl.gov
+
+## License
 
 Licensed under the Apache License, Version 2.0; you may not use this file except 
 in compliance with the License.  You may obtain a copy of the License at 
