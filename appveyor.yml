@@ -7,6 +7,8 @@ platform: Any CPU
 build:
   project: ValidateFastaFiles.sln
   verbosity: minimal
+after_build:
+  7z a Validate-Fasta-File.zip %APPVEYOR_BUILD_FOLDER%\bin\Release\*.exe %APPVEYOR_BUILD_FOLDER%\bin\Release\*.dll %APPVEYOR_BUILD_FOLDER%\bin\Release\*.xml %APPVEYOR_BUILD_FOLDER%\Readme.md
 artifacts:
-- path: bin
+- path: Validate-Fasta-File.zip
   name: Validate-Fasta-File
