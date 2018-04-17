@@ -15,7 +15,7 @@ Protein Digestion Simulator is
 
 The latest version of the application is available on the [AppVeyor CI server](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/artifacts)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/placeholder?svg=true)](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file)
+[![Build status](https://ci.appveyor.com/api/projects/status/gg6u438llyhiupv3?svg=true)](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file)
 
 ## Additional Features
 
