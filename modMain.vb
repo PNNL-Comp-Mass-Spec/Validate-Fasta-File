@@ -3,6 +3,7 @@ Option Strict On
 Imports System.Reflection
 Imports System.Threading
 Imports PRISM
+
 ' This program will read in a Fasta file and write out stats on the number of proteins and number of residues
 ' It will also validate the protein name, descriptions, and sequences in the file
 
@@ -20,7 +21,7 @@ Imports PRISM
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "March 20, 2018"
+    Public Const PROGRAM_DATE As String = "September 20, 2018"
 
     Private mInputFilePath As String
     Private mOutputFolderPath As String
@@ -221,7 +222,7 @@ Module modMain
         Try
             ' Make sure no invalid parameters are present
             If commandLineParser.InvalidParametersPresent(lstValidParameters) Then
-                ShowErrorMessage("Invalid commmand line parameters",
+                ShowErrorMessage("Invalid command line parameters",
                   (From item In commandLineParser.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
                 Return False
             Else
