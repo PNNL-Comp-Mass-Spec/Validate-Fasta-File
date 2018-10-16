@@ -30,6 +30,7 @@ Public Class clsNestedStringDictionary(Of T)
         End Get
     End Property
 
+    ' ReSharper disable once UnusedMember.Global
     ''' <summary>
     ''' True when we are ignoring case for stored keys
     ''' </summary>
@@ -43,12 +44,12 @@ Public Class clsNestedStringDictionary(Of T)
     End Property
 
     ''' <summary>
-    ''' The number of characters at the start of keystrings to use when adding items to clsNestedStringDictionary instances
+    ''' The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
     ''' </summary>
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks>
-    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance 
+    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance
     ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
     ''' </remarks>
     Public ReadOnly Property SpannerCharLength As Byte
@@ -60,7 +61,7 @@ Public Class clsNestedStringDictionary(Of T)
     ''' <summary>
     ''' Constructor
     ''' </summary>
-    ''' <param name="ignoreCaseForKeys">True to create case-insensitve dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
+    ''' <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
     ''' <param name="spannerCharLength"></param>
     ''' <remarks>
     ''' If spannerCharLength is too small, all of the items added to this class instance using Add() will be
@@ -105,7 +106,7 @@ Public Class clsNestedStringDictionary(Of T)
         subDictionary.Add(key, value)
 
     End Sub
-    
+
     ''' <summary>
     ''' Remove the stored items
     ''' </summary>
@@ -190,6 +191,7 @@ Public Class clsNestedStringDictionary(Of T)
 
     End Function
 
+    ' ReSharper disable once UnusedMember.Global
     ''' <summary>
     ''' Retrieve the dictionary associated with the given spanner key
     ''' </summary>
@@ -205,6 +207,7 @@ Public Class clsNestedStringDictionary(Of T)
         Return Nothing
     End Function
 
+    ' ReSharper disable once UnusedMember.Global
     ''' <summary>
     ''' Retrieve the list of spanning keys in use
     ''' </summary>

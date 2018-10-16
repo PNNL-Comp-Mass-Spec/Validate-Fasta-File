@@ -255,12 +255,12 @@ ValidateFastaFile
 </member>
 <member name="P:ValidateFastaFile.clsNestedStringDictionary`1.SpannerCharLength">
  <summary>
- The number of characters at the start of keystrings to use when adding items to clsNestedStringDictionary instances
+ The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
  </summary>
  <value></value>
  <returns></returns>
  <remarks>
- If this value is too short, all of the items added to the clsNestedStringDictionary instance 
+ If this value is too short, all of the items added to the clsNestedStringDictionary instance
  will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
  </remarks>
 </member>
@@ -268,7 +268,7 @@ ValidateFastaFile
  <summary>
  Constructor
  </summary>
- <param name="ignoreCaseForKeys">True to create case-insensitve dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
+ <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
  <param name="spannerCharLength"></param>
  <remarks>
  If spannerCharLength is too small, all of the items added to this class instance using Add() will be

@@ -21,10 +21,10 @@ Imports PRISM
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "September 20, 2018"
+    Public Const PROGRAM_DATE As String = "October 15, 2018"
 
     Private mInputFilePath As String
-    Private mOutputFolderPath As String
+    Private mOutputDirectoryPath As String
     Private mParameterFilePath As String
 
     Private mUseStatsFile As Boolean
@@ -48,8 +48,8 @@ Module modMain
 
     Private mCreateModelXMLParameterFile As Boolean
 
-    Private mRecurseFolders As Boolean
-    Private mRecurseFoldersMaxLevels As Integer
+    Private mRecurseDirectories As Boolean
+    Private mMaxLevelsToRecurse As Integer
 
     Private WithEvents mValidateFastaFile As clsValidateFastaFile
 
@@ -66,7 +66,7 @@ Module modMain
 
         intReturnCode = 0
         mInputFilePath = String.Empty
-        mOutputFolderPath = String.Empty
+        mOutputDirectoryPath = String.Empty
         mParameterFilePath = String.Empty
 
         mUseStatsFile = False
@@ -87,8 +87,8 @@ Module modMain
         mSaveBasicProteinHashInfoFile = False
         mProteinHashFilePath = String.Empty
 
-        mRecurseFolders = False
-        mRecurseFoldersMaxLevels = 0
+        mRecurseDirectories = False
+        mMaxLevelsToRecurse = 0
 
         mLastProgressReportPctTime = DateTime.UtcNow
         mLastProgressReportTime = DateTime.UtcNow
@@ -152,7 +152,7 @@ Module modMain
 
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
                 'With objValidateFastaFile
-                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, )
+                '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLineFeedAtEOF, )
                 '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, )
                 '    .MaximumFileErrorsToTrack()
                 '    .MinimumProteinNameLength()
@@ -162,14 +162,14 @@ Module modMain
                 '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
                 'End With
 
-                If mRecurseFolders Then
-                    If mValidateFastaFile.ProcessFilesAndRecurseFolders(mInputFilePath, mOutputFolderPath, mOutputFolderPath, False, mParameterFilePath, mRecurseFoldersMaxLevels) Then
+                If mRecurseDirectories Then
+                    If mValidateFastaFile.ProcessFilesAndRecurseDirectories(mInputFilePath, mOutputDirectoryPath, mOutputDirectoryPath, False, mParameterFilePath, mMaxLevelsToRecurse) Then
                         intReturnCode = 0
                     Else
                         intReturnCode = mValidateFastaFile.ErrorCode
                     End If
                 Else
-                    If mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputFolderPath, mParameterFilePath) Then
+                    If mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputDirectoryPath, mParameterFilePath) Then
                         intReturnCode = 0
                     Else
                         intReturnCode = mValidateFastaFile.ErrorCode
@@ -203,7 +203,7 @@ Module modMain
     End Sub
 
     Private Function GetAppVersion() As String
-        Return FileProcessor.ProcessFilesOrFoldersBase.GetAppVersion(PROGRAM_DATE)
+        Return FileProcessor.ProcessFilesOrDirectoriesBase.GetAppVersion(PROGRAM_DATE)
     End Function
 
     Private Function SetOptionsUsingCommandLineParameters(commandLineParser As clsParseCommandLine) As Boolean
@@ -234,7 +234,7 @@ Module modMain
                         mInputFilePath = .RetrieveNonSwitchParameter(0)
                     End If
 
-                    If .RetrieveValueForParameter("O", strValue) Then mOutputFolderPath = strValue
+                    If .RetrieveValueForParameter("O", strValue) Then mOutputDirectoryPath = strValue
                     If .RetrieveValueForParameter("P", strValue) Then mParameterFilePath = strValue
                     If .IsParameterPresent("C") Then mUseStatsFile = True
 
@@ -257,9 +257,9 @@ Module modMain
                     If .IsParameterPresent("X") Then mCreateModelXMLParameterFile = True
 
                     If .RetrieveValueForParameter("S", strValue) Then
-                        mRecurseFolders = True
+                        mRecurseDirectories = True
                         If Integer.TryParse(strValue, intValue) Then
-                            mRecurseFoldersMaxLevels = intValue
+                            mMaxLevelsToRecurse = intValue
                         End If
                     End If
 
@@ -309,7 +309,7 @@ Module modMain
             Console.WriteLine("== Program syntax ==")
             Console.WriteLine()
             Console.WriteLine(exeName)
-            Console.WriteLine(" /I:InputFilePath.fasta [/O:OutputFolderPath]")
+            Console.WriteLine(" /I:InputFilePath.fasta [/O:OutputDirectoryPath]")
             Console.WriteLine(" [/P:ParameterFilePath] [/C] ")
             Console.WriteLine(" [/F] [/R] [/D] [/L] [/V] [/KeepSameName]")
             Console.WriteLine(" [/AllowDash] [/AllowAsterisk]")
@@ -321,8 +321,8 @@ Module modMain
                 "The input file path can contain the wildcard character * and should point to a fasta file."))
             Console.WriteLine()
             Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                "The output folder path is optional, and is only used if /C is used. If omitted, the output stats file " &
-                "will be created in the folder containing the .Exe file."))
+                "The output directory path is optional, and is only used if /C is used. If omitted, the output stats file " &
+                "will be created in the directory containing the .Exe file."))
             Console.WriteLine()
             Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                 "The parameter file path is optional. If included, it should point to a valid XML parameter file."))
@@ -376,8 +376,8 @@ Module modMain
             Console.WriteLine()
             Console.WriteLine("Use /X to specify that a model XML parameter file should be created.")
             Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                "Use /S to process all valid files in the input folder and subfolders. " &
-                "Include a number after /S (like /S:2) to limit the level of subfolders to examine."))
+                "Use /S to process all valid files in the input directory and subdirectories. " &
+                "Include a number after /S (like /S:2) to limit the level of subdirectories to examine."))
             Console.WriteLine()
 
             Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2012")

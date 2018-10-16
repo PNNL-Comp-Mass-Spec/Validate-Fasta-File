@@ -2844,8 +2844,8 @@ Public Class clsValidateFastaFile
 
         Dim errorMessage As String
 
-        If MyBase.ErrorCode = eProcessFilesErrorCodes.LocalizedError Or
-           MyBase.ErrorCode = eProcessFilesErrorCodes.NoError Then
+        If MyBase.ErrorCode = ProcessFilesErrorCodes.LocalizedError Or
+           MyBase.ErrorCode = ProcessFilesErrorCodes.NoError Then
             Select Case mLocalErrorCode
                 Case eValidateFastaFileErrorCodes.NoError
                     errorMessage = ""
@@ -3551,7 +3551,7 @@ Public Class clsValidateFastaFile
                  Path.GetDirectoryName(Reflection.Assembly.GetExecutingAssembly().Location),
                   Path.GetFileName(parameterFilePath))
                 If Not File.Exists(parameterFilePath) Then
-                    MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.ParameterFileNotFound)
+                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.ParameterFileNotFound)
                     Return False
                 End If
             End If
@@ -3559,7 +3559,7 @@ Public Class clsValidateFastaFile
             If settingsFile.LoadSettings(parameterFilePath) Then
                 If Not settingsFile.SectionPresent(XML_SECTION_OPTIONS) Then
                     OnWarningEvent("The node '<section name=""" & XML_SECTION_OPTIONS & """> was not found in the parameter file: " & parameterFilePath)
-                    MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.InvalidParameterFile)
+                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile)
                     Return False
                 Else
                     ' Read customized settings
@@ -3908,8 +3908,8 @@ Public Class clsValidateFastaFile
         If Not LoadParameterFileSettings(parameterFilePath) Then
             statusMessage = "Parameter file load error: " & parameterFilePath
             OnWarningEvent(statusMessage)
-            If MyBase.ErrorCode = eProcessFilesErrorCodes.NoError Then
-                MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.InvalidParameterFile)
+            If MyBase.ErrorCode = ProcessFilesErrorCodes.NoError Then
+                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile)
             End If
             Return False
         End If
@@ -3917,7 +3917,7 @@ Public Class clsValidateFastaFile
         Try
             If inputFilePath Is Nothing OrElse inputFilePath.Length = 0 Then
                 Console.WriteLine("Input file name is empty")
-                MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.InvalidInputFilePath)
+                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidInputFilePath)
                 Return False
             Else
 
@@ -3925,7 +3925,7 @@ Public Class clsValidateFastaFile
                 ShowMessage("Parsing " & Path.GetFileName(inputFilePath))
 
                 If Not CleanupFilePaths(inputFilePath, outputFolderPath) Then
-                    MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.FilePathError)
+                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError)
                     Return False
                 Else
                     ' List of protein names to keep
@@ -4454,9 +4454,10 @@ Public Class clsValidateFastaFile
         Dim fileAlreadyExists As Boolean
 
         Try
-            Dim outputOptions = New udtOutputOptionsType()
-            outputOptions.OutputToStatsFile = outputToStatsFile
-            outputOptions.SepChar = ControlChars.Tab
+            Dim outputOptions = New udtOutputOptionsType With {
+                .OutputToStatsFile = outputToStatsFile,
+                .SepChar = ControlChars.Tab
+            }
 
             Try
                 outputOptions.SourceFile = Path.GetFileName(mFastaFilePath)
@@ -4935,11 +4936,11 @@ Public Class clsValidateFastaFile
             mLocalErrorCode = eNewErrorCode
 
             If eNewErrorCode = eValidateFastaFileErrorCodes.NoError Then
-                If MyBase.ErrorCode = eProcessFilesErrorCodes.LocalizedError Then
-                    MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.NoError)
+                If MyBase.ErrorCode = ProcessFilesErrorCodes.LocalizedError Then
+                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.NoError)
                 End If
             Else
-                MyBase.SetBaseClassErrorCode(eProcessFilesErrorCodes.LocalizedError)
+                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.LocalizedError)
             End If
         End If
 
