@@ -44,7 +44,7 @@ ValidateFastaFile.exe Proteins.fasta /HashFile:Proteins_ProteinHashes.txt
 
 ```
 ValidateFastaFile.exe
- /I:InputFilePath.fasta [/O:OutputFolderPath]
+ /I:InputFilePath.fasta [/O:OutputDirectoryPath]
  [/P:ParameterFilePath] [/C]
  [/F] [/R] [/D] [/L] [/V] [/KeepSameName]
  [/AllowDash] [/AllowAsterisk]
@@ -56,8 +56,8 @@ ValidateFastaFile.exe
 The input file path can contain the wildcard character * and should point 
 to a fasta file.
 
-The output folder path is optional, and is only used if /C is used.
-If omitted, the output stats file will be created in the folder 
+The output directory path is optional, and is only used if /C is used.
+If omitted, the output stats file will be created in the directory 
 containing the .Exe file.
 
 The parameter file path is optional.  If included, it should point to a 
@@ -109,8 +109,8 @@ which proteins to keep when generating a fixed fasta file. Use of
 /HashFile automatically enables /F and automatically disables /D, /R, and /B
 
 Use /X to specify that a model XML parameter file should be created.
-Use /S to process all valid files in the input folder and subfolders. 
-Include a number after /S (like /S:2) to limit the level of subfolders 
+Use /S to process all valid files in the input directory and subdirectories.
+Include a number after /S (like /S:2) to limit the level of subdirectories 
 to examine.
 
 The optional /Q switch will suppress all error messages.
