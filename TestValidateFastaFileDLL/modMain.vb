@@ -2,6 +2,7 @@ Option Strict On
 
 Imports PRISM
 Imports ValidateFastaFile
+
 ' Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
 ' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
@@ -13,37 +14,37 @@ Module modMain
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
 
-        Dim strTestFilePath = "JunkTest.fasta"
+        Dim testFilePath = "JunkTest.fasta"
 
-        Dim objValidateFastaFile As clsValidateFastaFile
+        Dim fastaFileValidator As clsValidateFastaFile
 
-        Dim strParameters() As String
+        Dim parameters() As String
 
-        Dim blnSuccess As Boolean
+        Dim success As Boolean
 
-        Dim intCount As Integer
+        Dim count As Integer
 
-        Dim intReturnCode As Integer
+        Dim returnCode As Integer
 
         Try
             ' See if the user provided a custom filepath at the command line
             Try
                 ' This command will fail if the program is called from a network share
-                strParameters = Environment.GetCommandLineArgs()
+                parameters = Environment.GetCommandLineArgs()
 
-                If Not strParameters Is Nothing AndAlso strParameters.Length > 1 Then
-                    ' Note that strParameters(0) is the path to the Executable for the calling program
-                    strTestFilePath = strParameters(1)
+                If Not parameters Is Nothing AndAlso parameters.Length > 1 Then
+                    ' Note that parameters(0) is the path to the Executable for the calling program
+                    testFilePath = parameters(1)
                 End If
 
             Catch ex As Exception
                 ' Ignore errors here
             End Try
 
-            Console.WriteLine("Examining file: " & strTestFilePath)
+            Console.WriteLine("Examining file: " & testFilePath)
 
-            objValidateFastaFile = New clsValidateFastaFile()
-            With objValidateFastaFile
+            fastaFileValidator = New clsValidateFastaFile()
+            With fastaFileValidator
                 .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
 
                 ' Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
@@ -58,41 +59,41 @@ Module modMain
             End With
 
             ' Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
-            blnSuccess = objValidateFastaFile.ProcessFile(strTestFilePath, String.Empty)
+            success = fastaFileValidator.ProcessFile(testFilePath, String.Empty)
 
-            If blnSuccess Then
-                With objValidateFastaFile
+            If success Then
+                With fastaFileValidator
 
-                    intCount = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
-                    If intCount = 0 Then
+                    count = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
+                    If count = 0 Then
                         Console.WriteLine(" No errors were found")
                     Else
-                        Console.WriteLine(" " & intCount.ToString & " errors were found")
+                        Console.WriteLine(" " & count.ToString & " errors were found")
                     End If
 
-                    intCount = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
-                    If intCount = 0 Then
+                    count = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
+                    If count = 0 Then
                         Console.WriteLine(" No warnings were found")
                     Else
-                        Console.WriteLine(" " & intCount.ToString & " warnings were found")
+                        Console.WriteLine(" " & count.ToString & " warnings were found")
                     End If
 
                     '' Could enumerate the errors using the following
-                    For intIndex = 0 To intCount - 1
-                        Console.WriteLine(.ErrorMessageTextByIndex(intIndex, ControlChars.Tab))
-                    Next intIndex
+                    For index = 0 To count - 1
+                        Console.WriteLine(.ErrorMessageTextByIndex(index, ControlChars.Tab))
+                    Next index
 
                 End With
             Else
-                ConsoleMsgUtils.ShowError("Error calling objValidateFastaFile.ProcessFile: " & objValidateFastaFile.GetErrorMessage())
+                ConsoleMsgUtils.ShowError("Error calling validateFastaFile.ProcessFile: " & fastaFileValidator.GetErrorMessage())
             End If
 
         Catch ex As Exception
             ConsoleMsgUtils.ShowError("Error occurred: " & ex.Message)
-            intReturnCode = -1
+            returnCode = -1
         End Try
 
-        Return intReturnCode
+        Return returnCode
 
     End Function
 

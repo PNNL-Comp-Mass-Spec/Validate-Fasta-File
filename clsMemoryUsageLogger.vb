@@ -219,8 +219,8 @@ Public Class clsMemoryUsageLogger
     Public Sub WriteMemoryUsageLogEntry()
         Static dtLastWriteTime As DateTime = DateTime.UtcNow.Subtract(New TimeSpan(1, 0, 0))
 
-        Dim strLogFileName As String
-        Dim strLogFilePath As String
+        Dim logFileName As String
+        Dim logFilePath As String
 
         Try
             If DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < m_MinimumMemoryUsageLogIntervalMinutes Then
@@ -230,23 +230,23 @@ Public Class clsMemoryUsageLogger
             dtLastWriteTime = DateTime.UtcNow
 
             ' We're creating a new log file each month
-            strLogFileName = "MemoryUsageLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
+            logFileName = "MemoryUsageLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
 
-            If Not String.IsNullOrWhiteSpace(m_LogFolderPath) Then
-                strLogFilePath = Path.Combine(m_LogFolderPath, strLogFileName)
+            If Not String.IsNullOrWhiteSpace(LogFolderPath) Then
+                logFilePath = Path.Combine(LogFolderPath, logFileName)
             Else
-                strLogFilePath = String.Copy(strLogFileName)
+                logFilePath = String.Copy(logFileName)
             End If
 
-            Dim blnWriteHeader = Not File.Exists(strLogFilePath)
+            Dim writeHeader = Not File.Exists(logFilePath)
 
-            Using swOutFile = New StreamWriter(New FileStream(strLogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
+            Using writer = New StreamWriter(New FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
 
-                If blnWriteHeader Then
+                If writeHeader Then
                     GetMemoryUsageHeader()
                 End If
 
-                swOutFile.WriteLine(GetMemoryUsageSummary())
+                writer.WriteLine(GetMemoryUsageSummary())
 
             End Using
 

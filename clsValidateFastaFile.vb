@@ -27,9 +27,13 @@ Public Class clsValidateFastaFile
         InitializeLocalVariables()
     End Sub
 
-    Public Sub New(ParameterFilePath As String)
+    ''' <summary>
+    ''' Constructor that takes a parameter file
+    ''' </summary>
+    ''' <param name="parameterFilePath"></param>
+    Public Sub New(parameterFilePath As String)
         Me.New()
-        LoadParameterFileSettings(ParameterFilePath)
+        LoadParameterFileSettings(parameterFilePath)
     End Sub
 
 
@@ -543,13 +547,12 @@ Public Class clsValidateFastaFile
         End Get
     End Property
 
-    Public ReadOnly Property FixedFASTAFileStats(
-     ValueType As FixedFASTAFileValues) As Integer
+    Public ReadOnly Property FixedFASTAFileStats(valueType As FixedFASTAFileValues) As Integer
 
 
         Get
             Dim tmpValue As Integer
-            Select Case ValueType
+            Select Case valueType
                 Case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
                     tmpValue = mFixedFastaStats.DuplicateNameProteinsSkipped
                 Case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
@@ -1654,7 +1657,7 @@ Public Class clsValidateFastaFile
     Private Sub AutoDetermineFastaProteinNameSpannerCharLength(fastaFilePathToTest As String, terminatorSize As Integer)
 
         Const PARTS_TO_SAMPLE = 10
-        Const KBYTES_PER_SAMPLE = 51200
+        Const KILOBYTES_PER_SAMPLE = 51200
 
         Dim proteinStartLetters = New Dictionary(Of String, Integer)
         Dim startTime = DateTime.UtcNow
@@ -1663,7 +1666,7 @@ Public Class clsValidateFastaFile
         Dim fastaFile = New FileInfo(fastaFilePathToTest)
         If Not fastaFile.Exists Then Return
 
-        Dim fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KBYTES_PER_SAMPLE
+        Dim fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE
         Dim linesReadTotal As Int64
 
         If fastaFile.Length < fullScanLengthBytes Then
@@ -1674,7 +1677,7 @@ Public Class clsValidateFastaFile
             Dim stepSizeBytes = CLng(Math.Round(fastaFile.Length / PARTS_TO_SAMPLE, 0))
 
             For byteOffsetStart As Int64 = 0 To fastaFile.Length Step stepSizeBytes
-                Dim linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KBYTES_PER_SAMPLE * 1024)
+                Dim linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024)
                 linesReadTotal += linesRead
 
                 If Not showStats AndAlso DateTime.UtcNow.Subtract(startTime).TotalMilliseconds > 500 Then
@@ -1741,14 +1744,14 @@ Public Class clsValidateFastaFile
                 firstLineDiscarded = True
             End If
 
-            Using fsInstream = New FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-                fsInstream.Position = startOffset
+            Using inStream = New FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+                inStream.Position = startOffset
 
-                Using srFastaInFile = New StreamReader(fsInstream)
+                Using reader = New StreamReader(inStream)
 
-                    Do While Not srFastaInFile.EndOfStream
+                    Do While Not reader.EndOfStream
 
-                        Dim lineIn = srFastaInFile.ReadLine()
+                        Dim lineIn = reader.ReadLine()
                         bytesRead += terminatorSize
                         linesRead += 1
 
@@ -2515,18 +2518,9 @@ Public Class clsValidateFastaFile
 
         Dim newEndChar As String = ControlChars.CrLf
 
-        Dim endCharType As eLineEndingCharacters =
-         Me.DetermineLineTerminatorType(pathOfFileToFix)
+        Dim endCharType As eLineEndingCharacters = Me.DetermineLineTerminatorType(pathOfFileToFix)
 
-        Dim fi As FileInfo
-        Dim tr As TextReader
-        Dim s As String
         Dim origEndCharCount As Integer
-
-        Dim fileLength As Long
-        Dim currFilePos As Long
-
-        Dim sw As StreamWriter
 
         If endCharType <> desiredLineEndCharacterType Then
             Select Case desiredLineEndCharacterType
@@ -2555,34 +2549,34 @@ Public Class clsValidateFastaFile
                 newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix), Path.GetFileName(newFileName))
             End If
 
-            fi = New FileInfo(pathOfFileToFix)
-            fileLength = fi.Length
+            Dim targetFile = New FileInfo(pathOfFileToFix)
+            Dim fileSizeBytes = targetFile.Length
 
-            tr = fi.OpenText
+            Dim reader = targetFile.OpenText()
 
-            sw = New StreamWriter(New FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+            Using writer = New StreamWriter(New FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
 
-            Me.OnProgressUpdate("Normalizing Line Endings...", 0.0)
+                Me.OnProgressUpdate("Normalizing Line Endings...", 0.0)
 
-            s = tr.ReadLine
-            Dim linesRead As Long = 0
-            Do While Not s Is Nothing
-                sw.Write(s)
-                sw.Write(newEndChar)
+                Dim dataLine = reader.ReadLine
+                Dim linesRead As Long = 0
+                Do While Not dataLine Is Nothing
+                    writer.Write(dataLine)
+                    writer.Write(newEndChar)
 
-                currFilePos = s.Length + origEndCharCount
-                linesRead += 1
+                    Dim currentFilePos = dataLine.Length + origEndCharCount
+                    linesRead += 1
 
-                If linesRead Mod 1000 = 0 Then
-                    Me.OnProgressUpdate("Normalizing Line Endings (" &
-                     Math.Round(CDbl(currFilePos / fileLength * 100), 1).ToString &
-                     " % complete", CSng(currFilePos / fileLength * 100))
-                End If
+                    If linesRead Mod 1000 = 0 Then
+                        Me.OnProgressUpdate("Normalizing Line Endings (" &
+                         Math.Round(CDbl(currentFilePos / fileSizeBytes * 100), 1).ToString &
+                         " % complete", CSng(currentFilePos / fileSizeBytes * 100))
+                    End If
 
-                s = tr.ReadLine
-            Loop
-            tr.Close()
-            sw.Close()
+                    dataLine = reader.ReadLine()
+                Loop
+                reader.Close()
+            End Using
 
             Return newFileName
         Else
@@ -3046,19 +3040,19 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub InitializeRuleDetails(
-     ByRef ruleDefs() As udtRuleDefinitionType,
-     ByRef ruleDetails() As udtRuleDefinitionExtendedType)
+      ByRef ruleDefinitions() As udtRuleDefinitionType,
+      ByRef ruleDetails() As udtRuleDefinitionExtendedType)
         Dim index As Integer
 
-        If ruleDefs Is Nothing OrElse ruleDefs.Length = 0 Then
+        If ruleDefinitions Is Nothing OrElse ruleDefinitions.Length = 0 Then
             ReDim ruleDetails(-1)
         Else
-            ReDim ruleDetails(ruleDefs.Length - 1)
+            ReDim ruleDetails(ruleDefinitions.Length - 1)
 
-            For index = 0 To ruleDefs.Length - 1
+            For index = 0 To ruleDefinitions.Length - 1
                 Try
                     With ruleDetails(index)
-                        .RuleDefinition = ruleDefs(index)
+                        .RuleDefinition = ruleDefinitions(index)
                         .reRule = New Regex(
                          .RuleDefinition.MatchRegEx,
                          RegexOptions.Singleline Or
@@ -3154,20 +3148,20 @@ Public Class clsValidateFastaFile
             End If
 
             Dim baseHashFileName = Path.GetFileNameWithoutExtension(proteinHashFile.Name)
-            Dim sortedProteinHashAddon As String
+            Dim sortedProteinHashSuffix As String
             Dim proteinHashFilenameSuffixNoExtension = Path.GetFileNameWithoutExtension(PROTEIN_HASHES_FILENAME_SUFFIX)
 
             If baseHashFileName.EndsWith(proteinHashFilenameSuffixNoExtension) Then
                 baseHashFileName = baseHashFileName.Substring(0, baseHashFileName.Length - proteinHashFilenameSuffixNoExtension.Length)
-                sortedProteinHashAddon = proteinHashFilenameSuffixNoExtension
+                sortedProteinHashSuffix = proteinHashFilenameSuffixNoExtension
             Else
-                sortedProteinHashAddon = String.Empty
+                sortedProteinHashSuffix = String.Empty
             End If
 
             Dim baseDataFileName = Path.Combine(proteinHashFile.Directory.FullName, baseHashFileName)
 
             ' Note: do not add sortedProteinHashFilePath to mTempFilesToDelete
-            Dim sortedProteinHashFilePath = baseDataFileName & sortedProteinHashAddon & "_Sorted.tmp"
+            Dim sortedProteinHashFilePath = baseDataFileName & sortedProteinHashSuffix & "_Sorted.tmp"
 
             Dim sortedProteinHashFile = New FileInfo(sortedProteinHashFilePath)
             Dim sortedHashFileLines As Long = 0

@@ -60,11 +60,11 @@ Module modMain
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
 
-        Dim intReturnCode As Integer
+        Dim returnCode As Integer
         Dim commandLineParser As New clsParseCommandLine
-        Dim blnProceed As Boolean
+        Dim proceed As Boolean
 
-        intReturnCode = 0
+        returnCode = 0
         mInputFilePath = String.Empty
         mOutputDirectoryPath = String.Empty
         mParameterFilePath = String.Empty
@@ -94,12 +94,12 @@ Module modMain
         mLastProgressReportTime = DateTime.UtcNow
 
         Try
-            blnProceed = False
+            proceed = False
             If commandLineParser.ParseCommandLine Then
-                If SetOptionsUsingCommandLineParameters(commandLineParser) Then blnProceed = True
+                If SetOptionsUsingCommandLineParameters(commandLineParser) Then proceed = True
             End If
 
-            If blnProceed And Not commandLineParser.NeedToShowHelp And mCreateModelXMLParameterFile Then
+            If proceed And Not commandLineParser.NeedToShowHelp And mCreateModelXMLParameterFile Then
                 If mParameterFilePath Is Nothing OrElse mParameterFilePath.Length = 0 Then
                     mParameterFilePath = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location) & "_ModelSettings.xml"
                 End If
@@ -111,9 +111,9 @@ Module modMain
                 Console.WriteLine("  " & mParameterFilePath)
                 Console.WriteLine()
 
-            ElseIf Not blnProceed OrElse commandLineParser.NeedToShowHelp OrElse mInputFilePath.Length = 0 Then
+            ElseIf Not proceed OrElse commandLineParser.NeedToShowHelp OrElse mInputFilePath.Length = 0 Then
                 ShowProgramHelp()
-                intReturnCode = -1
+                returnCode = -1
             Else
 
                 mValidateFastaFile = New clsValidateFastaFile
@@ -151,7 +151,7 @@ Module modMain
                 mValidateFastaFile.SkipConsoleWriteIfNoProgressListener = True
 
                 ' Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
-                'With objValidateFastaFile
+                'With mValidateFastaFile
                 '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLineFeedAtEOF, )
                 '    .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, )
                 '    .MaximumFileErrorsToTrack()
@@ -164,16 +164,16 @@ Module modMain
 
                 If mRecurseDirectories Then
                     If mValidateFastaFile.ProcessFilesAndRecurseDirectories(mInputFilePath, mOutputDirectoryPath, mOutputDirectoryPath, False, mParameterFilePath, mMaxLevelsToRecurse) Then
-                        intReturnCode = 0
+                        returnCode = 0
                     Else
-                        intReturnCode = mValidateFastaFile.ErrorCode
+                        returnCode = mValidateFastaFile.ErrorCode
                     End If
                 Else
                     If mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputDirectoryPath, mParameterFilePath) Then
-                        intReturnCode = 0
+                        returnCode = 0
                     Else
-                        intReturnCode = mValidateFastaFile.ErrorCode
-                        If intReturnCode <> 0 Then
+                        returnCode = mValidateFastaFile.ErrorCode
+                        If returnCode <> 0 Then
                             ShowErrorMessage("Error while processing: " & mValidateFastaFile.GetErrorMessage())
                         End If
                     End If
@@ -184,20 +184,20 @@ Module modMain
 
         Catch ex As Exception
             ShowErrorMessage("Error occurred in modMain->Main: " & ex.Message, ex)
-            intReturnCode = -1
+            returnCode = -1
         End Try
 
-        Return intReturnCode
+        Return returnCode
 
     End Function
 
-    Private Sub DisplayProgressPercent(intPercentComplete As Integer, blnAddCarriageReturn As Boolean)
-        If blnAddCarriageReturn Then
+    Private Sub DisplayProgressPercent(percentComplete As Integer, addCarriageReturn As Boolean)
+        If addCarriageReturn Then
             Console.WriteLine()
         End If
-        If intPercentComplete > 100 Then intPercentComplete = 100
-        Console.Write("Processing: " & intPercentComplete.ToString & "% ")
-        If blnAddCarriageReturn Then
+        If percentComplete > 100 Then percentComplete = 100
+        Console.Write("Processing: " & percentComplete.ToString & "% ")
+        If addCarriageReturn Then
             Console.WriteLine()
         End If
     End Sub
@@ -209,33 +209,33 @@ Module modMain
     Private Function SetOptionsUsingCommandLineParameters(commandLineParser As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim strValue As String = String.Empty
-        Dim lstValidParameters = New List(Of String) From {
+        Dim value As String = String.Empty
+        Dim validParameters = New List(Of String) From {
             "I", "O", "P", "C",
             "SkipDupeNameCheck", "SkipDupeSeqCheck",
             "F", "R", "D", "L", "V",
             "KeepSameName", "AllowDash", "AllowAsterisk",
             "B", "HashFile",
             "X", "S"}
-        Dim intValue As Integer
+        Dim valueInteger As Integer
 
         Try
             ' Make sure no invalid parameters are present
-            If commandLineParser.InvalidParametersPresent(lstValidParameters) Then
+            If commandLineParser.InvalidParametersPresent(validParameters) Then
                 ShowErrorMessage("Invalid command line parameters",
-                  (From item In commandLineParser.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
+                  (From item In commandLineParser.InvalidParameters(validParameters) Select "/" + item).ToList())
                 Return False
             Else
                 With commandLineParser
                     ' Query commandLineParser to see if various parameters are present
-                    If .RetrieveValueForParameter("I", strValue) Then
-                        mInputFilePath = strValue
+                    If .RetrieveValueForParameter("I", value) Then
+                        mInputFilePath = value
                     ElseIf .NonSwitchParameterCount > 0 Then
                         mInputFilePath = .RetrieveNonSwitchParameter(0)
                     End If
 
-                    If .RetrieveValueForParameter("O", strValue) Then mOutputDirectoryPath = strValue
-                    If .RetrieveValueForParameter("P", strValue) Then mParameterFilePath = strValue
+                    If .RetrieveValueForParameter("O", value) Then mOutputDirectoryPath = value
+                    If .RetrieveValueForParameter("P", value) Then mParameterFilePath = value
                     If .IsParameterPresent("C") Then mUseStatsFile = True
 
                     If .IsParameterPresent("SkipDupeNameCheck") Then mCheckForDuplicateProteinNames = False
@@ -252,14 +252,14 @@ Module modMain
                     If .IsParameterPresent("AllowDash") Then mAllowDash = True
 
                     If .IsParameterPresent("B") Then mSaveBasicProteinHashInfoFile = True
-                    If .RetrieveValueForParameter("HashFile", strValue) Then mProteinHashFilePath = strValue
+                    If .RetrieveValueForParameter("HashFile", value) Then mProteinHashFilePath = value
 
                     If .IsParameterPresent("X") Then mCreateModelXMLParameterFile = True
 
-                    If .RetrieveValueForParameter("S", strValue) Then
+                    If .RetrieveValueForParameter("S", value) Then
                         mRecurseDirectories = True
-                        If Integer.TryParse(strValue, intValue) Then
-                            mMaxLevelsToRecurse = intValue
+                        If Integer.TryParse(value, valueInteger) Then
+                            mMaxLevelsToRecurse = valueInteger
                         End If
                     End If
 
@@ -275,8 +275,8 @@ Module modMain
 
     End Function
 
-    Private Sub ShowErrorMessage(strMessage As String, Optional ex As Exception = Nothing)
-        ConsoleMsgUtils.ShowError(strMessage, ex)
+    Private Sub ShowErrorMessage(message As String, Optional ex As Exception = Nothing)
+        ConsoleMsgUtils.ShowError(message, ex)
     End Sub
 
     Private Sub ShowErrorMessage(title As String, items As List(Of String))
