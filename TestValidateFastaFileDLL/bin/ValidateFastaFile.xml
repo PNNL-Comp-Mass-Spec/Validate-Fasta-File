@@ -6,17 +6,29 @@ ValidateFastaFile
 </name>
 </assembly>
 <members>
-<member name="F:ValidateFastaFile.clsCustomValidateFastaFiles.m_FileErrorList">
+<member name="M:ValidateFastaFile.clsCustomValidateFastaFiles.#ctor">
+ <summary>
+ Constructor
+ </summary>
+</member>
+<member name="P:ValidateFastaFile.clsCustomValidateFastaFiles.FullErrorCollection">
  <summary>
  Keys are fasta filename
  Values are the list of fasta file errors
  </summary>
 </member>
-<member name="F:ValidateFastaFile.clsCustomValidateFastaFiles.m_FileWarningList">
+<member name="P:ValidateFastaFile.clsCustomValidateFastaFiles.FullWarningCollection">
  <summary>
  Keys are fasta filename
  Values are the list of fasta file warnings
  </summary>
+</member>
+<member name="M:ValidateFastaFile.clsCustomValidateFastaFiles.StartValidateFASTAFile(System.String)">
+ <summary>
+ Calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
+ </summary>
+ <param name="filePath"></param>
+ <returns>True if the file was successfully processed (even if it contains errors)</returns>
 </member>
 <member name="P:ValidateFastaFile.clsMemoryUsageLogger.LogFolderPath">
  <summary>
@@ -390,6 +402,17 @@ ValidateFastaFile
  <param name="proteinName"></param>
  <remarks></remarks>
 </member>
+<member name="M:ValidateFastaFile.clsValidateFastaFile.#ctor">
+ <summary>
+ Constructor
+ </summary>
+</member>
+<member name="M:ValidateFastaFile.clsValidateFastaFile.#ctor(System.String)">
+ <summary>
+ Constructor that takes a parameter file
+ </summary>
+ <param name="parameterFilePath"></param>
+</member>
 <member name="F:ValidateFastaFile.clsValidateFastaFile.DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH">
  <summary>
  The maximum suggested value when using SEQUEST is 34 characters
@@ -405,7 +428,7 @@ ValidateFastaFile
 </member>
 <member name="F:ValidateFastaFile.clsValidateFastaFile.mProteinNameSpannerCharLength">
  <summary>
- The number of characters at the start of keystrings to use when adding items to clsNestedStringDictionary instances
+ The number of characters at the start of key strings to use when adding items to clsNestedStringDictionary instances
  </summary>
  <remarks>
  If this value is too short, all of the items added to the clsNestedStringDictionary instance
@@ -453,7 +476,7 @@ ValidateFastaFile
 </member>
 <member name="M:ValidateFastaFile.clsValidateFastaFile.AutoDetermineFastaProteinNameSpannerCharLength(System.String,System.Int32)">
  <summary>
- Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+ Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
  </summary>
  <param name="fastaFilePathToTest">Fasta file to examine</param>
  <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
