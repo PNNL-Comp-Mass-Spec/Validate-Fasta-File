@@ -2067,18 +2067,12 @@ Public Class clsValidateFastaFile
 
     Public Function ComputeProteinHash(sbResidues As StringBuilder, consolidateDupsIgnoreILDiff As Boolean) As String
 
-        Static hashGenerator As clsHashGenerator
-
-        If hashGenerator Is Nothing Then
-            hashGenerator = New clsHashGenerator
-        End If
-
         If sbResidues.Length > 0 Then
             ' Compute the hash value for sbCurrentResidues
             If consolidateDupsIgnoreILDiff Then
-                Return hashGenerator.GenerateHash(sbResidues.ToString.Replace("L"c, "I"c))
+                Return PRISM.HashUtilities.ComputeStringHashSha1(sbResidues.ToString().Replace("L"c, "I"c)).ToUpper()
             Else
-                Return hashGenerator.GenerateHash(sbResidues.ToString)
+                Return PRISM.HashUtilities.ComputeStringHashSha1(sbResidues.ToString()).ToUpper()
             End If
         Else
             Return String.Empty
