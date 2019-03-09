@@ -4,17 +4,17 @@ Public Class clsCustomValidateFastaFiles
 #Region "Structures and enums"
     Structure udtErrorInfoExtended
         Sub New(
-                intLineNumber As Integer,
-                strProteinName As String,
-                strMessageText As String,
-                strExtraInfo As String,
-                strType As String)
+                lineNumber As Integer,
+                proteinName As String,
+                messageText As String,
+                extraInfo As String,
+                type As String)
 
-            LineNumber = intLineNumber
-            ProteinName = strProteinName
-            MessageText = strMessageText
-            ExtraInfo = strExtraInfo
-            Type = strType
+            Me.LineNumber = lineNumber
+            Me.ProteinName = proteinName
+            Me.MessageText = messageText
+            Me.ExtraInfo = extraInfo
+            Me.Type = type
 
         End Sub
 
@@ -47,7 +47,9 @@ Public Class clsCustomValidateFastaFiles
     ' If eValidationOptionConstants gets more than 10 entries, then this array will need to be expanded
     Private ReadOnly mValidationOptions() As Boolean
 
-
+    ''' <summary>
+    ''' Constructor
+    ''' </summary>
     Public Sub New()
         MyBase.New()
 
@@ -93,31 +95,31 @@ Public Class clsCustomValidateFastaFiles
         End Get
     End Property
 
-    Public ReadOnly Property FASTAFileHasWarnings(FASTAFileName As String) As Boolean
+    Public ReadOnly Property FASTAFileHasWarnings(fastaFileName As String) As Boolean
         Get
             If FullWarningCollection Is Nothing Then
                 Return False
             Else
-                Return FullWarningCollection.ContainsKey(FASTAFileName)
+                Return FullWarningCollection.ContainsKey(fastaFileName)
             End If
         End Get
     End Property
 
 
-    Public ReadOnly Property RecordedFASTAFileErrors(FASTAFileName As String) As List(Of udtErrorInfoExtended)
+    Public ReadOnly Property RecordedFASTAFileErrors(fastaFileName As String) As List(Of udtErrorInfoExtended)
         Get
             Dim errorList As List(Of udtErrorInfoExtended) = Nothing
-            If FullErrorCollection.TryGetValue(FASTAFileName, errorList) Then
+            If FullErrorCollection.TryGetValue(fastaFileName, errorList) Then
                 Return errorList
             End If
             Return New List(Of udtErrorInfoExtended)
         End Get
     End Property
 
-    Public ReadOnly Property RecordedFASTAFileWarnings(FASTAFileName As String) As List(Of udtErrorInfoExtended)
+    Public ReadOnly Property RecordedFASTAFileWarnings(fastaFileName As String) As List(Of udtErrorInfoExtended)
         Get
             Dim warningList As List(Of udtErrorInfoExtended) = Nothing
-            If FullWarningCollection.TryGetValue(FASTAFileName, warningList) Then
+            If FullWarningCollection.TryGetValue(fastaFileName, warningList) Then
                 Return warningList
             End If
             Return New List(Of udtErrorInfoExtended)
@@ -135,34 +137,34 @@ Public Class clsCustomValidateFastaFiles
     End Property
 
     Private Sub RecordFastaFileProblem(
-        intLineNumber As Integer,
-        strProteinName As String,
-        intErrorMessageCode As Integer,
-        strExtraInfo As String,
-        eType As eValidationMessageTypes)
+        lineNumber As Integer,
+        proteinName As String,
+        errorMessageCode As Integer,
+        extraInfo As String,
+        messageType As eValidationMessageTypes)
 
-        Dim msgString As String = LookupMessageDescription(intErrorMessageCode, strExtraInfo)
+        Dim msgString As String = LookupMessageDescription(errorMessageCode, extraInfo)
 
-        RecordFastaFileProblemToHash(intLineNumber, strProteinName, msgString, strExtraInfo, eType)
+        RecordFastaFileProblemToHash(lineNumber, proteinName, msgString, extraInfo, messageType)
 
     End Sub
 
     Private Sub RecordFastaFileProblem(
-     intLineNumber As Integer,
-     strProteinName As String,
-     strErrorMessage As String,
-     strExtraInfo As String,
-     eType As eValidationMessageTypes)
+      lineNumber As Integer,
+      proteinName As String,
+      errorMessage As String,
+      extraInfo As String,
+      messageType As eValidationMessageTypes)
 
-        RecordFastaFileProblemToHash(intLineNumber, strProteinName, strErrorMessage, strExtraInfo, eType)
+        RecordFastaFileProblemToHash(lineNumber, proteinName, errorMessage, extraInfo, messageType)
     End Sub
 
     Private Sub RecordFastaFileProblemToHash(
-        intLineNumber As Integer,
-        strProteinName As String,
-        intMessageString As String,
-        strExtraInfo As String,
-        eType As eValidationMessageTypes)
+        lineNumber As Integer,
+        proteinName As String,
+        messageString As String,
+        extraInfo As String,
+        messageType As eValidationMessageTypes)
 
         If Not mFastaFilePath.Equals(m_CachedFastaFilePath) Then
             ' New File being analyzed
@@ -172,40 +174,43 @@ Public Class clsCustomValidateFastaFiles
             m_CachedFastaFilePath = String.Copy(mFastaFilePath)
         End If
 
-        If eType = eValidationMessageTypes.WarningMsg Then
+        If messageType = eValidationMessageTypes.WarningMsg Then
             ' Treat as warning
             m_CurrentFileWarnings.Add(New udtErrorInfoExtended(
-                intLineNumber, strProteinName, intMessageString, strExtraInfo, "Warning"))
+                lineNumber, proteinName, messageString, extraInfo, "Warning"))
 
             FullWarningCollection.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileWarnings
         Else
 
             ' Treat as error
             m_CurrentFileErrors.Add(New udtErrorInfoExtended(
-                intLineNumber, strProteinName, intMessageString, strExtraInfo, "Error"))
+                lineNumber, proteinName, messageString, extraInfo, "Error"))
 
             FullErrorCollection.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileErrors
         End If
 
     End Sub
 
-    Public Sub SetValidationOptions(eValidationOptionName As eValidationOptionConstants, blnEnabled As Boolean)
-        mValidationOptions(eValidationOptionName) = blnEnabled
+    Public Sub SetValidationOptions(eValidationOptionName As eValidationOptionConstants, enabled As Boolean)
+        mValidationOptions(eValidationOptionName) = enabled
     End Sub
 
+    ''' <summary>
+    ''' Calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
+    ''' </summary>
+    ''' <param name="filePath"></param>
+    ''' <returns>True if the file was successfully processed (even if it contains errors)</returns>
     Public Function StartValidateFASTAFile(filePath As String) As Boolean
-        ' This function calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
-        ' The function returns true if the file was successfully processed (even if it contains errors)
 
-        Dim blnSuccess = SimpleProcessFile(filePath)
+        Dim success = SimpleProcessFile(filePath)
 
-        If blnSuccess Then
+        If success Then
             If MyBase.ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0 Then
                 ' The file has warnings; we need to record them using RecordFastaFileProblem
 
-                Dim lstWarnings = MyBase.GetFileWarnings()
+                Dim warnings = MyBase.GetFileWarnings()
 
-                For Each item In lstWarnings
+                For Each item In warnings
                     With item
                         RecordFastaFileProblem(.LineNumber, .ProteinName, .MessageCode, String.Empty, eValidationMessageTypes.WarningMsg)
                     End With
@@ -218,28 +223,28 @@ Public Class clsCustomValidateFastaFiles
                 ' The file has errors; we need to record them using RecordFastaFileProblem
                 ' However, we might ignore some of the errors
 
-                Dim lstErrors = MyBase.GetFileErrors()
+                Dim errors = MyBase.GetFileErrors()
 
-                For Each item In lstErrors
+                For Each item In errors
                     With item
-                        Dim strErrorMessage = LookupMessageDescription(.MessageCode, .ExtraInfo)
+                        Dim errorMessage = LookupMessageDescription(.MessageCode, .ExtraInfo)
 
-                        Dim blnIgnoreError = False
-                        Select Case strErrorMessage
+                        Dim ignoreError = False
+                        Select Case errorMessage
                             Case MESSAGE_TEXT_ASTERISK_IN_RESIDUES
                                 If mValidationOptions(eValidationOptionConstants.AllowAsterisksInResidues) Then
-                                    blnIgnoreError = True
+                                    ignoreError = True
                                 End If
 
                             Case MESSAGE_TEXT_DASH_IN_RESIDUES
                                 If mValidationOptions(eValidationOptionConstants.AllowDashInResidues) Then
-                                    blnIgnoreError = True
+                                    ignoreError = True
                                 End If
 
                         End Select
 
-                        If Not blnIgnoreError Then
-                            RecordFastaFileProblem(.LineNumber, .ProteinName, strErrorMessage, .ExtraInfo, eValidationMessageTypes.ErrorMsg)
+                        If Not ignoreError Then
+                            RecordFastaFileProblem(.LineNumber, .ProteinName, errorMessage, .ExtraInfo, eValidationMessageTypes.ErrorMsg)
                         End If
                     End With
                 Next
