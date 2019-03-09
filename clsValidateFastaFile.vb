@@ -22,8 +22,11 @@ Imports PRISM
 Public Class clsValidateFastaFile
     Inherits FileProcessor.ProcessFilesBase
 
+    ''' <summary>
+    ''' Constructor
+    ''' </summary>
     Public Sub New()
-        mFileDate = "March 20, 2018"
+        mFileDate = "March 8, 2019"
         InitializeLocalVariables()
     End Sub
 
