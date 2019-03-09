@@ -1,5 +1,5 @@
 ﻿'*********************************************************************************************************
-' Written by Matthew Monroe for the US Department of Energy 
+' Written by Matthew Monroe for the US Department of Energy
 ' Pacific Northwest National Laboratory, Richland, WA
 ' Created 02/09/2009
 ' Last updated 02/03/2016
@@ -21,7 +21,7 @@ Public Class clsMemoryUsageLogger
     Private m_PerfCounterPoolPagedBytes As PerformanceCounter
     Private m_PerfCounterPoolNonpagedBytes As PerformanceCounter
 
-    Private m_PerfCountersIntitialized As Boolean = False
+    Private m_PerfCountersInitialized As Boolean = False
 #End Region
 
 #Region "Properties"
@@ -99,7 +99,7 @@ Public Class clsMemoryUsageLogger
 
     Public Function GetMemoryUsageSummary() As String
 
-        If Not m_PerfCountersIntitialized Then
+        If Not m_PerfCountersInitialized Then
             InitializePerfCounters()
         End If
 
@@ -159,7 +159,7 @@ Public Class clsMemoryUsageLogger
             Dim objProcess As Process
             objProcess = Process.GetCurrentProcess()
 
-            ' The WorkingSet is the total physical memory usage 
+            ' The WorkingSet is the total physical memory usage
             Return CSng(objProcess.WorkingSet64 / 1024.0 / 1024)
         Catch ex As Exception
             Return 0
@@ -199,7 +199,7 @@ Public Class clsMemoryUsageLogger
             msgErrors &= "Error instantiating the Memory: 'Pool NonPaged Bytes' performance counter: " & ex.Message
         End Try
 
-        m_PerfCountersIntitialized = True
+        m_PerfCountersInitialized = True
 
         Return msgErrors
 

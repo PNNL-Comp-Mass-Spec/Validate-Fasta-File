@@ -2173,7 +2173,7 @@ Public Class clsValidateFastaFile
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error renaming " & fixedFastaFilePath & " to " & fixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error renameing fixed fasta to .tempfixed", ex)
+            OnErrorEvent("Error renaming fixed fasta to .tempfixed", ex)
             Return False
         End Try
 
