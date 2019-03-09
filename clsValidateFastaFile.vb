@@ -36,7 +36,6 @@ Public Class clsValidateFastaFile
         LoadParameterFileSettings(parameterFilePath)
     End Sub
 
-
 #Region "Constants and Enums"
     Private Const DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH As Integer = 3
 
@@ -392,8 +391,8 @@ Public Class clsValidateFastaFile
         Get
             Return GetOptionSwitchValue(switchName)
         End Get
-        Set(value As Boolean)
-            SetOptionSwitch(switchName, value)
+        Set
+            SetOptionSwitch(switchName, Value)
         End Set
     End Property
 
@@ -548,8 +547,6 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property FixedFASTAFileStats(valueType As FixedFASTAFileValues) As Integer
-
-
         Get
             Dim tmpValue As Integer
             Select Case valueType
@@ -573,32 +570,31 @@ Public Class clsValidateFastaFile
         End Get
     End Property
 
-    Public ReadOnly Property ProteinCount() As Integer
+    Public ReadOnly Property ProteinCount As Integer
         Get
             Return mProteinCount
         End Get
     End Property
 
-    Public ReadOnly Property LineCount() As Integer
+    Public ReadOnly Property LineCount As Integer
         Get
             Return mLineCount
         End Get
     End Property
 
-    Public ReadOnly Property LocalErrorCode() As eValidateFastaFileErrorCodes
-
+    Public ReadOnly Property LocalErrorCode As eValidateFastaFileErrorCodes
         Get
             Return mLocalErrorCode
         End Get
     End Property
 
-    Public ReadOnly Property ResidueCount() As Long
+    Public ReadOnly Property ResidueCount As Long
         Get
             Return mResidueCount
         End Get
     End Property
 
-    Public ReadOnly Property FastaFilePath() As String
+    Public ReadOnly Property FastaFilePath As String
         Get
             Return mFastaFilePath
         End Get
@@ -623,14 +619,12 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property ErrorsByIndex(errorIndex As Integer) As udtMsgInfoType
-
         Get
             Return (GetFileErrorByIndex(errorIndex))
         End Get
     End Property
 
     Public ReadOnly Property WarningsByIndex(warningIndex As Integer) As udtMsgInfoType
-
         Get
             Return GetFileWarningByIndex(warningIndex)
         End Get
@@ -644,23 +638,21 @@ Public Class clsValidateFastaFile
     ''' <remarks></remarks>
     Public Property ExistingProteinHashFile As String
 
-    Public Property MaximumFileErrorsToTrack() As Integer
-
+    Public Property MaximumFileErrorsToTrack As Integer
         Get
             Return mMaximumFileErrorsToTrack
         End Get
-        Set(Value As Integer)
+        Set
             If Value < 1 Then Value = 1
             mMaximumFileErrorsToTrack = Value
         End Set
     End Property
 
-    Public Property MaximumProteinNameLength() As Integer
-
+    Public Property MaximumProteinNameLength As Integer
         Get
             Return mMaximumProteinNameLength
         End Get
-        Set(Value As Integer)
+        Set
             If Value < 8 Then
                 ' Do not allow maximum lengths less than 8; use the default
                 Value = DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH
@@ -669,23 +661,21 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property MinimumProteinNameLength() As Integer
-
+    Public Property MinimumProteinNameLength As Integer
         Get
             Return mMinimumProteinNameLength
         End Get
-        Set(Value As Integer)
+        Set
             If Value < 1 Then Value = DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH
             mMinimumProteinNameLength = Value
         End Set
     End Property
 
-    Public Property MaximumResiduesPerLine() As Integer
-
+    Public Property MaximumResiduesPerLine As Integer
         Get
             Return mMaximumResiduesPerLine
         End Get
-        Set(Value As Integer)
+        Set
             If Value = 0 Then
                 Value = DEFAULT_MAXIMUM_RESIDUES_PER_LINE
             ElseIf Value < 40 Then
@@ -696,17 +686,16 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinLineStartChar() As Char
-
+    Public Property ProteinLineStartChar As Char
         Get
             Return mProteinLineStartChar
         End Get
-        Set(Value As Char)
+        Set
             mProteinLineStartChar = Value
         End Set
     End Property
 
-    Public ReadOnly Property StatsFilePath() As String
+    Public ReadOnly Property StatsFilePath As String
         Get
             If mStatsFilePath Is Nothing Then
                 Return String.Empty
@@ -716,12 +705,11 @@ Public Class clsValidateFastaFile
         End Get
     End Property
 
-    Public Property ProteinNameInvalidCharsToRemove() As String
-
+    Public Property ProteinNameInvalidCharsToRemove As String
         Get
             Return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
         End Get
-        Set(Value As String)
+        Set
             If Value Is Nothing Then
                 Value = String.Empty
             End If
@@ -737,12 +725,11 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinNameFirstRefSepChars() As String
-
+    Public Property ProteinNameFirstRefSepChars As String
         Get
             Return CharArrayToString(mProteinNameFirstRefSepChars)
         End Get
-        Set(Value As String)
+        Set
             If Value Is Nothing Then
                 Value = String.Empty
             End If
@@ -758,12 +745,11 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property ProteinNameSubsequentRefSepChars() As String
-
+    Public Property ProteinNameSubsequentRefSepChars As String
         Get
             Return CharArrayToString(mProteinNameSubsequentRefSepChars)
         End Get
-        Set(Value As String)
+        Set
             If Value Is Nothing Then
                 Value = String.Empty
             End If
@@ -779,12 +765,11 @@ Public Class clsValidateFastaFile
         End Set
     End Property
 
-    Public Property LongProteinNameSplitChars() As String
-
+    Public Property LongProteinNameSplitChars As String
         Get
             Return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars)
         End Get
-        Set(Value As String)
+        Set
             If Not Value Is Nothing Then
                 ' Check for and remove any spaces from Value, since
                 ' a space does not make sense for a protein name split char
@@ -797,14 +782,12 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property FileWarningList As List(Of udtMsgInfoType)
-
         Get
             Return GetFileWarnings()
         End Get
     End Property
 
     Public ReadOnly Property FileErrorList As List(Of udtMsgInfoType)
-
         Get
             Return GetFileErrors()
         End Get

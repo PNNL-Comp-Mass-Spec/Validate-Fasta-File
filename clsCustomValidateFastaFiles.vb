@@ -38,18 +38,6 @@ Public Class clsCustomValidateFastaFiles
 
 #End Region
 
-    ''' <summary>
-    ''' Keys are fasta filename
-    ''' Values are the list of fasta file errors
-    ''' </summary>
-    Private ReadOnly m_FileErrorList As Dictionary(Of String, List(Of udtErrorInfoExtended))
-
-    ''' <summary>
-    ''' Keys are fasta filename
-    ''' Values are the list of fasta file warnings
-    ''' </summary>
-    Private ReadOnly m_FileWarningList As Dictionary(Of String, List(Of udtErrorInfoExtended))
-
     Private ReadOnly m_CurrentFileErrors As List(Of udtErrorInfoExtended)
     Private ReadOnly m_CurrentFileWarnings As List(Of udtErrorInfoExtended)
 
@@ -63,8 +51,8 @@ Public Class clsCustomValidateFastaFiles
     Public Sub New()
         MyBase.New()
 
-        m_FileErrorList = New Dictionary(Of String, List(Of udtErrorInfoExtended))
-        m_FileWarningList = New Dictionary(Of String, List(Of udtErrorInfoExtended))
+        FullErrorCollection = New Dictionary(Of String, List(Of udtErrorInfoExtended))
+        FullWarningCollection = New Dictionary(Of String, List(Of udtErrorInfoExtended))
 
         m_CurrentFileErrors = New List(Of udtErrorInfoExtended)
         m_CurrentFileWarnings = New List(Of udtErrorInfoExtended)
@@ -74,43 +62,43 @@ Public Class clsCustomValidateFastaFiles
     End Sub
 
     Public Sub ClearErrorList()
-        If Not m_FileErrorList Is Nothing Then
-            m_FileErrorList.Clear()
+        If Not FullErrorCollection Is Nothing Then
+            FullErrorCollection.Clear()
         End If
 
-        If Not m_FileWarningList Is Nothing Then
-            m_FileWarningList.Clear()
+        If Not FullWarningCollection Is Nothing Then
+            FullWarningCollection.Clear()
         End If
     End Sub
 
+    ''' <summary>
+    ''' Keys are fasta filename
+    ''' Values are the list of fasta file errors
+    ''' </summary>
     Public ReadOnly Property FullErrorCollection As Dictionary(Of String, List(Of udtErrorInfoExtended))
-        Get
-            Return m_FileErrorList
-        End Get
-    End Property
 
+    ''' <summary>
+    ''' Keys are fasta filename
+    ''' Values are the list of fasta file warnings
+    ''' </summary>
     Public ReadOnly Property FullWarningCollection As Dictionary(Of String, List(Of udtErrorInfoExtended))
-        Get
-            Return m_FileWarningList
-        End Get
-    End Property
 
     Public ReadOnly Property FASTAFileValid(FASTAFileName As String) As Boolean
         Get
-            If m_FileErrorList Is Nothing Then
+            If FullErrorCollection Is Nothing Then
                 Return True
             Else
-                Return Not m_FileErrorList.ContainsKey(FASTAFileName)
+                Return Not FullErrorCollection.ContainsKey(FASTAFileName)
             End If
         End Get
     End Property
 
     Public ReadOnly Property FASTAFileHasWarnings(FASTAFileName As String) As Boolean
         Get
-            If m_FileWarningList Is Nothing Then
+            If FullWarningCollection Is Nothing Then
                 Return False
             Else
-                Return m_FileWarningList.ContainsKey(FASTAFileName)
+                Return FullWarningCollection.ContainsKey(FASTAFileName)
             End If
         End Get
     End Property
@@ -119,7 +107,7 @@ Public Class clsCustomValidateFastaFiles
     Public ReadOnly Property RecordedFASTAFileErrors(FASTAFileName As String) As List(Of udtErrorInfoExtended)
         Get
             Dim errorList As List(Of udtErrorInfoExtended) = Nothing
-            If m_FileErrorList.TryGetValue(FASTAFileName, errorList) Then
+            If FullErrorCollection.TryGetValue(FASTAFileName, errorList) Then
                 Return errorList
             End If
             Return New List(Of udtErrorInfoExtended)
@@ -129,7 +117,7 @@ Public Class clsCustomValidateFastaFiles
     Public ReadOnly Property RecordedFASTAFileWarnings(FASTAFileName As String) As List(Of udtErrorInfoExtended)
         Get
             Dim warningList As List(Of udtErrorInfoExtended) = Nothing
-            If m_FileWarningList.TryGetValue(FASTAFileName, warningList) Then
+            If FullWarningCollection.TryGetValue(FASTAFileName, warningList) Then
                 Return warningList
             End If
             Return New List(Of udtErrorInfoExtended)
@@ -138,10 +126,10 @@ Public Class clsCustomValidateFastaFiles
 
     Public ReadOnly Property NumFilesWithErrors As Integer
         Get
-            If m_FileWarningList Is Nothing Then
+            If FullWarningCollection Is Nothing Then
                 Return 0
             Else
-                Return m_FileErrorList.Count
+                Return FullErrorCollection.Count
             End If
         End Get
     End Property
@@ -189,14 +177,14 @@ Public Class clsCustomValidateFastaFiles
             m_CurrentFileWarnings.Add(New udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Warning"))
 
-            m_FileWarningList.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileWarnings
+            FullWarningCollection.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileWarnings
         Else
 
             ' Treat as error
             m_CurrentFileErrors.Add(New udtErrorInfoExtended(
                 intLineNumber, strProteinName, intMessageString, strExtraInfo, "Error"))
 
-            m_FileErrorList.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileErrors
+            FullErrorCollection.Item(Path.GetFileName(m_CachedFastaFilePath)) = m_CurrentFileErrors
         End If
 
     End Sub

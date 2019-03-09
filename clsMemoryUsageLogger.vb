@@ -13,9 +13,6 @@ Public Class clsMemoryUsageLogger
 
     Private Const COL_SEP As Char = ControlChars.Tab
 
-    'Status file name and location
-    Private ReadOnly m_LogFolderPath As String
-
     ' The minimum interval between appending a new memory usage entry to the log
     Private m_MinimumMemoryUsageLogIntervalMinutes As Single = 1
 
@@ -35,11 +32,7 @@ Public Class clsMemoryUsageLogger
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks>If this is an empty string, the log file is created in the working directory</remarks>
-    Public ReadOnly Property LogFolderPath() As String
-        Get
-            Return m_LogFolderPath
-        End Get
-    End Property
+    Public ReadOnly Property LogFolderPath As String
 
     ''' <summary>
     ''' The minimum interval between appending a new memory usage entry to the log
@@ -47,13 +40,13 @@ Public Class clsMemoryUsageLogger
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Public Property MinimumLogIntervalMinutes() As Single
+    Public Property MinimumLogIntervalMinutes As Single
         Get
             Return m_MinimumMemoryUsageLogIntervalMinutes
         End Get
-        Set(value As Single)
-            If value < 0 Then value = 0
-            m_MinimumMemoryUsageLogIntervalMinutes = value
+        Set
+            If Value < 0 Then Value = 0
+            m_MinimumMemoryUsageLogIntervalMinutes = Value
         End Set
     End Property
 #End Region
@@ -70,9 +63,9 @@ Public Class clsMemoryUsageLogger
     ''' Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
     Public Sub New(logFolderPath As String, Optional minLogIntervalMinutes As Single = 5)
         If String.IsNullOrWhiteSpace(logFolderPath) Then
-            m_LogFolderPath = String.Empty
+            Me.LogFolderPath = String.Empty
         Else
-            m_LogFolderPath = logFolderPath
+            Me.LogFolderPath = logFolderPath
         End If
 
         Me.MinimumLogIntervalMinutes = minLogIntervalMinutes

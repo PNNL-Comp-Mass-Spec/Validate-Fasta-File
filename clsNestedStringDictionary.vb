@@ -10,9 +10,7 @@
 Public Class clsNestedStringDictionary(Of T)
 
     Private ReadOnly mData As Dictionary(Of String, Dictionary(Of String, T))
-    Private ReadOnly mSpannerCharLength As Byte
     Private ReadOnly mComparer As StringComparer
-    Private ReadOnly mIgnoreCase As Boolean
 
     ''' <summary>
     ''' Number of items stored with Add()
@@ -38,10 +36,6 @@ Public Class clsNestedStringDictionary(Of T)
     ''' <returns></returns>
     ''' <remarks></remarks>
     Public ReadOnly Property IgnoreCase As Boolean
-        Get
-            Return mIgnoreCase
-        End Get
-    End Property
 
     ''' <summary>
     ''' The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
@@ -53,10 +47,6 @@ Public Class clsNestedStringDictionary(Of T)
     ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
     ''' </remarks>
     Public ReadOnly Property SpannerCharLength As Byte
-        Get
-            Return mSpannerCharLength
-        End Get
-    End Property
 
     ''' <summary>
     ''' Constructor
@@ -69,8 +59,8 @@ Public Class clsNestedStringDictionary(Of T)
     ''' </remarks>
     Public Sub New(Optional ignoreCaseForKeys As Boolean = False, Optional spannerCharLength As Byte = 1)
 
-        mIgnoreCase = ignoreCaseForKeys
-        If mIgnoreCase Then
+        IgnoreCase = ignoreCaseForKeys
+        If IgnoreCase Then
             mComparer = StringComparer.OrdinalIgnoreCase
         Else
             mComparer = StringComparer.Ordinal
@@ -79,9 +69,9 @@ Public Class clsNestedStringDictionary(Of T)
         mData = New Dictionary(Of String, Dictionary(Of String, T))(mComparer)
 
         If spannerCharLength < 1 Then
-            mSpannerCharLength = 1
+            Me.SpannerCharLength = 1
         Else
-            mSpannerCharLength = spannerCharLength
+            Me.SpannerCharLength = spannerCharLength
         End If
 
     End Sub
@@ -243,11 +233,11 @@ Public Class clsNestedStringDictionary(Of T)
             Throw New ArgumentNullException(key, "Key cannot be null")
         End If
 
-        If key.Length <= mSpannerCharLength Then
+        If key.Length <= SpannerCharLength Then
             Return key
         End If
 
-        Return key.Substring(0, mSpannerCharLength)
+        Return key.Substring(0, SpannerCharLength)
     End Function
 
 End Class
