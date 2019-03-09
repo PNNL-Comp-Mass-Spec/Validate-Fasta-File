@@ -1,5 +1,8 @@
 Validate Fasta File Change Log
 
+Version 2.2.7006; March 8, 2019
+	- Use ComputeStringHashSha1 in PRISM.dll
+
 Version 2.2.6622; February 17, 2018
 	- Remove interfaces and use FileProcessor classes in PRISM.dll
 
