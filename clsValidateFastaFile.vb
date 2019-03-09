@@ -2022,8 +2022,8 @@ Public Class clsValidateFastaFile
         End If
     End Function
 
-    Private Function CharArrayToString(charArray() As Char) As String
-        Return CStr(charArray)
+    Private Function CharArrayToString(charArray As IEnumerable(Of Char)) As String
+        Return String.Join("", charArray)
     End Function
 
 
