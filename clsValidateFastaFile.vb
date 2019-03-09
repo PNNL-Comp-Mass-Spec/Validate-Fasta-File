@@ -358,7 +358,7 @@ Public Class clsValidateFastaFile
     Private mNormalizeFileLineEndCharacters As Boolean
 
     ''' <summary>
-    ''' The number of characters at the start of keystrings to use when adding items to clsNestedStringDictionary instances
+    ''' The number of characters at the start of key strings to use when adding items to clsNestedStringDictionary instances
     ''' </summary>
     ''' <remarks>
     ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance
@@ -601,8 +601,8 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property ErrorMessageTextByIndex(
-     index As Integer,
-     valueSeparator As String) As String
+      index As Integer,
+      valueSeparator As String) As String
 
         Get
             Return GetFileErrorTextByIndex(index, valueSeparator)
@@ -610,8 +610,8 @@ Public Class clsValidateFastaFile
     End Property
 
     Public ReadOnly Property WarningMessageTextByIndex(
-     index As Integer,
-     valueSeparator As String) As String
+      index As Integer,
+      valueSeparator As String) As String
 
         Get
             Return GetFileWarningTextByIndex(index, valueSeparator)
@@ -1362,16 +1362,16 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub AnalyzeFastaProcessProteinHeader(
-     swFixedFastaOut As TextWriter,
-     lineIn As String,
-     <Out()> ByRef proteinName As String,
-     <Out()> ByRef processingDuplicateOrInvalidProtein As Boolean,
-     preloadedProteinNamesToKeep As clsNestedStringIntList,
-     proteinNames As ISet(Of String),
-     headerLineRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-     proteinNameRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-     proteinDescriptionRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-     reProteinNameTruncation As udtProteinNameTruncationRegex)
+      swFixedFastaOut As TextWriter,
+      lineIn As String,
+      <Out> ByRef proteinName As String,
+      <Out> ByRef processingDuplicateOrInvalidProtein As Boolean,
+      preloadedProteinNamesToKeep As clsNestedStringIntList,
+      proteinNames As ISet(Of String),
+      headerLineRuleDetails As IList(Of udtRuleDefinitionExtendedType),
+      proteinNameRuleDetails As IList(Of udtRuleDefinitionExtendedType),
+      proteinDescriptionRuleDetails As IList(Of udtRuleDefinitionExtendedType),
+      reProteinNameTruncation As udtProteinNameTruncationRegex)
 
         Dim descriptionStartIndex As Integer
 
@@ -1628,7 +1628,7 @@ Public Class clsValidateFastaFile
     End Function
 
     ''' <summary>
-    ''' Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+    ''' Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
     ''' </summary>
     ''' <param name="fastaFilePathToTest">Fasta file to examine</param>
     ''' <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
@@ -1830,9 +1830,9 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Function AutoFixProteinNameAndDescription(
-       ByRef proteinName As String,
-       ByRef proteinDescription As String,
-       reProteinNameTruncation As udtProteinNameTruncationRegex) As String
+      ByRef proteinName As String,
+      ByRef proteinDescription As String,
+      reProteinNameTruncation As udtProteinNameTruncationRegex) As String
 
         Dim proteinNameTooLong As Boolean
         Dim reMatch As Match
@@ -1891,7 +1891,6 @@ Public Class clsValidateFastaFile
             End If
 
             If reMatch.Success Then
-                ' Trunctate the protein name
                 ' Truncate the protein name, but move the truncated portion into the next group
                 newProteinName = reMatch.Groups(1).Value
                 extraProteinNameText = reMatch.Groups(2).Value
@@ -2495,9 +2494,9 @@ Public Class clsValidateFastaFile
     ''End Function
 
     Private Function NormalizeFileLineEndings(
-     pathOfFileToFix As String,
-     newFileName As String,
-     desiredLineEndCharacterType As eLineEndingCharacters) As String
+      pathOfFileToFix As String,
+      newFileName As String,
+      desiredLineEndCharacterType As eLineEndingCharacters) As String
 
         Dim newEndChar As String = ControlChars.CrLf
 
@@ -2568,12 +2567,12 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub EvaluateRules(
-     ruleDetails As IList(Of udtRuleDefinitionExtendedType),
-     proteinName As String,
-     textToTest As String,
-     testTextOffsetInLine As Integer,
-     entireLine As String,
-     contextLength As Integer)
+      ruleDetails As IList(Of udtRuleDefinitionExtendedType),
+      proteinName As String,
+      textToTest As String,
+      testTextOffsetInLine As Integer,
+      entireLine As String,
+      contextLength As Integer)
 
         Dim index As Integer
         Dim reMatch As Match
@@ -2613,10 +2612,10 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function ExamineProteinName(
-       ByRef proteinName As String,
-       proteinNames As ISet(Of String),
-       <Out()> ByRef skipDuplicateProtein As Boolean,
-       ByRef processingDuplicateOrInvalidProtein As Boolean) As String
+      ByRef proteinName As String,
+      proteinNames As ISet(Of String),
+      <Out> ByRef skipDuplicateProtein As Boolean,
+      ByRef processingDuplicateOrInvalidProtein As Boolean) As String
 
         Dim duplicateName = proteinNames.Contains(proteinName)
         skipDuplicateProtein = False
@@ -3053,7 +3052,7 @@ Public Class clsValidateFastaFile
 
     Private Function LoadExistingProteinHashFile(
       proteinHashFilePath As String,
-      <Out()> ByRef preloadedProteinNamesToKeep As clsNestedStringIntList) As Boolean
+      <Out> ByRef preloadedProteinNamesToKeep As clsNestedStringIntList) As Boolean
 
         ' List of protein names to keep
         ' Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
@@ -3499,8 +3498,7 @@ Public Class clsValidateFastaFile
 
     End Function
 
-    Public Function LoadParameterFileSettings(
-     parameterFilePath As String) As Boolean
+    Public Function LoadParameterFileSettings(parameterFilePath As String) As Boolean
 
         Dim settingsFile As New XmlSettingsFileAccessor
 
@@ -3697,7 +3695,6 @@ Public Class clsValidateFastaFile
     End Function
 
     Public Function LookupMessageDescription(errorMessageCode As Integer) As String
-
         Return Me.LookupMessageDescription(errorMessageCode, Nothing)
     End Function
 
@@ -3861,10 +3858,10 @@ Public Class clsValidateFastaFile
     ''' <param name="resetErrorCode"></param>
     ''' <returns>True if success, False if failure</returns>
     Public Overloads Overrides Function ProcessFile(
-     inputFilePath As String,
-     outputFolderPath As String,
-     parameterFilePath As String,
-     resetErrorCode As Boolean) As Boolean
+      inputFilePath As String,
+      outputFolderPath As String,
+      parameterFilePath As String,
+      resetErrorCode As Boolean) As Boolean
 
         Dim ioFile As FileInfo
         Dim swStatsOutFile As StreamWriter
@@ -4128,9 +4125,9 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Function ReadRulesFromParameterFile(
-     settingsFile As XmlSettingsFileAccessor,
-     sectionName As String,
-     ByRef rules() As udtRuleDefinitionType) As Boolean
+      settingsFile As XmlSettingsFileAccessor,
+      sectionName As String,
+      ByRef rules() As udtRuleDefinitionType) As Boolean
         ' Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
         ' Note: even if RuleCount = 0, this function will return True
 
@@ -4177,22 +4174,22 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub RecordFastaFileError(
-     lineNumber As Integer,
-     charIndex As Integer,
-     proteinName As String,
-     errorMessageCode As Integer)
+      lineNumber As Integer,
+      charIndex As Integer,
+      proteinName As String,
+      errorMessageCode As Integer)
 
         RecordFastaFileError(lineNumber, charIndex, proteinName,
          errorMessageCode, String.Empty, String.Empty)
     End Sub
 
     Private Sub RecordFastaFileError(
-     lineNumber As Integer,
-     charIndex As Integer,
-     proteinName As String,
-     errorMessageCode As Integer,
-     extraInfo As String,
-     context As String)
+      lineNumber As Integer,
+      charIndex As Integer,
+      proteinName As String,
+      errorMessageCode As Integer,
+      extraInfo As String,
+      context As String)
         RecordFastaFileProblemWork(
          mFileErrorStats,
          mFileErrorCount,
@@ -4205,10 +4202,10 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub RecordFastaFileWarning(
-     lineNumber As Integer,
-     charIndex As Integer,
-     proteinName As String,
-     warningMessageCode As Integer)
+      lineNumber As Integer,
+      charIndex As Integer,
+      proteinName As String,
+      warningMessageCode As Integer)
         RecordFastaFileWarning(
          lineNumber,
          charIndex,
@@ -4218,11 +4215,11 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub RecordFastaFileWarning(
-     lineNumber As Integer,
-     charIndex As Integer,
-     proteinName As String,
-     warningMessageCode As Integer,
-     extraInfo As String, context As String)
+      lineNumber As Integer,
+      charIndex As Integer,
+      proteinName As String,
+      warningMessageCode As Integer,
+      extraInfo As String, context As String)
 
         RecordFastaFileProblemWork(mFileWarningStats, mFileWarningCount,
          mFileWarnings, lineNumber, charIndex, proteinName,
@@ -4230,15 +4227,15 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub RecordFastaFileProblemWork(
-     ByRef itemSummaryIndexed As udtItemSummaryIndexedType,
-     ByRef itemCountSpecified As Integer,
-     ByRef items() As udtMsgInfoType,
-     lineNumber As Integer,
-     charIndex As Integer,
-     proteinName As String,
-     messageCode As Integer,
-     extraInfo As String,
-     context As String)
+      ByRef itemSummaryIndexed As udtItemSummaryIndexedType,
+      ByRef itemCountSpecified As Integer,
+      ByRef items() As udtMsgInfoType,
+      lineNumber As Integer,
+      charIndex As Integer,
+      proteinName As String,
+      messageCode As Integer,
+      extraInfo As String,
+      context As String)
 
         ' Note that charIndex is the index in the source string at which the error occurred
         ' When storing in .ColNumber, we add 1 to charIndex
@@ -4395,9 +4392,9 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ReportMemoryUsage(
-       proteinNameFirst As clsNestedStringDictionary(Of Integer),
-       proteinsWritten As clsNestedStringDictionary(Of Integer),
-       duplicateProteinList As clsNestedStringDictionary(Of String))
+      proteinNameFirst As clsNestedStringDictionary(Of Integer),
+      proteinsWritten As clsNestedStringDictionary(Of Integer),
+      duplicateProteinList As clsNestedStringDictionary(Of String))
 
         Console.WriteLine()
         ReportMemoryUsage()
@@ -4411,8 +4408,8 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub ReportResults(
-     outputFolderPath As String,
-     outputToStatsFile As Boolean)
+      outputFolderPath As String,
+      outputToStatsFile As Boolean)
 
         Dim iErrorInfoComparerClass As ErrorInfoComparerClass
 
@@ -4793,7 +4790,7 @@ Public Class clsValidateFastaFile
     Private Function SearchRulesForID(
       rules As IList(Of udtRuleDefinitionType),
       errorMessageCode As Integer,
-      <Out()> ByRef message As String) As Boolean
+      <Out> ByRef message As String) As Boolean
 
         If Not rules Is Nothing Then
             For index = 0 To rules.Count - 1
@@ -4954,12 +4951,12 @@ Public Class clsValidateFastaFile
     End Sub
 
     Private Sub SetRule(
-       ByRef rules() As udtRuleDefinitionType,
-       matchRegEx As String,
-       matchIndicatesProblem As Boolean,
-       messageWhenProblem As String,
-       severity As Short,
-       displayMatchAsExtraInfo As Boolean)
+      ByRef rules() As udtRuleDefinitionType,
+      matchRegEx As String,
+      matchIndicatesProblem As Boolean,
+      messageWhenProblem As String,
+      severity As Short,
+      displayMatchAsExtraInfo As Boolean)
 
         If rules Is Nothing OrElse rules.Length = 0 Then
             ReDim rules(0)
