@@ -10,10 +10,13 @@ This is a command line program.  For a graphical (GUI) program, see the
 which includes a FASTA file validation window.  The executable for 
 Protein Digestion Simulator is
 [available on AppVeyor](https://ci.appveyor.com/project/PNNLCompMassSpec/protein-digestion-simulator/build/artifacts)
+or [on GitHub](https://github.com/PNNL-Comp-Mass-Spec/Protein-Digestion-Simulator/releases)
 
 ### Continuous Integration
 
 The latest version of the application is available on the [AppVeyor CI server](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/artifacts)
+though builds are deleted after 6 months. \
+Otherwise, see the [GitHub release page](https://github.com/PNNL-Comp-Mass-Spec/Validate-Fasta-File/releases)
 
 [![Build status](https://ci.appveyor.com/api/projects/status/gg6u438llyhiupv3?svg=true)](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file)
 
@@ -37,6 +40,7 @@ ValidateFastaFile.exe Proteins.fasta /HashFile:Proteins_ProteinHashes.txt
 ## Installation
 
 * Download Validate-Fasta-File.zip from [AppVeyor](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/build/artifacts)
+  * Alternatively, download from the [GitHub release page](https://github.com/PNNL-Comp-Mass-Spec/Validate-Fasta-File/releases)
 * Extract the files
 * Run ValidateFastaFile.exe from the the command prompt
 
