@@ -1722,8 +1722,9 @@ Public Class clsValidateFastaFile
 
             If showStats Then
                 Dim percentFileProcessed = fullScanLengthBytes / fastaFile.Length * 100
-                Console.WriteLine("  parsed {0:0}% of the file, reading {1:#,##0} lines and finding {2:#,##0} proteins",
-                                  percentFileProcessed, linesReadTotal, preScanProteinCount)
+                ShowMessage(String.Format(
+                    "  parsed {0:0}% of the file, reading {1:#,##0} lines and finding {2:#,##0} proteins",
+                    percentFileProcessed, linesReadTotal, preScanProteinCount))
             End If
 
             ' Determine the appropriate spanner length given the observation counts of the base names
@@ -3938,7 +3939,7 @@ Public Class clsValidateFastaFile
 
         Try
             If inputFilePath Is Nothing OrElse inputFilePath.Length = 0 Then
-                Console.WriteLine("Input file name is empty")
+                ShowWarning("Input file name is empty")
                 MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidInputFilePath)
                 Return False
             Else
