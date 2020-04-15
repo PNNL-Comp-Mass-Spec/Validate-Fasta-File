@@ -416,7 +416,7 @@ ValidateFastaFile
 <member name="F:ValidateFastaFile.clsValidateFastaFile.DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH">
  <summary>
  The maximum suggested value when using SEQUEST is 34 characters
- In contrast, MSGF+ supports long protein names
+ In contrast, MS-GF+ supports long protein names
  </summary>
  <remarks></remarks>
 </member>
