@@ -825,8 +825,8 @@ Public Class clsValidateFastaFile
     ''' <remarks>Assumes fastaFilePathToCheck exists</remarks>
     Private Function AnalyzeFastaFile(fastaFilePathToCheck As String, preloadedProteinNamesToKeep As clsNestedStringIntList) As Boolean
 
-        Dim swFixedFastaOut As StreamWriter = Nothing
-        Dim swProteinSequenceHashBasic As StreamWriter = Nothing
+        Dim fixedFastaWriter As StreamWriter = Nothing
+        Dim sequenceHashWriter As StreamWriter = Nothing
 
         Dim fastaFilePathOut = "UndefinedFilePath.xyz"
 
@@ -975,8 +975,7 @@ Public Class clsValidateFastaFile
 
             ' Open the input file
 
-            Using fsInFile = New FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite),
-                srFastaInFile = New StreamReader(fsInFile)
+            Using fastaReader = New StreamReader(New FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 
                 ' Optionally, open the output fasta file
                 If mGenerateFixedFastaFile Then
@@ -985,7 +984,7 @@ Public Class clsValidateFastaFile
                         fastaFilePathOut =
                          Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
                          Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & "_new.fasta")
-                        swFixedFastaOut = New StreamWriter(New FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                        fixedFastaWriter = New StreamWriter(New FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
                     Catch ex As Exception
                         ' Error opening output file
                         RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
@@ -1003,7 +1002,7 @@ Public Class clsValidateFastaFile
                         basicProteinHashInfoFilePath =
                          Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
                          Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & PROTEIN_HASHES_FILENAME_SUFFIX)
-                        swProteinSequenceHashBasic = New StreamWriter(New FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                        sequenceHashWriter = New StreamWriter(New FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
 
                         Dim headerNames = New List(Of String) From {
                             "Protein_ID",
@@ -1011,7 +1010,7 @@ Public Class clsValidateFastaFile
                             SEQUENCE_LENGTH_COLUMN,
                             SEQUENCE_HASH_COLUMN}
 
-                        swProteinSequenceHashBasic.WriteLine(FlattenList(headerNames))
+                        sequenceHashWriter.WriteLine(FlattenList(headerNames))
 
                     Catch ex As Exception
                         ' Error opening output file
@@ -1065,7 +1064,8 @@ Public Class clsValidateFastaFile
 
                 Dim lastProgressReport = DateTime.UtcNow
 
-                Do While Not srFastaInFile.EndOfStream
+                Do While Not fastaReader.EndOfStream
+
 
                     Dim lineIn = srFastaInFile.ReadLine()
                     bytesRead += lineIn.Length + terminatorSize
@@ -1075,7 +1075,7 @@ Public Class clsValidateFastaFile
 
                         If DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5 Then
                             lastProgressReport = DateTime.UtcNow
-                            Dim percentComplete = CType(bytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single)
+                            Dim percentComplete = CType(bytesRead / CType(fastaReader.BaseStream.Length, Single) * 100.0, Single)
                             If consolidateDuplicateProteinSeqsInFasta OrElse keepDuplicateNamedProteinsUnlessMatchingSequence Then
                                 ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
                                 ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
@@ -1120,8 +1120,9 @@ Public Class clsValidateFastaFile
                                 proteinSequenceHashes,
                                 proteinSequenceHashCount, proteinSeqHashInfo,
                                 consolidateDupsIgnoreILDiff,
-                                swFixedFastaOut, currentValidResidueLineLengthMax,
-                                swProteinSequenceHashBasic)
+                                fixedFastaWriter,
+                                currentValidResidueLineLengthMax,
+                                sequenceHashWriter)
 
                             currentValidResidueLineLengthMax = 0
                         End If
@@ -1135,7 +1136,7 @@ Public Class clsValidateFastaFile
                         proteinName = String.Empty
 
                         AnalyzeFastaProcessProteinHeader(
-                            swFixedFastaOut,
+                            fixedFastaWriter,
                             lineIn,
                             proteinName,
                             processingDuplicateOrInvalidProtein,
@@ -1196,7 +1197,7 @@ Public Class clsValidateFastaFile
                                 residuesClean = String.Copy(lineIn.Trim())
                             End If
 
-                            If Not swFixedFastaOut Is Nothing AndAlso Not processingDuplicateOrInvalidProtein Then
+                            If Not fixedFastaWriter Is Nothing AndAlso Not processingDuplicateOrInvalidProtein Then
                                 If residuesClean <> lineIn Then
                                     mFixedFastaStats.UpdatedResidueLines += 1
                                 End If
@@ -1204,7 +1205,7 @@ Public Class clsValidateFastaFile
                                 If Not mFixedFastaOptions.WrapLongResidueLines Then
                                     ' Only write out this line if not auto-wrapping long residue lines
                                     ' If we are auto-wrapping, then the residues will be written out by the call to ProcessResiduesForPreviousProtein
-                                    swFixedFastaOut.WriteLine(residuesClean)
+                                    fixedFastaWriter.WriteLine(residuesClean)
                                 End If
                             End If
 
@@ -1232,8 +1233,8 @@ Public Class clsValidateFastaFile
                        proteinSequenceHashes,
                        proteinSequenceHashCount, proteinSeqHashInfo,
                        consolidateDupsIgnoreILDiff,
-                       swFixedFastaOut, currentValidResidueLineLengthMax,
-                       swProteinSequenceHashBasic)
+                       fixedFastaWriter, currentValidResidueLineLengthMax,
+                       sequenceHashWriter)
                 End If
 
                 If mCheckForDuplicateProteinSequences Then
@@ -1257,12 +1258,12 @@ Public Class clsValidateFastaFile
             End Using
 
             ' Close the output files
-            If Not swFixedFastaOut Is Nothing Then
-                swFixedFastaOut.Close()
+            If Not fixedFastaWriter Is Nothing Then
+                fixedFastaWriter.Close()
             End If
 
-            If Not swProteinSequenceHashBasic Is Nothing Then
-                swProteinSequenceHashBasic.Close()
+            If Not sequenceHashWriter Is Nothing Then
+                sequenceHashWriter.Close()
             End If
 
             If mProteinCount = 0 Then
@@ -1316,7 +1317,7 @@ Public Class clsValidateFastaFile
                     ShowMessage("WARNING: " & duplicateProteinNameCount.ToString("#,##0") & " protein names were present multiple times in the fasta file; duplicate entries were skipped")
                 End If
 
-                success = True
+                success = Not exceptionCaught
 
             ElseIf mSaveProteinSequenceHashInfoFiles Then
                 Dim percentComplete = 98.0!
@@ -1325,7 +1326,7 @@ Public Class clsValidateFastaFile
                 End If
                 MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(percentComplete, 0) & "% Done)", percentComplete)
 
-                success = AnalyzeFastaSaveHashInfo(
+                Dim hashInfoSuccess = AnalyzeFastaSaveHashInfo(
                     fastaFilePathToCheck,
                     proteinSequenceHashCount,
                     proteinSeqHashInfo,
@@ -1333,8 +1334,10 @@ Public Class clsValidateFastaFile
                     consolidateDupsIgnoreILDiff,
                     keepDuplicateNamedProteinsUnlessMatchingSequence,
                     fastaFilePathOut)
+
+                success = hashInfoSuccess And Not exceptionCaught
             Else
-                success = True
+                success = Not exceptionCaught
             End If
 
             If MyBase.AbortProcessing Then
@@ -1344,18 +1347,18 @@ Public Class clsValidateFastaFile
             End If
 
         Catch ex As Exception
-            OnErrorEvent("Error in AnalyzeFastaFile", ex)
+            OnErrorEvent(String.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount), ex)
             success = False
         Finally
             ' These close statements will typically be redundant,
             ' However, if an exception occurs, then they will be needed to close the files
 
-            If Not swFixedFastaOut Is Nothing Then
-                swFixedFastaOut.Close()
+            If Not fixedFastaWriter Is Nothing Then
+                fixedFastaWriter.Close()
             End If
 
-            If Not swProteinSequenceHashBasic Is Nothing Then
-                swProteinSequenceHashBasic.Close()
+            If Not sequenceHashWriter Is Nothing Then
+                sequenceHashWriter.Close()
             End If
 
         End Try
@@ -1365,7 +1368,7 @@ Public Class clsValidateFastaFile
     End Function
 
     Private Sub AnalyzeFastaProcessProteinHeader(
-      swFixedFastaOut As TextWriter,
+      fixedFastaWriter As TextWriter,
       lineIn As String,
       <Out> ByRef proteinName As String,
       <Out> ByRef processingDuplicateOrInvalidProtein As Boolean,
@@ -1474,8 +1477,8 @@ Public Class clsValidateFastaFile
 
                 End If
 
-                If Not swFixedFastaOut Is Nothing AndAlso Not skipDuplicateProtein Then
-                    swFixedFastaOut.WriteLine(ConstructFastaHeaderLine(proteinName.Trim, proteinDescription.Trim))
+                If Not fixedFastaWriter Is Nothing AndAlso Not skipDuplicateProtein Then
+                    fixedFastaWriter.WriteLine(ConstructFastaHeaderLine(proteinName.Trim, proteinDescription.Trim))
                 End If
             End If
 
@@ -2058,9 +2061,9 @@ Public Class clsValidateFastaFile
         If sbResidues.Length > 0 Then
             ' Compute the hash value for sbCurrentResidues
             If consolidateDupsIgnoreILDiff Then
-                Return PRISM.HashUtilities.ComputeStringHashSha1(sbResidues.ToString().Replace("L"c, "I"c)).ToUpper()
+                Return HashUtilities.ComputeStringHashSha1(sbResidues.ToString().Replace("L"c, "I"c)).ToUpper()
             Else
-                Return PRISM.HashUtilities.ComputeStringHashSha1(sbResidues.ToString()).ToUpper()
+                Return HashUtilities.ComputeStringHashSha1(sbResidues.ToString()).ToUpper()
             End If
         Else
             Return String.Empty
@@ -2113,7 +2116,7 @@ Public Class clsValidateFastaFile
       proteinSeqHashInfo As IList(Of clsProteinHashInfo)) As Boolean
 
         Dim fsInFile As Stream
-        Dim swConsolidatedFastaOut As StreamWriter = Nothing
+        Dim consolidatedFastaWriter As StreamWriter = Nothing
 
         Dim bytesRead As Int64
         Dim terminatorSize As Integer
@@ -2179,7 +2182,7 @@ Public Class clsValidateFastaFile
             Return False
         End Try
 
-        Dim srFastaInFile As StreamReader
+        Dim fastaReader As StreamReader
 
         Try
             ' Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
@@ -2192,7 +2195,7 @@ Public Class clsValidateFastaFile
                FileAccess.Read,
                FileShare.ReadWrite)
 
-            srFastaInFile = New StreamReader(fsInFile)
+            fastaReader = New StreamReader(fsInFile)
 
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
@@ -2203,7 +2206,7 @@ Public Class clsValidateFastaFile
 
         Try
             ' Create the new fasta file
-            swConsolidatedFastaOut = New StreamWriter(New FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+            consolidatedFastaWriter = New StreamWriter(New FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
         Catch ex As Exception
             RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
              "Error creating consolidated fasta output file " & fixedFastaFilePath & ": " & ex.Message, String.Empty)
@@ -2265,14 +2268,14 @@ Public Class clsValidateFastaFile
             bytesRead = 0
             mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0
 
-            Do While Not srFastaInFile.EndOfStream
-                lineIn = srFastaInFile.ReadLine()
+            Do While Not fastaReader.EndOfStream
+                lineIn = fastaReader.ReadLine()
                 bytesRead += lineIn.Length + terminatorSize
 
                 If lineCountRead Mod 50 = 0 Then
                     If MyBase.AbortProcessing Then Exit Do
 
-                    percentComplete = 75 + CType(bytesRead / CType(srFastaInFile.BaseStream.Length, Single) * 100.0, Single) / 4
+                    percentComplete = 75 + CType(bytesRead / CType(fastaReader.BaseStream.Length, Single) * 100.0, Single) / 4
                     MyBase.UpdateProgress("Consolidating duplicate proteins to create a new FASTA File (" & Math.Round(percentComplete, 0) & "% Done)", percentComplete)
 
                     If DateTime.UtcNow.Subtract(lastMemoryUsageReport).TotalMinutes >= 1 Then
@@ -2294,8 +2297,9 @@ Public Class clsValidateFastaFile
                             If Not String.IsNullOrEmpty(cachedProteinName) Then
                                 ' Write out the cached protein and it's residues
 
-                                WriteCachedProtein(cachedProteinName, cachedProteinDescription,
-                                 swConsolidatedFastaOut, proteinSeqHashInfo,
+                                WriteCachedProtein(
+                                 cachedProteinName, cachedProteinDescription,
+                                 consolidatedFastaWriter, proteinSeqHashInfo,
                                  sbCachedProteinResidueLines, sbCachedProteinResidues,
                                  consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
                                  proteinNameFirst, duplicateProteinList,
@@ -2321,8 +2325,9 @@ Public Class clsValidateFastaFile
 
             If Not String.IsNullOrEmpty(cachedProteinName) Then
                 ' Write out the cached protein and it's residues
-                WriteCachedProtein(cachedProteinName, cachedProteinDescription,
-                 swConsolidatedFastaOut, proteinSeqHashInfo,
+                WriteCachedProtein(
+                 cachedProteinName, cachedProteinDescription,
+                 consolidatedFastaWriter, proteinSeqHashInfo,
                  sbCachedProteinResidueLines, sbCachedProteinResidues,
                  consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
                  proteinNameFirst, duplicateProteinList,
@@ -2340,8 +2345,8 @@ Public Class clsValidateFastaFile
             Return False
         Finally
             Try
-                If Not srFastaInFile Is Nothing Then srFastaInFile.Close()
-                If Not swConsolidatedFastaOut Is Nothing Then swConsolidatedFastaOut.Close()
+                If Not fastaReader Is Nothing Then fastaReader.Close()
+                If Not consolidatedFastaWriter Is Nothing Then consolidatedFastaWriter.Close()
 
                 Threading.Thread.Sleep(100)
 
@@ -3979,9 +3984,9 @@ Public Class clsValidateFastaFile
       ByRef proteinSequenceHashCount As Integer,
       ByRef proteinSeqHashInfo() As clsProteinHashInfo,
       consolidateDupsIgnoreILDiff As Boolean,
-      swFixedFastaOut As TextWriter,
+      fixedFastaWriter As TextWriter,
       currentValidResidueLineLengthMax As Integer,
-      swProteinSequenceHashBasic As TextWriter)
+      sequenceHashWriter As TextWriter)
 
         Dim wrapLength As Integer
 
@@ -4003,7 +4008,7 @@ Public Class clsValidateFastaFile
                     proteinName, sbCurrentResidues,
                     proteinSequenceHashes,
                     proteinSequenceHashCount, proteinSeqHashInfo,
-                    consolidateDupsIgnoreILDiff, swProteinSequenceHashBasic)
+                    consolidateDupsIgnoreILDiff, sequenceHashWriter)
             End If
 
             If mGenerateFixedFastaFile AndAlso mFixedFastaOptions.WrapLongResidueLines Then
@@ -4024,7 +4029,7 @@ Public Class clsValidateFastaFile
                 Dim proteinResidueCount = sbCurrentResidues.Length
                 Do While index < sbCurrentResidues.Length
                     length = Math.Min(wrapLength, proteinResidueCount - index)
-                    swFixedFastaOut.WriteLine(sbCurrentResidues.ToString(index, length))
+                    fixedFastaWriter.WriteLine(sbCurrentResidues.ToString(index, length))
                     index += wrapLength
                 Loop
 
@@ -4043,7 +4048,7 @@ Public Class clsValidateFastaFile
       ByRef proteinSequenceHashCount As Integer,
       ByRef proteinSeqHashInfo() As clsProteinHashInfo,
       consolidateDupsIgnoreILDiff As Boolean,
-      swProteinSequenceHashBasic As TextWriter)
+      sequenceHashWriter As TextWriter)
 
         Dim computedHash As String
 
@@ -4053,7 +4058,7 @@ Public Class clsValidateFastaFile
                 ' Compute the hash value for sbCurrentResidues
                 computedHash = ComputeProteinHash(sbCurrentResidues, consolidateDupsIgnoreILDiff)
 
-                If Not swProteinSequenceHashBasic Is Nothing Then
+                If Not sequenceHashWriter Is Nothing Then
 
                     Dim dataValues = New List(Of String) From {
                         mProteinCount.ToString,
@@ -4061,7 +4066,7 @@ Public Class clsValidateFastaFile
                         sbCurrentResidues.Length.ToString,
                         computedHash}
 
-                    swProteinSequenceHashBasic.WriteLine(FlattenList(dataValues))
+                    sequenceHashWriter.WriteLine(FlattenList(dataValues))
                 End If
 
                 If mCheckForDuplicateProteinSequences AndAlso Not proteinSequenceHashes Is Nothing Then
@@ -4375,7 +4380,7 @@ Public Class clsValidateFastaFile
       preloadedProteinNamesToKeep As clsNestedStringIntList,
       proteinSequenceHashes As clsNestedStringDictionary(Of Integer),
       proteinNames As ICollection,
-      proteinSeqHashInfo() As clsProteinHashInfo)
+      proteinSeqHashInfo As IEnumerable(Of clsProteinHashInfo))
 
         Console.WriteLine()
         ReportMemoryUsage()
@@ -5103,7 +5108,7 @@ Public Class clsValidateFastaFile
     Private Sub WriteCachedProtein(
       cachedProteinName As String,
       cachedProteinDescription As String,
-      swConsolidatedFastaOut As TextWriter,
+      consolidatedFastaWriter As TextWriter,
       proteinSeqHashInfo As IList(Of clsProteinHashInfo),
       sbCachedProteinResidueLines As StringBuilder,
       sbCachedProteinResidues As StringBuilder,
@@ -5219,8 +5224,8 @@ Public Class clsValidateFastaFile
             If String.IsNullOrEmpty(lineOut) Then
                 lineOut = ConstructFastaHeaderLine(cachedProteinName, cachedProteinDescription)
             End If
-            swConsolidatedFastaOut.WriteLine(lineOut)
-            swConsolidatedFastaOut.Write(sbCachedProteinResidueLines.ToString())
+            consolidatedFastaWriter.WriteLine(lineOut)
+            consolidatedFastaWriter.Write(sbCachedProteinResidueLines.ToString())
         End If
 
     End Sub
