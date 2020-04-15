@@ -983,6 +983,7 @@ Public Class clsValidateFastaFile
             AutoDetermineFastaProteinNameSpannerCharLength(mFastaFilePath, terminatorSize)
 
             ' Open the input file
+            Dim startTime = DateTime.UtcNow
 
             Using fastaReader = New StreamReader(New FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 
@@ -1289,6 +1290,15 @@ Public Class clsValidateFastaFile
                 End If
 
             End Using
+
+            Dim totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds
+            If totalSeconds > 5 Then
+                Dim linesPerSecond = CInt(Math.Round(mLineCount / totalSeconds))
+                Console.WriteLine()
+                ShowMessage(String.Format(
+                    "Processing complete after {0:N0} seconds; read {1:N0} lines/second",
+                    totalSeconds, linesPerSecond))
+            End If
 
             ' Close the output files
             If Not fixedFastaWriter Is Nothing Then
