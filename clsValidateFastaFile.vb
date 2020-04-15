@@ -135,6 +135,10 @@ Public Class clsValidateFastaFile
         Public MessageCode As Integer
         Public ExtraInfo As String
         Public Context As String
+
+        Public Overrides Function ToString() As String
+            Return String.Format("Line {0}, protein {1}, code {2}: {3}", LineNumber, ProteinName, MessageCode, ExtraInfo)
+        End Function
     End Structure
 
     Structure udtOutputOptionsType
@@ -142,6 +146,10 @@ Public Class clsValidateFastaFile
         Public OutputToStatsFile As Boolean
         Public OutFile As StreamWriter
         Public SepChar As String
+
+        Public Overrides Function ToString() As String
+            Return SourceFile
+        End Function
     End Structure
 
     Enum RuleTypes
