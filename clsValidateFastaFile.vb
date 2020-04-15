@@ -44,7 +44,7 @@ Public Class clsValidateFastaFile
 
     ''' <summary>
     ''' The maximum suggested value when using SEQUEST is 34 characters
-    ''' In contrast, MSGF+ supports long protein names
+    ''' In contrast, MS-GF+ supports long protein names
     ''' </summary>
     ''' <remarks></remarks>
     Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 60
@@ -152,7 +152,7 @@ Public Class clsValidateFastaFile
     End Enum
 
     Enum SwitchOptions
-        AddMissingLinefeedatEOF
+        AddMissingLineFeedAtEOF
         AllowAsteriskInResidues
         CheckForDuplicateProteinNames
         GenerateFixedFASTAFile
@@ -4871,7 +4871,7 @@ Public Class clsValidateFastaFile
         Me.SetRule(RuleTypes.ProteinSequence, "[^A-Z \t\*\-]", True, "Invalid residues found", DEFAULT_ERROR_SEVERITY, True)
 
         ' Protein residue warnings
-        ' MSGF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
+        ' MS-GF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
 
         ' SEQUEST uses mass 114.53494 for B (average of N and D)
         Me.SetRule(RuleTypes.ProteinSequence, "B", True, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1)
