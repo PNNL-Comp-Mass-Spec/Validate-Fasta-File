@@ -1,0 +1,4 @@
+Sequence_Index	Protein_Name_First	Sequence_Length	Duplicate_Protein
+640	SO0655a	124	SO0658a
+1478	SO1542	43	SO3568
+4570	SOA0052	286	SOA0052a
