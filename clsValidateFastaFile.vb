@@ -1430,12 +1430,6 @@ Public Class clsValidateFastaFile
                 processingDuplicateOrInvalidProtein = False
             End If
 
-
-            If proteinName = "contig_4_2" OrElse proteinName = "contig_4_3" OrElse proteinName = "contig_10083_1" Then
-                Console.WriteLine("check this")
-            End If
-
-
             ' Test the header line rules
             EvaluateRules(headerLineRuleDetails, proteinName, lineIn, 0, lineIn, DEFAULT_CONTEXT_LENGTH)
 
