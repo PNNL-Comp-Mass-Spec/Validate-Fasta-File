@@ -21,7 +21,7 @@ Imports PRISM
 
 Module modMain
 
-    Public Const PROGRAM_DATE As String = "March 8, 2019"
+    Public Const PROGRAM_DATE As String = "April 15, 2020"
 
     Private mInputFilePath As String
     Private mOutputDirectoryPath As String

@@ -26,7 +26,7 @@ Public Class clsValidateFastaFile
     ''' Constructor
     ''' </summary>
     Public Sub New()
-        mFileDate = "March 8, 2019"
+        mFileDate = "April 15, 2020"
         InitializeLocalVariables()
     End Sub
 
@@ -839,6 +839,7 @@ Public Class clsValidateFastaFile
         Dim fastaFilePathOut = "UndefinedFilePath.xyz"
 
         Dim success As Boolean
+        Dim exceptionCaught = False
 
         Dim consolidateDuplicateProteinSeqsInFasta = False
         Dim keepDuplicateNamedProteinsUnlessMatchingSequence = False
@@ -1074,8 +1075,23 @@ Public Class clsValidateFastaFile
 
                 Do While Not fastaReader.EndOfStream
 
+                    Dim lineIn As String
 
-                    Dim lineIn = srFastaInFile.ReadLine()
+                    Try
+                        lineIn = fastaReader.ReadLine()
+                    Catch ex As OutOfMemoryException
+                        OnErrorEvent(String.Format(
+                            "Error in AnalyzeFastaFile reading line {0}; " &
+                            "it is most likely millions of characters long, " &
+                            "indicating a corrupt fasta file", mLineCount + 1), ex)
+                        exceptionCaught = True
+                        Exit Do
+                    Catch ex As Exception
+                        OnErrorEvent(String.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount + 1), ex)
+                        exceptionCaught = True
+                        Exit Do
+                    End Try
+
                     bytesRead += lineIn.Length + terminatorSize
 
                     If mLineCount Mod 250 = 0 Then
@@ -1100,6 +1116,15 @@ Public Class clsValidateFastaFile
                     End If
 
                     mLineCount += 1
+
+                    If (lineIn.Length > 10000000) Then
+                        RecordFastaFileError(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", String.Empty)
+                        Continue Do
+                    ElseIf (lineIn.Length > 1000000) Then
+                        RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", String.Empty)
+                    ElseIf (lineIn.Length > 100000) Then
+                        RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", String.Empty)
+                    End If
 
                     If lineIn Is Nothing Then Continue Do
 
@@ -1675,6 +1700,12 @@ Public Class clsValidateFastaFile
 
             For byteOffsetStart As Int64 = 0 To fastaFile.Length Step stepSizeBytes
                 Dim linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024)
+
+                If linesRead < 0 Then
+                    ' This indicates an error, probably from a corrupt file; do not read further
+                    Exit For
+                End If
+
                 linesReadTotal += linesRead
 
                 If Not showStats AndAlso DateTime.UtcNow.Subtract(startTime).TotalMilliseconds > 500 Then
@@ -1834,6 +1865,13 @@ Public Class clsValidateFastaFile
                 End Using
 
             End Using
+
+        Catch ex As OutOfMemoryException
+            OnErrorEvent("Out of memory exception in AutoDetermineProteinNameSpannerCharLength", ex)
+
+            ' Example message: Insufficient memory to continue the execution of the program
+            ' This can happen with a corrupt .fasta file with a line that has millions of characters
+            Return -1
 
         Catch ex As Exception
             OnErrorEvent("Error in AutoDetermineProteinNameSpannerCharLength", ex)
