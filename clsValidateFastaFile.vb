@@ -1,4 +1,4 @@
-Option Strict On
+﻿Option Strict On
 
 ' This class will read a protein fasta file and validate its contents
 '

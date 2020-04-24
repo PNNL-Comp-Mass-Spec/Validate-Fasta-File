@@ -1,4 +1,4 @@
-Public Class clsCustomValidateFastaFiles
+﻿Public Class clsCustomValidateFastaFiles
     Inherits clsValidateFastaFile
 
 #Region "Structures and enums"
