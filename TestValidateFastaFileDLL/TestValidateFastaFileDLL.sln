@@ -1,10 +1,11 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "TestValidateFastaFileDLL", "TestValidateFastaFileDLL.vbproj", "{DC6C453F-F790-443E-859C-BD27A8F33490}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestValidateFastaFileDLL", "TestValidateFastaFileDLL.csproj", "{DC6C453F-F790-443E-859C-BD27A8F33490}"
 EndProject
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "ValidateFastaFiles_Dll", "..\ValidateFastaFiles_Dll.vbproj", "{4719F96F-6CFC-4CAB-8959-35233A6505E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValidateFastaFiles_Dll", "..\ValidateFastaFiles_Dll.csproj", "{4719F96F-6CFC-4CAB-8959-35233A6505E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

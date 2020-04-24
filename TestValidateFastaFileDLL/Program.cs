@@ -9,7 +9,7 @@ Imports ValidateFastaFile
 ' This program can be used to test the use of the clsValidateFastaFiles in the ValidateFastaFiles.Dll file
 ' Last modified May 8, 2007
 
-Module modMain
+Module Program
 
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error

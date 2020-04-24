@@ -19,7 +19,7 @@ Imports PRISM
 ' in compliance with the License.  You may obtain a copy of the License at
 ' http://www.apache.org/licenses/LICENSE-2.0
 
-Module modMain
+Module Program
 
     Public Const PROGRAM_DATE As String = "April 15, 2020"
 
@@ -183,7 +183,7 @@ Module modMain
             End If
 
         Catch ex As Exception
-            ShowErrorMessage("Error occurred in modMain->Main: " & ex.Message, ex)
+            ShowErrorMessage("Error occurred in Program->Main: " & ex.Message, ex)
             returnCode = -1
         End Try
 
