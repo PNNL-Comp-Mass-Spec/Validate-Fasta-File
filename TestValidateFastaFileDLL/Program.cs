@@ -27,7 +27,7 @@ namespace TestValidateFastaFileDLL
 
             int count;
 
-            var returnCode = default(int);
+            var returnCode = 0;
 
             try
             {

@@ -580,7 +580,7 @@ namespace ValidateFastaFile
             eMsgTypeConstants messageType,
             ErrorWarningCountTypes CountType)
         {
-            var tmpValue = default(int);
+            var tmpValue = 0;
             switch (CountType)
             {
                 case ErrorWarningCountTypes.Total:
@@ -643,7 +643,7 @@ namespace ValidateFastaFile
 
         public int GetFixedFASTAFileStats(FixedFASTAFileValues valueType)
         {
-            var tmpValue = default(int);
+            var tmpValue = 0;
             switch (valueType)
             {
                 case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount:
@@ -953,7 +953,7 @@ namespace ValidateFastaFile
             bool consolidateDupsIgnoreILDiff = false;
 
             // This array tracks protein hash details
-            var proteinSequenceHashCount = default(int);
+            var proteinSequenceHashCount = 0;
             clsProteinHashInfo[] proteinSeqHashInfo;
 
             udtRuleDefinitionExtendedType[] headerLineRuleDetails;
@@ -1761,7 +1761,7 @@ namespace ValidateFastaFile
             string duplicateProteinMappingFileOut = string.Empty;
 
             int index;
-            var duplicateIndex = default(int);
+            var duplicateIndex = 0;
 
             bool duplicateProteinSeqsFound;
             bool success;
@@ -1932,7 +1932,7 @@ namespace ValidateFastaFile
             if (!fastaFile.Exists)
                 return;
             long fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE;
-            var linesReadTotal = default(long);
+            long linesReadTotal = 0;
 
             if (fastaFile.Length < fullScanLengthBytes)
             {
@@ -2022,7 +2022,7 @@ namespace ValidateFastaFile
 
                 long bytesRead = 0;
 
-                var firstLineDiscarded = default(bool);
+                var firstLineDiscarded = false;
                 if (startOffset == 0)
                 {
                     firstLineDiscarded = true;
@@ -2935,7 +2935,7 @@ namespace ValidateFastaFile
 
             var endCharType = DetermineLineTerminatorType(pathOfFileToFix);
 
-            var origEndCharCount = default(int);
+            var origEndCharCount = 0;
 
             if (endCharType != desiredLineEndCharacterType)
             {
@@ -4090,7 +4090,7 @@ namespace ValidateFastaFile
         {
             var settingsFile = new XmlSettingsFileAccessor();
 
-            var customRulesLoaded = default(bool);
+            var customRulesLoaded = false;
             bool success;
 
             string characterList;
@@ -5820,7 +5820,7 @@ namespace ValidateFastaFile
 
         private bool VerifyLinefeedAtEOF(string strInputFilePath, bool blnAddCrLfIfMissing)
         {
-            var blnNeedToAddCrLf = default(bool);
+            var blnNeedToAddCrLf = false;
             bool blnSuccess;
 
             try
