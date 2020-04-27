@@ -672,45 +672,15 @@ namespace ValidateFastaFile
             return tmpValue;
         }
 
-        public int ProteinCount
-        {
-            get
-            {
-                return mProteinCount;
-            }
-        }
+        public int ProteinCount => mProteinCount;
 
-        public int LineCount
-        {
-            get
-            {
-                return mLineCount;
-            }
-        }
+        public int LineCount => mLineCount;
 
-        public eValidateFastaFileErrorCodes LocalErrorCode
-        {
-            get
-            {
-                return mLocalErrorCode;
-            }
-        }
+        public eValidateFastaFileErrorCodes LocalErrorCode => mLocalErrorCode;
 
-        public long ResidueCount
-        {
-            get
-            {
-                return mResidueCount;
-            }
-        }
+        public long ResidueCount => mResidueCount;
 
-        public string FastaFilePath
-        {
-            get
-            {
-                return mFastaFilePath;
-            }
-        }
+        public string FastaFilePath => mFastaFilePath;
 
         [Obsolete("Use GetErrorMessageTextByIndex", true)]
         public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
@@ -766,10 +736,7 @@ namespace ValidateFastaFile
 
         public int MaximumFileErrorsToTrack
         {
-            get
-            {
-                return mMaximumFileErrorsToTrack;
-            }
+            get => mMaximumFileErrorsToTrack;
             set
             {
                 if (value < 1)
@@ -781,10 +748,7 @@ namespace ValidateFastaFile
 
         public int MaximumProteinNameLength
         {
-            get
-            {
-                return mMaximumProteinNameLength;
-            }
+            get => mMaximumProteinNameLength;
             set
             {
                 if (value < 8)
@@ -799,10 +763,7 @@ namespace ValidateFastaFile
 
         public int MinimumProteinNameLength
         {
-            get
-            {
-                return mMinimumProteinNameLength;
-            }
+            get => mMinimumProteinNameLength;
             set
             {
                 if (value < 1)
@@ -814,10 +775,7 @@ namespace ValidateFastaFile
 
         public int MaximumResiduesPerLine
         {
-            get
-            {
-                return mMaximumResiduesPerLine;
-            }
+            get => mMaximumResiduesPerLine;
             set
             {
                 if (value == 0)
@@ -835,14 +793,8 @@ namespace ValidateFastaFile
 
         public char ProteinLineStartChar
         {
-            get
-            {
-                return mProteinLineStartChar;
-            }
-            set
-            {
-                mProteinLineStartChar = value;
-            }
+            get => mProteinLineStartChar;
+            set => mProteinLineStartChar = value;
         }
 
         public string StatsFilePath
@@ -862,10 +814,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameInvalidCharsToRemove
         {
-            get
-            {
-                return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
-            }
+            get => CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
             set
             {
                 if (value == null)
@@ -889,10 +838,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameFirstRefSepChars
         {
-            get
-            {
-                return CharArrayToString(mProteinNameFirstRefSepChars);
-            }
+            get => CharArrayToString(mProteinNameFirstRefSepChars);
             set
             {
                 if (value == null)
@@ -916,10 +862,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameSubsequentRefSepChars
         {
-            get
-            {
-                return CharArrayToString(mProteinNameSubsequentRefSepChars);
-            }
+            get => CharArrayToString(mProteinNameSubsequentRefSepChars);
             set
             {
                 if (value == null)
@@ -943,10 +886,7 @@ namespace ValidateFastaFile
 
         public string LongProteinNameSplitChars
         {
-            get
-            {
-                return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars);
-            }
+            get => CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars);
             set
             {
                 if (value != null)
@@ -962,21 +902,9 @@ namespace ValidateFastaFile
             }
         }
 
-        public List<udtMsgInfoType> FileWarningList
-        {
-            get
-            {
-                return GetFileWarnings();
-            }
-        }
+        public List<udtMsgInfoType> FileWarningList => GetFileWarnings();
 
-        public List<udtMsgInfoType> FileErrorList
-        {
-            get
-            {
-                return GetFileErrors();
-            }
-        }
+        public List<udtMsgInfoType> FileErrorList => GetFileErrors();
 
         #endregion
         public event ProgressCompletedEventHandler ProgressCompleted;

@@ -44,13 +44,7 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public string ProteinNameFirst { get; private set; }
 
-        public IEnumerable<string> AdditionalProteins
-        {
-            get
-            {
-                return mAdditionalProteins;
-            }
-        }
+        public IEnumerable<string> AdditionalProteins => mAdditionalProteins;
 
         /// <summary>
         /// Greater than 0 if multiple entries have the same name and same sequence

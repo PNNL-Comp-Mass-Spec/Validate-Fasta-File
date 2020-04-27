@@ -46,10 +46,7 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public float MinimumLogIntervalMinutes
         {
-            get
-            {
-                return m_MinimumMemoryUsageLogIntervalMinutes;
-            }
+            get => m_MinimumMemoryUsageLogIntervalMinutes;
             set
             {
                 if (value < 0)
