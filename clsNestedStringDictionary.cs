@@ -42,7 +42,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public bool IgnoreCase { get; private set; }
+        public bool IgnoreCase { get; }
 
         /// <summary>
         /// The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
@@ -53,7 +53,7 @@ namespace ValidateFastaFile
         /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
-        public byte SpannerCharLength { get; private set; }
+        public byte SpannerCharLength { get; }
 
         /// <summary>
         /// Constructor
@@ -97,10 +97,9 @@ namespace ValidateFastaFile
         /// <exception cref="System.ArgumentException">Thrown if the key has already been stored</exception>
         public void Add(string key, T value)
         {
-            Dictionary<string, T> subDictionary = null;
             string spannerKey = GetSpannerKey(key);
 
-            if (!mData.TryGetValue(spannerKey, out subDictionary))
+            if (!mData.TryGetValue(spannerKey, out var subDictionary))
             {
                 subDictionary = new Dictionary<string, T>(mComparer);
                 mData.Add(spannerKey, subDictionary);
@@ -129,10 +128,9 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public bool ContainsKey(string key)
         {
-            Dictionary<string, T> subDictionary = null;
             string spannerKey = GetSpannerKey(key);
 
-            if (mData.TryGetValue(spannerKey, out subDictionary))
+            if (mData.TryGetValue(spannerKey, out var subDictionary))
             {
                 return subDictionary.ContainsKey(key);
             }
@@ -205,8 +203,7 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public Dictionary<string, T> GetDictionaryForSpanningKey(string keyName)
         {
-            Dictionary<string, T> subDictionary = null;
-            if (mData.TryGetValue(keyName, out subDictionary))
+            if (mData.TryGetValue(keyName, out var subDictionary))
             {
                 return subDictionary;
             }
@@ -234,10 +231,9 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public bool TryGetValue(string key, out T value)
         {
-            Dictionary<string, T> subDictionary = null;
             string spannerKey = GetSpannerKey(key);
 
-            if (mData.TryGetValue(spannerKey, out subDictionary))
+            if (mData.TryGetValue(spannerKey, out var subDictionary))
             {
                 return subDictionary.TryGetValue(key, out value);
             }

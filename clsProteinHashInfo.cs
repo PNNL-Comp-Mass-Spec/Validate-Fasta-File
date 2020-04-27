@@ -18,7 +18,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public string SequenceHash { get; private set; }
+        public string SequenceHash { get; }
 
         /// <summary>
         /// Number of residues in the protein sequence
@@ -26,7 +26,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public int SequenceLength { get; private set; }
+        public int SequenceLength { get; }
 
         /// <summary>
         /// The first 20 residues of the protein sequence
@@ -34,7 +34,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public string SequenceStart { get; private set; }
+        public string SequenceStart { get; }
 
         /// <summary>
         /// First protein associated with this hash value
@@ -42,7 +42,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public string ProteinNameFirst { get; private set; }
+        public string ProteinNameFirst { get; }
 
         public IEnumerable<string> AdditionalProteins => mAdditionalProteins;
 

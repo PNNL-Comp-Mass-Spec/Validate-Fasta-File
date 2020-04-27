@@ -36,7 +36,7 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks>If this is an empty string, the log file is created in the working directory</remarks>
-        public string LogFolderPath { get; private set; }
+        public string LogFolderPath { get; }
 
         /// <summary>
         /// The minimum interval between appending a new memory usage entry to the log
@@ -189,8 +189,7 @@ namespace ValidateFastaFile
             try
             {
                 // Obtain a handle to the current process
-                Process objProcess;
-                objProcess = Process.GetCurrentProcess();
+                var objProcess = Process.GetCurrentProcess();
 
                 // The WorkingSet is the total physical memory usage
                 return (float)(objProcess.WorkingSet64 / 1024.0 / 1024);
@@ -259,9 +258,6 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public void WriteMemoryUsageLogEntry()
         {
-            string logFileName;
-            string logFilePath;
-
             try
             {
                 if (DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < m_MinimumMemoryUsageLogIntervalMinutes)
@@ -273,8 +269,9 @@ namespace ValidateFastaFile
                 dtLastWriteTime = DateTime.UtcNow;
 
                 // We're creating a new log file each month
-                logFileName = "MemoryUsageLog_" + DateTime.Now.ToString("yyyy-MM") + ".txt";
+                var logFileName = "MemoryUsageLog_" + DateTime.Now.ToString("yyyy-MM") + ".txt";
 
+                string logFilePath;
                 if (!string.IsNullOrWhiteSpace(LogFolderPath))
                 {
                     logFilePath = Path.Combine(LogFolderPath, logFileName);

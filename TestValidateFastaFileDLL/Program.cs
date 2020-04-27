@@ -4,7 +4,6 @@ using ValidateFastaFile;
 
 namespace TestValidateFastaFileDLL
 {
-
     // Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
     // Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
@@ -19,14 +18,6 @@ namespace TestValidateFastaFileDLL
 
             string testFilePath = "JunkTest.fasta";
 
-            clsValidateFastaFile fastaFileValidator;
-
-            string[] parameters;
-
-            bool success;
-
-            int count;
-
             var returnCode = 0;
 
             try
@@ -35,7 +26,7 @@ namespace TestValidateFastaFileDLL
                 try
                 {
                     // This command will fail if the program is called from a network share
-                    parameters = Environment.GetCommandLineArgs();
+                    var parameters = Environment.GetCommandLineArgs();
 
                     if (parameters != null && parameters.Length > 1)
                     {
@@ -50,7 +41,7 @@ namespace TestValidateFastaFileDLL
 
                 Console.WriteLine("Examining file: " + testFilePath);
 
-                fastaFileValidator = new clsValidateFastaFile();
+                var fastaFileValidator = new clsValidateFastaFile();
 
                 fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, true);
 
@@ -65,11 +56,11 @@ namespace TestValidateFastaFileDLL
                 fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, false);
 
                 // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
-                success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
+                var success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
 
                 if (success)
                 {
-                    count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    var count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
                     if (count == 0)
                     {
                         Console.WriteLine(" No errors were found");

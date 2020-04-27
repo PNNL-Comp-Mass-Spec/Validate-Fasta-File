@@ -50,7 +50,7 @@ namespace ValidateFastaFile
         /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
-        public byte SpannerCharLength { get; private set; }
+        public byte SpannerCharLength { get; }
 
         /// <summary>
         /// Constructor
@@ -87,10 +87,9 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public void Add(string item, int value)
         {
-            List<KeyValuePair<string, int>> subList = null;
             string spannerKey = GetSpannerKey(item);
 
-            if (!mData.TryGetValue(spannerKey, out subList))
+            if (!mData.TryGetValue(spannerKey, out var subList))
             {
                 subList = new List<KeyValuePair<string, int>>();
                 mData.Add(spannerKey, subList);
@@ -193,9 +192,8 @@ namespace ValidateFastaFile
                         if (charsInCommon > 0)
                         {
                             string baseName = previousKey.Substring(0, charsInCommon);
-                            int matchCount = 0;
 
-                            if (keyStartLetters.TryGetValue(baseName, out matchCount))
+                            if (keyStartLetters.TryGetValue(baseName, out var matchCount))
                             {
                                 keyStartLetters[baseName] = matchCount + 1;
                             }
@@ -286,10 +284,9 @@ namespace ValidateFastaFile
         /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public bool Contains(string item)
         {
-            List<KeyValuePair<string, int>> subList = null;
             string spannerKey = GetSpannerKey(item);
 
-            if (mData.TryGetValue(spannerKey, out subList))
+            if (mData.TryGetValue(spannerKey, out var subList))
             {
                 var searchItem = new KeyValuePair<string, int>(item, 0);
 
@@ -372,8 +369,7 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public List<KeyValuePair<string, int>> GetListForSpanningKey(string keyName)
         {
-            List<KeyValuePair<string, int>> subList = null;
-            if (mData.TryGetValue(keyName, out subList))
+            if (mData.TryGetValue(keyName, out var subList))
             {
                 return subList;
             }
@@ -399,10 +395,9 @@ namespace ValidateFastaFile
         /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public int GetValueForItem(string item, int valueIfNotFound = -1)
         {
-            List<KeyValuePair<string, int>> subList = null;
             string spannerKey = GetSpannerKey(item);
 
-            if (mData.TryGetValue(spannerKey, out subList))
+            if (mData.TryGetValue(spannerKey, out var subList))
             {
                 var searchItem = new KeyValuePair<string, int>(item, 0);
 
@@ -460,10 +455,9 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public void Remove(string item)
         {
-            List<KeyValuePair<string, int>> subList = null;
             string spannerKey = GetSpannerKey(item);
 
-            if (mData.TryGetValue(spannerKey, out subList))
+            if (mData.TryGetValue(spannerKey, out var subList))
             {
                 subList.RemoveAll(i => string.Equals(i.Key, item));
             }
@@ -477,10 +471,9 @@ namespace ValidateFastaFile
         /// <returns>True item was found and updated, false if the item does not exist</returns>
         public bool SetValueForItem(string item, int value)
         {
-            List<KeyValuePair<string, int>> subList = null;
             string spannerKey = GetSpannerKey(item);
 
-            if (mData.TryGetValue(spannerKey, out subList))
+            if (mData.TryGetValue(spannerKey, out var subList))
             {
                 var searchItem = new KeyValuePair<string, int>(item, 0);
 

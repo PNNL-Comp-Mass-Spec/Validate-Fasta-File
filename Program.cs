@@ -67,11 +67,9 @@ namespace ValidateFastaFile
         {
             // Returns 0 if no error, error code if an error
 
-            int returnCode;
             var commandLineParser = new clsParseCommandLine();
-            bool proceed;
 
-            returnCode = 0;
+            var returnCode = 0;
             mInputFilePath = string.Empty;
             mOutputDirectoryPath = string.Empty;
             mParameterFilePath = string.Empty;
@@ -101,7 +99,7 @@ namespace ValidateFastaFile
             mLastProgressReportTime = DateTime.UtcNow;
             try
             {
-                proceed = false;
+                var proceed = false;
                 if (commandLineParser.ParseCommandLine())
                 {
                     if (SetOptionsUsingCommandLineParameters(commandLineParser))
@@ -247,8 +245,6 @@ namespace ValidateFastaFile
                 "X", "S"
             };
 
-            int valueInteger;
-
             try
             {
                 // Make sure no invalid parameters are present
@@ -311,7 +307,7 @@ namespace ValidateFastaFile
                     if (commandLineParser.RetrieveValueForParameter("S", out value))
                     {
                         mRecurseDirectories = true;
-                        if (int.TryParse(value, out valueInteger))
+                        if (int.TryParse(value, out var valueInteger))
                         {
                             mMaxLevelsToRecurse = valueInteger;
                         }

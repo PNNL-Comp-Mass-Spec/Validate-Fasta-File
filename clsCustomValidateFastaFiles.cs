@@ -85,13 +85,13 @@ namespace ValidateFastaFile
         /// Keys are fasta filename
         /// Values are the list of fasta file errors
         /// </summary>
-        public Dictionary<string, List<udtErrorInfoExtended>> FullErrorCollection { get; private set; }
+        public Dictionary<string, List<udtErrorInfoExtended>> FullErrorCollection { get; }
 
         /// <summary>
         /// Keys are fasta filename
         /// Values are the list of fasta file warnings
         /// </summary>
-        public Dictionary<string, List<udtErrorInfoExtended>> FullWarningCollection { get; private set; }
+        public Dictionary<string, List<udtErrorInfoExtended>> FullWarningCollection { get; }
 
         public bool FASTAFileValid(string FASTAFileName)
         {
@@ -119,8 +119,7 @@ namespace ValidateFastaFile
 
         public List<udtErrorInfoExtended> RecordedFASTAFileErrors(string fastaFileName)
         {
-            List<udtErrorInfoExtended> errorList = null;
-            if (FullErrorCollection.TryGetValue(fastaFileName, out errorList))
+            if (FullErrorCollection.TryGetValue(fastaFileName, out var errorList))
             {
                 return errorList;
             }
@@ -130,8 +129,7 @@ namespace ValidateFastaFile
 
         public List<udtErrorInfoExtended> RecordedFASTAFileWarnings(string fastaFileName)
         {
-            List<udtErrorInfoExtended> warningList = null;
-            if (FullWarningCollection.TryGetValue(fastaFileName, out warningList))
+            if (FullWarningCollection.TryGetValue(fastaFileName, out var warningList))
             {
                 return warningList;
             }
