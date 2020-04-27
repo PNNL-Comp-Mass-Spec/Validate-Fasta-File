@@ -69,7 +69,7 @@ namespace TestValidateFastaFileDLL
 
                 if (success)
                 {
-                    count = fastaFileValidator.get_ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
                     if (count == 0)
                     {
                         Console.WriteLine(" No errors were found");
@@ -79,7 +79,7 @@ namespace TestValidateFastaFileDLL
                         Console.WriteLine(" " + count.ToString() + " errors were found");
                     }
 
-                    count = fastaFileValidator.get_ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
                     if (count == 0)
                     {
                         Console.WriteLine(" No warnings were found");
@@ -91,7 +91,7 @@ namespace TestValidateFastaFileDLL
 
                     // ' Could enumerate the errors using the following
                     for (int index = 0; index <= count - 1; index++)
-                        Console.WriteLine(fastaFileValidator.get_ErrorMessageTextByIndex(index, "\t"));
+                        Console.WriteLine(fastaFileValidator.GetErrorMessageTextByIndex(index, "\t"));
                 }
                 else
                 {

@@ -424,11 +424,13 @@ namespace ValidateFastaFile
         /// <value></value>
         /// <returns></returns>
         /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
+        [Obsolete("Use GetOptionSwitchValue instead", true)]
         public bool get_OptionSwitch(SwitchOptions switchName)
         {
             return GetOptionSwitchValue(switchName);
         }
 
+        [Obsolete("Use SetOptionSwitch instead", true)]
         public void set_OptionSwitch(SwitchOptions switchName, bool value)
         {
             SetOptionSwitch(switchName, value);
@@ -566,7 +568,15 @@ namespace ValidateFastaFile
             return false;
         }
 
+        [Obsolete("Use GetErrorWarningCounts instead", true)]
         public int get_ErrorWarningCounts(
+            eMsgTypeConstants messageType,
+            ErrorWarningCountTypes CountType)
+        {
+            return GetErrorWarningCounts(messageType, CountType);
+        }
+
+        public int GetErrorWarningCounts(
             eMsgTypeConstants messageType,
             ErrorWarningCountTypes CountType)
         {
@@ -625,7 +635,13 @@ namespace ValidateFastaFile
             return tmpValue;
         }
 
+        [Obsolete("Use GetFixedFASTAFileStats instead", true)]
         public int get_FixedFASTAFileStats(FixedFASTAFileValues valueType)
+        {
+            return GetFixedFASTAFileStats(valueType);
+        }
+
+        public int GetFixedFASTAFileStats(FixedFASTAFileValues valueType)
         {
             var tmpValue = default(int);
             switch (valueType)
@@ -696,22 +712,46 @@ namespace ValidateFastaFile
             }
         }
 
+        [Obsolete("Use GetErrorMessageTextByIndex", true)]
         public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
+        {
+            return GetErrorMessageTextByIndex(index, valueSeparator);
+        }
+
+        public string GetErrorMessageTextByIndex(int index, string valueSeparator)
         {
             return GetFileErrorTextByIndex(index, valueSeparator);
         }
 
+        [Obsolete("Use GetWarningMessageTextByIndex", true)]
         public string get_WarningMessageTextByIndex(int index, string valueSeparator)
+        {
+            return GetWarningMessageTextByIndex(index, valueSeparator);
+        }
+
+        public string GetWarningMessageTextByIndex(int index, string valueSeparator)
         {
             return GetFileWarningTextByIndex(index, valueSeparator);
         }
 
+        [Obsolete("Use GetErrorsByIndex", true)]
         public udtMsgInfoType get_ErrorsByIndex(int errorIndex)
+        {
+            return GetErrorsByIndex(errorIndex);
+        }
+
+        public udtMsgInfoType GetErrorsByIndex(int errorIndex)
         {
             return GetFileErrorByIndex(errorIndex);
         }
 
+        [Obsolete("Use GetWarningsByIndex", true)]
         public udtMsgInfoType get_WarningsByIndex(int warningIndex)
+        {
+            return GetWarningsByIndex(warningIndex);
+        }
+
+        public udtMsgInfoType GetWarningsByIndex(int warningIndex)
         {
             return GetFileWarningByIndex(warningIndex);
         }
@@ -3510,7 +3550,7 @@ namespace ValidateFastaFile
         {
             mLocalErrorCode = eValidateFastaFileErrorCodes.NoError;
 
-            set_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF, false);
+            SetOptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF, false);
 
             MaximumFileErrorsToTrack = 5;
 
@@ -3519,32 +3559,32 @@ namespace ValidateFastaFile
             MaximumResiduesPerLine = DEFAULT_MAXIMUM_RESIDUES_PER_LINE;
             ProteinLineStartChar = DEFAULT_PROTEIN_LINE_START_CHAR;
 
-            set_OptionSwitch(SwitchOptions.AllowAsteriskInResidues, false);
-            set_OptionSwitch(SwitchOptions.AllowDashInResidues, false);
-            set_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins, false);
-            set_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace, true);
+            SetOptionSwitch(SwitchOptions.AllowAsteriskInResidues, false);
+            SetOptionSwitch(SwitchOptions.AllowDashInResidues, false);
+            SetOptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins, false);
+            SetOptionSwitch(SwitchOptions.WarnLineStartsWithSpace, true);
 
-            set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames, true);
-            set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences, true);
+            SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinNames, true);
+            SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences, true);
 
-            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile, false);
+            SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile, false);
 
-            set_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession, true);
-            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession, true);
+            SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName, false);
 
-            set_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins, false);
-            set_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins, false);
 
-            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, false);
-            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, false);
 
-            set_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames, true);
-            set_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines, true);
-            set_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues, false);
+            SetOptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames, true);
+            SetOptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines, true);
+            SetOptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues, false);
 
-            set_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles, false);
+            SetOptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles, false);
 
-            set_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile, false);
+            SetOptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile, false);
 
             mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray();
             mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray();
@@ -4161,29 +4201,29 @@ namespace ValidateFastaFile
                     {
                         // Read customized settings
 
-                        set_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF,
+                        SetOptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
-                            get_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF)));
-                        set_OptionSwitch(SwitchOptions.AllowAsteriskInResidues,
+                            GetOptionSwitchValue(SwitchOptions.AddMissingLineFeedAtEOF)));
+                        SetOptionSwitch(SwitchOptions.AllowAsteriskInResidues,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
-                            get_OptionSwitch(SwitchOptions.AllowAsteriskInResidues)));
-                        set_OptionSwitch(SwitchOptions.AllowDashInResidues,
+                            GetOptionSwitchValue(SwitchOptions.AllowAsteriskInResidues)));
+                        SetOptionSwitch(SwitchOptions.AllowDashInResidues,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
-                            get_OptionSwitch(SwitchOptions.AllowDashInResidues)));
-                        set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames,
+                            GetOptionSwitchValue(SwitchOptions.AllowDashInResidues)));
+                        SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinNames,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
-                            get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames)));
-                        set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences,
+                            GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinNames)));
+                        SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
-                            get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences)));
+                            GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinSequences)));
 
-                        set_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles,
+                        SetOptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
-                            get_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles)));
+                            GetOptionSwitchValue(SwitchOptions.SaveProteinSequenceHashInfoFiles)));
 
-                        set_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile,
+                        SetOptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
-                            get_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile)));
+                            GetOptionSwitchValue(SwitchOptions.SaveBasicProteinHashInfoFile)));
 
                         MaximumFileErrorsToTrack = settingsFile.GetParam(XML_SECTION_OPTIONS,
                             "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
@@ -4194,77 +4234,77 @@ namespace ValidateFastaFile
                         MaximumResiduesPerLine = settingsFile.GetParam(XML_SECTION_OPTIONS,
                             "MaximumResiduesPerLine", MaximumResiduesPerLine);
 
-                        set_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins,
+                        SetOptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
-                            get_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins)));
-                        set_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace,
+                            GetOptionSwitchValue(SwitchOptions.WarnBlankLinesBetweenProteins)));
+                        SetOptionSwitch(SwitchOptions.WarnLineStartsWithSpace,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
-                            get_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace)));
+                            GetOptionSwitchValue(SwitchOptions.WarnLineStartsWithSpace)));
 
-                        set_OptionSwitch(SwitchOptions.OutputToStatsFile,
+                        SetOptionSwitch(SwitchOptions.OutputToStatsFile,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
-                            get_OptionSwitch(SwitchOptions.OutputToStatsFile)));
+                            GetOptionSwitchValue(SwitchOptions.OutputToStatsFile)));
 
-                        set_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters,
+                        SetOptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters,
                             settingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
-                            get_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters)));
+                            GetOptionSwitchValue(SwitchOptions.NormalizeFileLineEndCharacters)));
 
                         if (!settingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS))
                         {
                             // "ValidateFastaFixedFASTAFileOptions" section not present
                             // Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
 
-                            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                            SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
                                 settingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
-                                get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile)));
+                                GetOptionSwitchValue(SwitchOptions.GenerateFixedFASTAFile)));
 
-                            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                            SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
                                 settingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                                get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName)));
+                                GetOptionSwitchValue(SwitchOptions.SplitOutMultipleRefsInProteinName)));
                         }
                         else
                         {
                             // "ValidateFastaFixedFASTAFileOptions" section is present
 
-                            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                            SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
-                                get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile)));
+                                GetOptionSwitchValue(SwitchOptions.GenerateFixedFASTAFile)));
 
-                            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                            SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                                get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName)));
+                                GetOptionSwitchValue(SwitchOptions.SplitOutMultipleRefsInProteinName)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins,
+                            SetOptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
-                                get_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaRenameDuplicateNameProteins)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins,
+                            SetOptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
-                                get_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaKeepDuplicateNamedProteins)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs,
+                            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
-                                get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff,
+                            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
-                                get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames,
+                            SetOptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
-                                get_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaTruncateLongProteinNames)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession,
+                            SetOptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
-                                get_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines,
+                            SetOptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
-                                get_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaWrapLongResidueLines)));
 
-                            set_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues,
+                            SetOptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues,
                                 settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
-                                get_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues)));
+                                GetOptionSwitchValue(SwitchOptions.FixedFastaRemoveInvalidResidues)));
 
                             // Look for the special character lists
                             // If defined, then update the default values
@@ -5263,7 +5303,7 @@ namespace ValidateFastaFile
                 {
                     ReportResultAddEntry(
                         outputOptions, eMsgTypeConstants.ErrorMsg,
-                        "Error count", get_ErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString());
+                        "Error count", GetErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString());
 
                     if (mFileErrorCount > 1)
                     {
@@ -5300,7 +5340,7 @@ namespace ValidateFastaFile
                     ReportResultAddEntry(
                         outputOptions, eMsgTypeConstants.WarningMsg,
                         "Warning count",
-                        get_ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString());
+                        GetErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString());
 
                     if (mFileWarningCount > 1)
                     {
@@ -5502,38 +5542,38 @@ namespace ValidateFastaFile
 
                 // Save the general settings
 
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", get_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", get_OptionSwitch(SwitchOptions.AllowAsteriskInResidues));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", get_OptionSwitch(SwitchOptions.AllowDashInResidues));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", GetOptionSwitchValue(SwitchOptions.AddMissingLineFeedAtEOF));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", GetOptionSwitchValue(SwitchOptions.AllowAsteriskInResidues));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", GetOptionSwitchValue(SwitchOptions.AllowDashInResidues));
 
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", get_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", get_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinNames));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinSequences));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", GetOptionSwitchValue(SwitchOptions.SaveProteinSequenceHashInfoFiles));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", GetOptionSwitchValue(SwitchOptions.SaveBasicProteinHashInfoFile));
 
                 settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
                 settingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", MinimumProteinNameLength);
                 settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumProteinNameLength", MaximumProteinNameLength);
                 settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumResiduesPerLine", MaximumResiduesPerLine);
 
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", get_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", get_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", get_OptionSwitch(SwitchOptions.OutputToStatsFile));
-                settingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", get_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", GetOptionSwitchValue(SwitchOptions.WarnBlankLinesBetweenProteins));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", GetOptionSwitchValue(SwitchOptions.WarnLineStartsWithSpace));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", GetOptionSwitchValue(SwitchOptions.OutputToStatsFile));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", GetOptionSwitchValue(SwitchOptions.NormalizeFileLineEndCharacters));
 
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", GetOptionSwitchValue(SwitchOptions.GenerateFixedFASTAFile));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", GetOptionSwitchValue(SwitchOptions.SplitOutMultipleRefsInProteinName));
 
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", get_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", get_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", GetOptionSwitchValue(SwitchOptions.FixedFastaRenameDuplicateNameProteins));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", GetOptionSwitchValue(SwitchOptions.FixedFastaKeepDuplicateNamedProteins));
 
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff));
 
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", get_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", get_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", get_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines));
-                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", get_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", GetOptionSwitchValue(SwitchOptions.FixedFastaTruncateLongProteinNames));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", GetOptionSwitchValue(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", GetOptionSwitchValue(SwitchOptions.FixedFastaWrapLongResidueLines));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", GetOptionSwitchValue(SwitchOptions.FixedFastaRemoveInvalidResidues));
 
                 settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", LongProteinNameSplitChars);
                 settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", ProteinNameInvalidCharsToRemove);

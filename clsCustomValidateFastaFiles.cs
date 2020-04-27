@@ -227,7 +227,7 @@ namespace ValidateFastaFile
 
             if (success)
             {
-                if (get_ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
+                if (GetErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
                 {
                     // The file has warnings; we need to record them using RecordFastaFileProblem
 
@@ -237,7 +237,7 @@ namespace ValidateFastaFile
                         RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, eValidationMessageTypes.WarningMsg);
                 }
 
-                if (get_ErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) > 0)
+                if (GetErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) > 0)
                 {
                     // The file has errors; we need to record them using RecordFastaFileProblem
                     // However, we might ignore some of the errors
