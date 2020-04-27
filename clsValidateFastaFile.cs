@@ -5082,7 +5082,7 @@ namespace ValidateFastaFile
         private void ReportMemoryUsage(
             clsNestedStringIntList preloadedProteinNamesToKeep,
             clsNestedStringDictionary<int> proteinSequenceHashes,
-            ICollection proteinNames,
+            ICollection<string> proteinNames,
             IEnumerable<clsProteinHashInfo> proteinSeqHashInfo)
         {
             Console.WriteLine();
@@ -6093,14 +6093,12 @@ namespace ValidateFastaFile
         #endregion
 
         // IComparer class to allow comparison of udtMsgInfoType items
-        private class ErrorInfoComparerClass : IComparer
+        private class ErrorInfoComparerClass : IComparer<udtMsgInfoType>
         {
-            public int Compare(object x, object y)
+            public int Compare(udtMsgInfoType x, udtMsgInfoType y)
             {
-                udtMsgInfoType errorInfo1, errorInfo2;
-
-                errorInfo1 = (udtMsgInfoType)x;
-                errorInfo2 = (udtMsgInfoType)y;
+                var errorInfo1 = x;
+                var errorInfo2 = y;
 
                 if (errorInfo1.MessageCode > errorInfo2.MessageCode)
                 {
