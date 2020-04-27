@@ -1,243 +1,264 @@
-﻿Imports System.Runtime.InteropServices
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
-''' <summary>
-''' This class implements a dictionary where keys are strings and values are type T (for example string or integer)
-''' Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries
-''' based on the first few letters of the keys of an added key/value pair
-''' </summary>
-''' <typeparam name="T">Type for values</typeparam>
-''' <remarks></remarks>
-Public Class clsNestedStringDictionary(Of T)
+namespace ValidateFastaFile
+{
 
-    Private ReadOnly mData As Dictionary(Of String, Dictionary(Of String, T))
-    Private ReadOnly mComparer As StringComparer
+    /// <summary>
+    /// This class implements a dictionary where keys are strings and values are type T (for example string or integer)
+    /// Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries
+    /// based on the first few letters of the keys of an added key/value pair
+    /// </summary>
+    /// <typeparam name="T">Type for values</typeparam>
+    /// <remarks></remarks>
+    public class clsNestedStringDictionary<T>
+    {
+        private readonly Dictionary<string, Dictionary<string, T>> mData;
+        private readonly StringComparer mComparer;
 
-    ''' <summary>
-    ''' Number of items stored with Add()
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property Count As Integer
-        Get
-            Dim totalItems = 0
-            For Each subDictionary In mData.Values
-                totalItems += subDictionary.Count
-            Next
-            Return totalItems
-        End Get
-    End Property
+        /// <summary>
+        /// Number of items stored with Add()
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public int Count
+        {
+            get
+            {
+                int totalItems = 0;
+                foreach (var subDictionary in mData.Values)
+                    totalItems += subDictionary.Count;
 
-    ' ReSharper disable once UnusedMember.Global
-    ''' <summary>
-    ''' True when we are ignoring case for stored keys
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property IgnoreCase As Boolean
+                return totalItems;
+            }
+        }
 
-    ''' <summary>
-    ''' The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks>
-    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance
-    ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
-    ''' </remarks>
-    Public ReadOnly Property SpannerCharLength As Byte
+        // ReSharper disable once UnusedMember.Global
+        /// <summary>
+        /// True when we are ignoring case for stored keys
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public bool IgnoreCase { get; private set; }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
-    ''' <param name="spannerCharLength"></param>
-    ''' <remarks>
-    ''' If spannerCharLength is too small, all of the items added to this class instance using Add() will be
-    ''' tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
-    ''' </remarks>
-    Public Sub New(Optional ignoreCaseForKeys As Boolean = False, Optional spannerCharLength As Byte = 1)
+        /// <summary>
+        /// The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks>
+        /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
+        /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+        /// </remarks>
+        public byte SpannerCharLength { get; private set; }
 
-        IgnoreCase = ignoreCaseForKeys
-        If IgnoreCase Then
-            mComparer = StringComparer.OrdinalIgnoreCase
-        Else
-            mComparer = StringComparer.Ordinal
-        End If
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
+        /// <param name="spannerCharLength"></param>
+        /// <remarks>
+        /// If spannerCharLength is too small, all of the items added to this class instance using Add() will be
+        /// tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+        /// </remarks>
+        public clsNestedStringDictionary(bool ignoreCaseForKeys = false, byte spannerCharLength = 1)
+        {
+            IgnoreCase = ignoreCaseForKeys;
+            if (IgnoreCase)
+            {
+                mComparer = StringComparer.OrdinalIgnoreCase;
+            }
+            else
+            {
+                mComparer = StringComparer.Ordinal;
+            }
 
-        mData = New Dictionary(Of String, Dictionary(Of String, T))(mComparer)
+            mData = new Dictionary<string, Dictionary<string, T>>(mComparer);
 
-        If spannerCharLength < 1 Then
-            Me.SpannerCharLength = 1
-        Else
-            Me.SpannerCharLength = spannerCharLength
-        End If
+            if (spannerCharLength < 1)
+            {
+                SpannerCharLength = 1;
+            }
+            else
+            {
+                SpannerCharLength = spannerCharLength;
+            }
+        }
 
-    End Sub
+        /// <summary>
+        /// Store a key and its associated value
+        /// </summary>
+        /// <param name="key">String to store</param>
+        /// <param name="value">Value of type T</param>
+        /// <remarks></remarks>
+        /// <exception cref="System.ArgumentException">Thrown if the key has already been stored</exception>
+        public void Add(string key, T value)
+        {
+            Dictionary<string, T> subDictionary = null;
+            string spannerKey = GetSpannerKey(key);
 
-    ''' <summary>
-    ''' Store a key and its associated value
-    ''' </summary>
-    ''' <param name="key">String to store</param>
-    ''' <param name="value">Value of type T</param>
-    ''' <remarks></remarks>
-    ''' <exception cref="System.ArgumentException">Thrown if the key has already been stored</exception>
-    Public Sub Add(key As String, value As T)
+            if (!mData.TryGetValue(spannerKey, out subDictionary))
+            {
+                subDictionary = new Dictionary<string, T>(mComparer);
+                mData.Add(spannerKey, subDictionary);
+            }
 
-        Dim subDictionary As Dictionary(Of String, T) = Nothing
-        Dim spannerKey = GetSpannerKey(key)
+            subDictionary.Add(key, value);
+        }
 
-        If Not (mData.TryGetValue(spannerKey, subDictionary)) Then
-            subDictionary = New Dictionary(Of String, T)(mComparer)
-            mData.Add(spannerKey, subDictionary)
-        End If
+        /// <summary>
+        /// Remove the stored items
+        /// </summary>
+        /// <remarks></remarks>
+        public void Clear()
+        {
+            foreach (var item in mData)
+                item.Value.Clear();
 
-        subDictionary.Add(key, value)
+            mData.Clear();
+        }
 
-    End Sub
+        /// <summary>
+        /// Check for the existence of a key
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns>True if the key exists, otherwise false</returns>
+        /// <remarks></remarks>
+        public bool ContainsKey(string key)
+        {
+            Dictionary<string, T> subDictionary = null;
+            string spannerKey = GetSpannerKey(key);
 
-    ''' <summary>
-    ''' Remove the stored items
-    ''' </summary>
-    ''' <remarks></remarks>
-    Public Sub Clear()
-        For Each item In mData
-            item.Value.Clear()
-        Next
+            if (mData.TryGetValue(spannerKey, out subDictionary))
+            {
+                return subDictionary.ContainsKey(key);
+            }
 
-        mData.Clear()
-    End Sub
+            return false;
+        }
 
-    ''' <summary>
-    ''' Check for the existence of a key
-    ''' </summary>
-    ''' <param name="key"></param>
-    ''' <returns>True if the key exists, otherwise false</returns>
-    ''' <remarks></remarks>
-    Public Function ContainsKey(key As String) As Boolean
+        /// <summary>
+        /// Return a string summarizing the number of items in the dictionary associated with each spanning key
+        /// </summary>
+        /// <returns>String description of the stored data</returns>
+        /// <remarks>
+        /// Example return strings:
+        /// 1 spanning key:  'a' with 1 item
+        /// 2 spanning keys: 'a' with 1 item and 'o' with 1 item
+        /// 3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
+        /// 5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
+        /// </remarks>
+        public string GetSizeSummary()
+        {
+            string summary = mData.Keys.Count + " spanning keys";
 
-        Dim subDictionary As Dictionary(Of String, T) = Nothing
-        Dim spannerKey = GetSpannerKey(key)
+            var keyNames = mData.Keys.ToList();
 
-        If (mData.TryGetValue(spannerKey, subDictionary)) Then
-            Return subDictionary.ContainsKey(key)
-        End If
+            keyNames.Sort(mComparer);
 
-        Return False
+            if (keyNames.Count == 1)
+            {
+                summary = "1 spanning key:  " +
+                    GetSpanningKeyDescription(keyNames[0]);
+            }
+            else if (keyNames.Count == 2)
+            {
+                summary += ": " +
+                    GetSpanningKeyDescription(keyNames[0]) + " and " +
+                    GetSpanningKeyDescription(keyNames[1]);
+            }
+            else if (keyNames.Count > 2)
+            {
+                int midPoint = keyNames.Count / 2;
 
-    End Function
+                summary += ": including " +
+                    GetSpanningKeyDescription(keyNames[0]) + ", " +
+                    GetSpanningKeyDescription(keyNames[midPoint]) + ", and " +
+                    GetSpanningKeyDescription(keyNames[keyNames.Count - 1]);
+            }
 
-    ''' <summary>
-    ''' Return a string summarizing the number of items in the dictionary associated with each spanning key
-    ''' </summary>
-    ''' <returns>String description of the stored data</returns>
-    ''' <remarks>
-    ''' Example return strings:
-    '''   1 spanning key:  'a' with 1 item
-    '''   2 spanning keys: 'a' with 1 item and 'o' with 1 item
-    '''   3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
-    '''   5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
-    ''' </remarks>
-    Public Function GetSizeSummary() As String
+            return summary;
+        }
 
-        Dim summary = mData.Keys.Count & " spanning keys"
+        private string GetSpanningKeyDescription(string keyName)
+        {
+            string keyDescription = "'" + keyName + "' with " + mData[keyName].Values.Count + " item";
+            if (mData[keyName].Values.Count == 1)
+            {
+                return keyDescription;
+            }
+            else
+            {
+                return keyDescription + "s";
+            }
+        }
 
-        Dim keyNames = mData.Keys.ToList()
+        // ReSharper disable once UnusedMember.Global
+        /// <summary>
+        /// Retrieve the dictionary associated with the given spanner key
+        /// </summary>
+        /// <param name="keyName"></param>
+        /// <returns>The dictionary, or nothing if the key is not found</returns>
+        /// <remarks></remarks>
+        public Dictionary<string, T> GetDictionaryForSpanningKey(string keyName)
+        {
+            Dictionary<string, T> subDictionary = null;
+            if (mData.TryGetValue(keyName, out subDictionary))
+            {
+                return subDictionary;
+            }
 
-        keyNames.Sort(mComparer)
+            return null;
+        }
 
-        If keyNames.Count = 1 Then
-            summary = "1 spanning key:  " &
-                GetSpanningKeyDescription(keyNames(0))
+        // ReSharper disable once UnusedMember.Global
+        /// <summary>
+        /// Retrieve the list of spanning keys in use
+        /// </summary>
+        /// <returns>List of keys</returns>
+        /// <remarks></remarks>
+        public List<string> GetSpanningKeys()
+        {
+            return mData.Keys.ToList();
+        }
 
-        ElseIf keyNames.Count = 2 Then
-            summary &= ": " &
-                GetSpanningKeyDescription(keyNames(0)) & " and " &
-                GetSpanningKeyDescription(keyNames(1))
+        /// <summary>
+        /// Try to get the value associated with the key
+        /// </summary>
+        /// <param name="key">Key to find</param>
+        /// <param name="value">Value found, or nothing if no match</param>
+        /// <returns>True if a match was found, otherwise nothing</returns>
+        /// <remarks></remarks>
+        public bool TryGetValue(string key, out T value)
+        {
+            Dictionary<string, T> subDictionary = null;
+            string spannerKey = GetSpannerKey(key);
 
-        ElseIf keyNames.Count > 2 Then
-            Dim midPoint = CInt(Math.Floor(keyNames.Count / 2))
+            if (mData.TryGetValue(spannerKey, out subDictionary))
+            {
+                return subDictionary.TryGetValue(key, out value);
+            }
 
-            summary &= ": including " &
-                GetSpanningKeyDescription(keyNames(0)) & ", " &
-                GetSpanningKeyDescription(keyNames(midPoint)) & ", and " &
-                GetSpanningKeyDescription(keyNames(keyNames.Count - 1))
+            value = default;
+            return false;
+        }
 
-        End If
+        private string GetSpannerKey(string key)
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(key, "Key cannot be null");
+            }
 
-        Return summary
+            if (key.Length <= SpannerCharLength)
+            {
+                return key;
+            }
 
-    End Function
-
-    Private Function GetSpanningKeyDescription(keyName As String) As String
-
-        Dim keyDescription = "'" & keyName & "' with " & mData(keyName).Values.Count & " item"
-        If mData(keyName).Values.Count = 1 Then
-            Return keyDescription
-        Else
-            Return keyDescription & "s"
-        End If
-
-    End Function
-
-    ' ReSharper disable once UnusedMember.Global
-    ''' <summary>
-    ''' Retrieve the dictionary associated with the given spanner key
-    ''' </summary>
-    ''' <param name="keyName"></param>
-    ''' <returns>The dictionary, or nothing if the key is not found</returns>
-    ''' <remarks></remarks>
-    Public Function GetDictionaryForSpanningKey(keyName As String) As Dictionary(Of String, T)
-        Dim subDictionary As Dictionary(Of String, T) = Nothing
-        If mData.TryGetValue(keyName, subDictionary) Then
-            Return subDictionary
-        End If
-
-        Return Nothing
-    End Function
-
-    ' ReSharper disable once UnusedMember.Global
-    ''' <summary>
-    ''' Retrieve the list of spanning keys in use
-    ''' </summary>
-    ''' <returns>List of keys</returns>
-    ''' <remarks></remarks>
-    Public Function GetSpanningKeys() As List(Of String)
-        Return mData.Keys.ToList()
-    End Function
-
-    ''' <summary>
-    ''' Try to get the value associated with the key
-    ''' </summary>
-    ''' <param name="key">Key to find</param>
-    ''' <param name="value">Value found, or nothing if no match</param>
-    ''' <returns>True if a match was found, otherwise nothing</returns>
-    ''' <remarks></remarks>
-    Public Function TryGetValue(key As String, <Out> ByRef value As T) As Boolean
-
-        Dim subDictionary As Dictionary(Of String, T) = Nothing
-        Dim spannerKey = GetSpannerKey(key)
-
-        If (mData.TryGetValue(spannerKey, subDictionary)) Then
-            Return subDictionary.TryGetValue(key, value)
-        End If
-
-        value = Nothing
-        Return False
-
-    End Function
-
-    Private Function GetSpannerKey(key As String) As String
-        If key Is Nothing Then
-            Throw New ArgumentNullException(key, "Key cannot be null")
-        End If
-
-        If key.Length <= SpannerCharLength Then
-            Return key
-        End If
-
-        Return key.Substring(0, SpannerCharLength)
-    End Function
-
-End Class
+            return key.Substring(0, SpannerCharLength);
+        }
+    }
+}

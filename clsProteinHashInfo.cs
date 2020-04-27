@@ -1,82 +1,95 @@
-﻿Public Class clsProteinHashInfo
+﻿using System;
+using System.Collections.Generic;
 
-    ''' <summary>
-    ''' Additional protein names
-    ''' </summary>
-    ''' <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
-    Private ReadOnly mAdditionalProteins As SortedSet(Of String)
+namespace ValidateFastaFile
+{
+    public class clsProteinHashInfo
+    {
 
-    ''' <summary>
-    ''' SHA-1 has of the protein sequence
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property SequenceHash As String
+        /// <summary>
+        /// Additional protein names
+        /// </summary>
+        /// <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
+        private readonly SortedSet<string> mAdditionalProteins;
 
-    ''' <summary>
-    ''' Number of residues in the protein sequence
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property SequenceLength As Integer
+        /// <summary>
+        /// SHA-1 has of the protein sequence
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string SequenceHash { get; private set; }
 
-    ''' <summary>
-    ''' The first 20 residues of the protein sequence
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property SequenceStart As String
+        /// <summary>
+        /// Number of residues in the protein sequence
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public int SequenceLength { get; private set; }
 
-    ''' <summary>
-    ''' First protein associated with this hash value
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public ReadOnly Property ProteinNameFirst As String
+        /// <summary>
+        /// The first 20 residues of the protein sequence
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string SequenceStart { get; private set; }
 
-    Public ReadOnly Property AdditionalProteins As IEnumerable(Of String)
-        Get
-            Return mAdditionalProteins
-        End Get
-    End Property
+        /// <summary>
+        /// First protein associated with this hash value
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string ProteinNameFirst { get; private set; }
 
-    ''' <summary>
-    ''' Greater than 0 if multiple entries have the same name and same sequence
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public Property DuplicateProteinNameCount As Integer
+        public IEnumerable<string> AdditionalProteins
+        {
+            get
+            {
+                return mAdditionalProteins;
+            }
+        }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="seqHash"></param>
-    ''' <param name="sbResidues"></param>
-    ''' <param name="proteinName"></param>
-    ''' <remarks></remarks>
-    Public Sub New(seqHash As String, sbResidues As Text.StringBuilder, proteinName As String)
-        SequenceHash = seqHash
+        /// <summary>
+        /// Greater than 0 if multiple entries have the same name and same sequence
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public int DuplicateProteinNameCount { get; set; }
 
-        SequenceLength = sbResidues.Length
-        SequenceStart = sbResidues.ToString.Substring(0, Math.Min(sbResidues.Length, 20))
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="seqHash"></param>
+        /// <param name="sbResidues"></param>
+        /// <param name="proteinName"></param>
+        /// <remarks></remarks>
+        public clsProteinHashInfo(string seqHash, System.Text.StringBuilder sbResidues, string proteinName)
+        {
+            SequenceHash = seqHash;
 
-        ProteinNameFirst = proteinName
-        mAdditionalProteins = New SortedSet(Of String)
-        DuplicateProteinNameCount = 0
-    End Sub
+            SequenceLength = sbResidues.Length;
+            SequenceStart = sbResidues.ToString().Substring(0, Math.Min(sbResidues.Length, 20));
 
-    Public Sub AddAdditionalProtein(proteinName As String)
-        If Not mAdditionalProteins.Contains(proteinName) Then
-            mAdditionalProteins.Add(proteinName)
-        End If
-    End Sub
+            ProteinNameFirst = proteinName;
+            mAdditionalProteins = new SortedSet<string>();
+            DuplicateProteinNameCount = 0;
+        }
 
-    Public Overrides Function ToString() As String
-        Return ProteinNameFirst & ": " & SequenceHash
-    End Function
-End Class
+        public void AddAdditionalProtein(string proteinName)
+        {
+            if (!mAdditionalProteins.Contains(proteinName))
+            {
+                mAdditionalProteins.Add(proteinName);
+            }
+        }
+
+        public override string ToString()
+        {
+            return ProteinNameFirst + ": " + SequenceHash;
+        }
+    }
+}

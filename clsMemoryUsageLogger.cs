@@ -1,255 +1,310 @@
-﻿'*********************************************************************************************************
-' Written by Matthew Monroe for the US Department of Energy
-' Pacific Northwest National Laboratory, Richland, WA
-' Created 02/09/2009
-' Last updated 02/03/2016
-'*********************************************************************************************************
+﻿// *********************************************************************************************************
+// Written by Matthew Monroe for the US Department of Energy
+// Pacific Northwest National Laboratory, Richland, WA
+// Created 02/09/2009
+// Last updated 02/03/2016
+// *********************************************************************************************************
 
-Option Strict On
+using System;
+using System.Diagnostics;
+using System.IO;
 
-Public Class clsMemoryUsageLogger
+namespace ValidateFastaFile
+{
+    public class clsMemoryUsageLogger
+    {
+        #region "Module variables"
 
-#Region "Module variables"
+        private const char COL_SEP = '\t';
 
-    Private Const COL_SEP As Char = ControlChars.Tab
+        // The minimum interval between appending a new memory usage entry to the log
+        private float m_MinimumMemoryUsageLogIntervalMinutes = 1;
 
-    ' The minimum interval between appending a new memory usage entry to the log
-    Private m_MinimumMemoryUsageLogIntervalMinutes As Single = 1
+        // Used to determine the amount of free memory
+        private PerformanceCounter m_PerfCounterFreeMemory;
+        private PerformanceCounter m_PerfCounterPoolPagedBytes;
+        private PerformanceCounter m_PerfCounterPoolNonpagedBytes;
 
-    'Used to determine the amount of free memory
-    Private m_PerfCounterFreeMemory As PerformanceCounter
-    Private m_PerfCounterPoolPagedBytes As PerformanceCounter
-    Private m_PerfCounterPoolNonpagedBytes As PerformanceCounter
+        private bool m_PerfCountersInitialized = false;
+        #endregion
 
-    Private m_PerfCountersInitialized As Boolean = False
-#End Region
+        #region "Properties"
 
-#Region "Properties"
+        /// <summary>
+        /// Output folder for the log file
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks>If this is an empty string, the log file is created in the working directory</remarks>
+        public string LogFolderPath { get; private set; }
 
-    ''' <summary>
-    ''' Output folder for the log file
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks>If this is an empty string, the log file is created in the working directory</remarks>
-    Public ReadOnly Property LogFolderPath As String
+        /// <summary>
+        /// The minimum interval between appending a new memory usage entry to the log
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public float MinimumLogIntervalMinutes
+        {
+            get
+            {
+                return m_MinimumMemoryUsageLogIntervalMinutes;
+            }
+            set
+            {
+                if (value < 0)
+                    value = 0;
+                m_MinimumMemoryUsageLogIntervalMinutes = value;
+            }
+        }
+        #endregion
 
-    ''' <summary>
-    ''' The minimum interval between appending a new memory usage entry to the log
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public Property MinimumLogIntervalMinutes As Single
-        Get
-            Return m_MinimumMemoryUsageLogIntervalMinutes
-        End Get
-        Set
-            If Value < 0 Then Value = 0
-            m_MinimumMemoryUsageLogIntervalMinutes = Value
-        End Set
-    End Property
-#End Region
+        #region "Methods"
 
-#Region "Methods"
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logFolderPath">Folder in which to write the memory log file(s); if this is an empty string, the log file is created in the working directory</param>
+        /// <param name="minLogIntervalMinutes">Minimum log interval, in minutes</param>
+        /// <remarks>
+        /// Use WriteMemoryUsageLogEntry to append an entry to the log file.
+        /// Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
+        public clsMemoryUsageLogger(string logFolderPath, float minLogIntervalMinutes = 5)
+        {
+            if (string.IsNullOrWhiteSpace(logFolderPath))
+            {
+                LogFolderPath = string.Empty;
+            }
+            else
+            {
+                LogFolderPath = logFolderPath;
+            }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="logFolderPath">Folder in which to write the memory log file(s); if this is an empty string, the log file is created in the working directory</param>
-    ''' <param name="minLogIntervalMinutes">Minimum log interval, in minutes</param>
-    ''' <remarks>
-    ''' Use WriteMemoryUsageLogEntry to append an entry to the log file.
-    ''' Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
-    Public Sub New(logFolderPath As String, Optional minLogIntervalMinutes As Single = 5)
-        If String.IsNullOrWhiteSpace(logFolderPath) Then
-            Me.LogFolderPath = String.Empty
-        Else
-            Me.LogFolderPath = logFolderPath
-        End If
+            MinimumLogIntervalMinutes = minLogIntervalMinutes;
+        }
 
-        Me.MinimumLogIntervalMinutes = minLogIntervalMinutes
-    End Sub
+        /// <summary>
+        /// Returns the amount of free memory on the current machine
+        /// </summary>
+        /// <returns>Free memory, in MB</returns>
+        /// <remarks></remarks>
+        public float GetFreeMemoryMB()
+        {
+            try
+            {
+                if (m_PerfCounterFreeMemory == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return m_PerfCounterFreeMemory.NextValue();
+                }
+            }
+            catch (Exception ex)
+            {
+                return -1;
+            }
+        }
 
-    ''' <summary>
-    ''' Returns the amount of free memory on the current machine
-    ''' </summary>
-    ''' <returns>Free memory, in MB</returns>
-    ''' <remarks></remarks>
-    Public Function GetFreeMemoryMB() As Single
-        Try
-            If m_PerfCounterFreeMemory Is Nothing Then
-                Return 0
-            Else
-                Return m_PerfCounterFreeMemory.NextValue()
-            End If
-        Catch ex As Exception
-            Return -1
-        End Try
-    End Function
+        public string GetMemoryUsageHeader()
+        {
+            return "Date" + COL_SEP +
+                   "Time" + COL_SEP +
+                   "ProcessMemoryUsage_MB" + COL_SEP +
+                   "FreeMemory_MB" + COL_SEP +
+                   "PoolPaged_MB" + COL_SEP +
+                   "PoolNonpaged_MB";
+        }
 
-    Public Function GetMemoryUsageHeader() As String
-        Return "Date" & COL_SEP &
-                "Time" & COL_SEP &
-                "ProcessMemoryUsage_MB" & COL_SEP &
-                "FreeMemory_MB" & COL_SEP &
-                "PoolPaged_MB" & COL_SEP &
-                "PoolNonpaged_MB"
-    End Function
+        public string GetMemoryUsageSummary()
+        {
+            if (!m_PerfCountersInitialized)
+            {
+                InitializePerfCounters();
+            }
 
-    Public Function GetMemoryUsageSummary() As String
+            var currentTime = DateTime.Now;
 
-        If Not m_PerfCountersInitialized Then
-            InitializePerfCounters()
-        End If
+            return currentTime.ToString("yyyy-MM-dd") + COL_SEP +
+                   currentTime.ToString("hh:mm:ss tt") + COL_SEP +
+                   GetProcessMemoryUsageMB().ToString("0.0") + COL_SEP +
+                   GetFreeMemoryMB().ToString("0.0") + COL_SEP +
+                   GetPoolPagedMemory().ToString("0.0") + COL_SEP +
+                   GetPoolNonpagedMemory().ToString("0.0");
+        }
 
-        Dim currentTime = DateTime.Now()
+        /// <summary>
+        /// Returns the amount of pool nonpaged memory on the current machine
+        /// </summary>
+        /// <returns>Pool Nonpaged memory, in MB</returns>
+        /// <remarks></remarks>
+        public float GetPoolNonpagedMemory()
+        {
+            try
+            {
+                if (m_PerfCounterPoolNonpagedBytes == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return (float)(m_PerfCounterPoolNonpagedBytes.NextValue() / 1024.0 / 1024);
+                }
+            }
+            catch (Exception ex)
+            {
+                return -1;
+            }
+        }
 
-        Return currentTime.ToString("yyyy-MM-dd") & COL_SEP &
-               currentTime.ToString("hh:mm:ss tt") & COL_SEP &
-               GetProcessMemoryUsageMB.ToString("0.0") & COL_SEP &
-               GetFreeMemoryMB.ToString("0.0") & COL_SEP &
-               GetPoolPagedMemory.ToString("0.0") & COL_SEP &
-               GetPoolNonpagedMemory.ToString("0.0")
+        /// <summary>
+        /// Returns the amount of pool paged memory on the current machine
+        /// </summary>
+        /// <returns>Pool Paged memory, in MB</returns>
+        /// <remarks></remarks>
+        public float GetPoolPagedMemory()
+        {
+            try
+            {
+                if (m_PerfCounterPoolPagedBytes == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return (float)(m_PerfCounterPoolPagedBytes.NextValue() / 1024.0 / 1024);
+                }
+            }
+            catch (Exception ex)
+            {
+                return -1;
+            }
+        }
 
-    End Function
+        /// <summary>
+        /// Returns the amount of memory that the currently running process is using
+        /// </summary>
+        /// <returns>Memory usage, in MB</returns>
+        /// <remarks></remarks>
+        public static float GetProcessMemoryUsageMB()
+        {
+            try
+            {
+                // Obtain a handle to the current process
+                Process objProcess;
+                objProcess = Process.GetCurrentProcess();
 
-    ''' <summary>
-    ''' Returns the amount of pool nonpaged memory on the current machine
-    ''' </summary>
-    ''' <returns>Pool Nonpaged memory, in MB</returns>
-    ''' <remarks></remarks>
-    Public Function GetPoolNonpagedMemory() As Single
-        Try
-            If m_PerfCounterPoolNonpagedBytes Is Nothing Then
-                Return 0
-            Else
-                Return CSng(m_PerfCounterPoolNonpagedBytes.NextValue() / 1024.0 / 1024)
-            End If
-        Catch ex As Exception
-            Return -1
-        End Try
-    End Function
+                // The WorkingSet is the total physical memory usage
+                return (float)(objProcess.WorkingSet64 / 1024.0 / 1024);
+            }
+            catch (Exception ex)
+            {
+                return 0;
+            }
+        }
 
-    ''' <summary>
-    ''' Returns the amount of pool paged memory on the current machine
-    ''' </summary>
-    ''' <returns>Pool Paged memory, in MB</returns>
-    ''' <remarks></remarks>
-    Public Function GetPoolPagedMemory() As Single
-        Try
-            If m_PerfCounterPoolPagedBytes Is Nothing Then
-                Return 0
-            Else
-                Return CSng(m_PerfCounterPoolPagedBytes.NextValue() / 1024.0 / 1024)
-            End If
-        Catch ex As Exception
-            Return -1
-        End Try
-    End Function
+        /// <summary>
+        /// Initializes the performance counters
+        /// </summary>
+        /// <returns>Any errors that occur; empty string if no errors</returns>
+        /// <remarks></remarks>
+        public string InitializePerfCounters()
+        {
+            string msgErrors = string.Empty;
 
-    ''' <summary>
-    ''' Returns the amount of memory that the currently running process is using
-    ''' </summary>
-    ''' <returns>Memory usage, in MB</returns>
-    ''' <remarks></remarks>
-    Public Shared Function GetProcessMemoryUsageMB() As Single
-        Try
-            ' Obtain a handle to the current process
-            Dim objProcess As Process
-            objProcess = Process.GetCurrentProcess()
+            try
+            {
+                m_PerfCounterFreeMemory = new PerformanceCounter("Memory", "Available MBytes");
+                m_PerfCounterFreeMemory.ReadOnly = true;
+            }
+            catch (Exception ex)
+            {
+                if (msgErrors.Length > 0)
+                    msgErrors += "; ";
+                msgErrors += "Error instantiating the Memory: 'Available MBytes' performance counter: " + ex.Message;
+            }
 
-            ' The WorkingSet is the total physical memory usage
-            Return CSng(objProcess.WorkingSet64 / 1024.0 / 1024)
-        Catch ex As Exception
-            Return 0
-        End Try
+            try
+            {
+                m_PerfCounterPoolPagedBytes = new PerformanceCounter("Memory", "Pool Paged Bytes");
+                m_PerfCounterPoolPagedBytes.ReadOnly = true;
+            }
+            catch (Exception ex)
+            {
+                if (msgErrors.Length > 0)
+                    msgErrors += "; ";
+                msgErrors += "Error instantiating the Memory: 'Pool Paged Bytes' performance counter: " + ex.Message;
+            }
 
-    End Function
+            try
+            {
+                m_PerfCounterPoolNonpagedBytes = new PerformanceCounter("Memory", "Pool NonPaged Bytes");
+                m_PerfCounterPoolNonpagedBytes.ReadOnly = true;
+            }
+            catch (Exception ex)
+            {
+                if (msgErrors.Length > 0)
+                    msgErrors += "; ";
+                msgErrors += "Error instantiating the Memory: 'Pool NonPaged Bytes' performance counter: " + ex.Message;
+            }
 
-    ''' <summary>
-    ''' Initializes the performance counters
-    ''' </summary>
-    ''' <returns>Any errors that occur; empty string if no errors</returns>
-    ''' <remarks></remarks>
-    Public Function InitializePerfCounters() As String
-        Dim msgErrors As String = String.Empty
+            m_PerfCountersInitialized = true;
 
-        Try
-            m_PerfCounterFreeMemory = New PerformanceCounter("Memory", "Available MBytes")
-            m_PerfCounterFreeMemory.ReadOnly = True
-        Catch ex As Exception
-            If msgErrors.Length > 0 Then msgErrors &= "; "
-            msgErrors &= "Error instantiating the Memory: 'Available MBytes' performance counter: " & ex.Message
-        End Try
+            return msgErrors;
+        }
 
-        Try
-            m_PerfCounterPoolPagedBytes = New PerformanceCounter("Memory", "Pool Paged Bytes")
-            m_PerfCounterPoolPagedBytes.ReadOnly = True
-        Catch ex As Exception
-            If msgErrors.Length > 0 Then msgErrors &= "; "
-            msgErrors &= "Error instantiating the Memory: 'Pool Paged Bytes' performance counter: " & ex.Message
-        End Try
+        private DateTime dtLastWriteTime = DateTime.UtcNow.Subtract(TimeSpan.FromHours(1));
 
-        Try
-            m_PerfCounterPoolNonpagedBytes = New PerformanceCounter("Memory", "Pool NonPaged Bytes")
-            m_PerfCounterPoolNonpagedBytes.ReadOnly = True
-        Catch ex As Exception
-            If msgErrors.Length > 0 Then msgErrors &= "; "
-            msgErrors &= "Error instantiating the Memory: 'Pool NonPaged Bytes' performance counter: " & ex.Message
-        End Try
+        /// <summary>
+        /// Writes a status file tracking memory usage
+        /// </summary>
+        /// <remarks></remarks>
+        public void WriteMemoryUsageLogEntry()
+        {
+            string logFileName;
+            string logFilePath;
 
-        m_PerfCountersInitialized = True
+            try
+            {
+                if (DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < m_MinimumMemoryUsageLogIntervalMinutes)
+                {
+                    // Not enough time has elapsed since the last write; exit sub
+                    return;
+                }
 
-        Return msgErrors
+                dtLastWriteTime = DateTime.UtcNow;
 
-    End Function
+                // We're creating a new log file each month
+                logFileName = "MemoryUsageLog_" + DateTime.Now.ToString("yyyy-MM") + ".txt";
 
-    ''' <summary>
-    ''' Writes a status file tracking memory usage
-    ''' </summary>
-    ''' <remarks></remarks>
-    Public Sub WriteMemoryUsageLogEntry()
-        Static dtLastWriteTime As DateTime = DateTime.UtcNow.Subtract(New TimeSpan(1, 0, 0))
+                if (!string.IsNullOrWhiteSpace(LogFolderPath))
+                {
+                    logFilePath = Path.Combine(LogFolderPath, logFileName);
+                }
+                else
+                {
+                    logFilePath = string.Copy(logFileName);
+                }
 
-        Dim logFileName As String
-        Dim logFilePath As String
+                bool writeHeader = !File.Exists(logFilePath);
 
-        Try
-            If DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < m_MinimumMemoryUsageLogIntervalMinutes Then
-                ' Not enough time has elapsed since the last write; exit sub
-                Exit Sub
-            End If
-            dtLastWriteTime = DateTime.UtcNow
+                using (var writer = new StreamWriter(new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read)))
+                {
+                    if (writeHeader)
+                    {
+                        GetMemoryUsageHeader();
+                    }
 
-            ' We're creating a new log file each month
-            logFileName = "MemoryUsageLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
+                    writer.WriteLine(GetMemoryUsageSummary());
+                }
+            }
+            catch
+            {
+                // Ignore errors here
+            }
+        }
 
-            If Not String.IsNullOrWhiteSpace(LogFolderPath) Then
-                logFilePath = Path.Combine(LogFolderPath, logFileName)
-            Else
-                logFilePath = String.Copy(logFileName)
-            End If
-
-            Dim writeHeader = Not File.Exists(logFilePath)
-
-            Using writer = New StreamWriter(New FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
-
-                If writeHeader Then
-                    GetMemoryUsageHeader()
-                End If
-
-                writer.WriteLine(GetMemoryUsageSummary())
-
-            End Using
-
-
-        Catch
-            ' Ignore errors here
-        End Try
-
-    End Sub
-
-#End Region
-
-End Class
+        #endregion
+    }
+}

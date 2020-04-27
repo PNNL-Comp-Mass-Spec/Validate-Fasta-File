@@ -1,4529 +1,5227 @@
-﻿Option Strict On
-
-' This class will read a protein fasta file and validate its contents
-'
-' -------------------------------------------------------------------------------
-' Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-' Program started March 21, 2005
-
-' E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
-' Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
-' -------------------------------------------------------------------------------
-'
-' Licensed under the Apache License, Version 2.0; you may not use this file except
-' in compliance with the License.  You may obtain a copy of the License at
-' http://www.apache.org/licenses/LICENSE-2.0
-
-Imports System.Runtime.InteropServices
-Imports System.Text
-Imports System.Text.RegularExpressions
-Imports PRISM
-
-Public Class clsValidateFastaFile
-    Inherits FileProcessor.ProcessFilesBase
-
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    Public Sub New()
-        mFileDate = "April 15, 2020"
-        InitializeLocalVariables()
-    End Sub
-
-    ''' <summary>
-    ''' Constructor that takes a parameter file
-    ''' </summary>
-    ''' <param name="parameterFilePath"></param>
-    Public Sub New(parameterFilePath As String)
-        Me.New()
-        LoadParameterFileSettings(parameterFilePath)
-    End Sub
-
-#Region "Constants and Enums"
-    Private Const DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH As Integer = 3
-
-    ''' <summary>
-    ''' The maximum suggested value when using SEQUEST is 34 characters
-    ''' In contrast, MS-GF+ supports long protein names
-    ''' </summary>
-    ''' <remarks></remarks>
-    Public Const DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH As Integer = 60
-    Private Const DEFAULT_MAXIMUM_RESIDUES_PER_LINE As Integer = 120
-
-    Public Const DEFAULT_PROTEIN_LINE_START_CHAR As Char = ">"c
-    Public Const DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR As Char = "|"c
-    Public Const DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS As String = ":|"
-    Public Const DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS As String = ":|;"
-
-    Private Const INVALID_PROTEIN_NAME_CHAR_REPLACEMENT As Char = "_"c
-
-    Private Const CUSTOM_RULE_ID_START As Integer = 1000
-    Private Const DEFAULT_CONTEXT_LENGTH As Integer = 13
-
-    Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING As String = "Line contains a protein name, but not a description"
-    Public Const MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG As String = "Protein description is over 900 characters long"
-    Public Const MESSAGE_TEXT_ASTERISK_IN_RESIDUES As String = "An asterisk was found in the residues"
-    Public Const MESSAGE_TEXT_DASH_IN_RESIDUES As String = "A dash was found in the residues"
-
-    Public Const XML_SECTION_OPTIONS As String = "ValidateFastaFileOptions"
-    Public Const XML_SECTION_FIXED_FASTA_FILE_OPTIONS As String = "ValidateFastaFixedFASTAFileOptions"
-
-    Public Const XML_SECTION_FASTA_HEADER_LINE_RULES As String = "ValidateFastaHeaderLineRules"
-    Public Const XML_SECTION_FASTA_PROTEIN_NAME_RULES As String = "ValidateFastaProteinNameRules"
-    Public Const XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES As String = "ValidateFastaProteinDescriptionRules"
-    Public Const XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES As String = "ValidateFastaProteinSequenceRules"
-
-    Public Const XML_OPTION_ENTRY_RULE_COUNT As String = "RuleCount"
-
-    ' The value of 7995 is chosen because the maximum varchar() value in Sql Server is varchar(8000)
-    ' and we want to prevent truncation errors when importing protein names and descriptions into Sql Server
-    Public Const MAX_PROTEIN_DESCRIPTION_LENGTH As Integer = 7995
-
-    Private Const MEM_USAGE_PREFIX = "MemUsage: "
-    Private Const REPORT_DETAILED_MEMORY_USAGE = False
-
-    Private Const PROTEIN_NAME_COLUMN = "Protein_Name"
-    Private Const SEQUENCE_LENGTH_COLUMN = "Sequence_Length"
-    Private Const SEQUENCE_HASH_COLUMN = "Sequence_Hash"
-    Private Const PROTEIN_HASHES_FILENAME_SUFFIX = "_ProteinHashes.txt"
-
-    Private Const DEFAULT_WARNING_SEVERITY = 3
-    Private Const DEFAULT_ERROR_SEVERITY = 7
-
-    ' Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
-    ' the values in enum eMessageCodeConstants should all be less than CUSTOM_RULE_ID_START
-    Public Enum eMessageCodeConstants
-        UnspecifiedError = 0
-
-        ' Error messages
-        ProteinNameIsTooLong = 1
-        LineStartsWithSpace = 2
-        '        RightArrowFollowedBySpace = 3
-        '        RightArrowFollowedByTab = 4
-        '        RightArrowButNoProteinName = 5
-        BlankLineBetweenProteinNameAndResidues = 6
-        BlankLineInMiddleOfResidues = 7
-        ResiduesFoundWithoutProteinHeader = 8
-        ProteinEntriesNotFound = 9
-        FinalProteinEntryMissingResidues = 10
-        FileDoesNotEndWithLinefeed = 11
-        DuplicateProteinName = 12
-
-        ' Warning messages
-        ProteinNameIsTooShort = 13
-        '        ProteinNameContainsVerticalBars = 14
-        '        ProteinNameContainsWarningCharacters = 21
-        '        ProteinNameWithoutDescription = 14
-        BlankLineBeforeProteinName = 15
-        '        ProteinNameAndDescriptionSeparatedByTab = 16
-        '        ProteinDescriptionWithTab = 25
-        '        ProteinDescriptionWithQuotationMark = 26
-        '        ProteinDescriptionWithEscapedSlash = 27
-        '        ProteinDescriptionWithUndesirableCharacter = 28
-        ResiduesLineTooLong = 17
-        '        ResiduesLineContainsU = 30
-        DuplicateProteinSequence = 18
-        RenamedProtein = 19
-        ProteinRemovedSinceDuplicateSequence = 20
-        DuplicateProteinNameRetained = 21
-    End Enum
-
-    Structure udtMsgInfoType
-        Public LineNumber As Integer
-        Public ColNumber As Integer
-        Public ProteinName As String
-        Public MessageCode As Integer
-        Public ExtraInfo As String
-        Public Context As String
-
-        Public Overrides Function ToString() As String
-            Return String.Format("Line {0}, protein {1}, code {2}: {3}", LineNumber, ProteinName, MessageCode, ExtraInfo)
-        End Function
-    End Structure
-
-    Structure udtOutputOptionsType
-        Public SourceFile As String
-        Public OutputToStatsFile As Boolean
-        Public OutFile As StreamWriter
-        Public SepChar As String
-
-        Public Overrides Function ToString() As String
-            Return SourceFile
-        End Function
-    End Structure
-
-    Enum RuleTypes
-        HeaderLine
-        ProteinName
-        ProteinDescription
-        ProteinSequence
-    End Enum
-
-    Enum SwitchOptions
-        AddMissingLineFeedAtEOF
-        AllowAsteriskInResidues
-        CheckForDuplicateProteinNames
-        GenerateFixedFASTAFile
-        SplitOutMultipleRefsInProteinName
-        OutputToStatsFile
-        WarnBlankLinesBetweenProteins
-        WarnLineStartsWithSpace
-        NormalizeFileLineEndCharacters
-        CheckForDuplicateProteinSequences
-        FixedFastaRenameDuplicateNameProteins
-        SaveProteinSequenceHashInfoFiles
-        FixedFastaConsolidateDuplicateProteinSeqs
-        FixedFastaConsolidateDupsIgnoreILDiff
-        FixedFastaTruncateLongProteinNames
-        FixedFastaSplitOutMultipleRefsForKnownAccession
-        FixedFastaWrapLongResidueLines
-        FixedFastaRemoveInvalidResidues
-        SaveBasicProteinHashInfoFile
-        AllowDashInResidues
-        FixedFastaKeepDuplicateNamedProteins        ' Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
-        AllowAllSymbolsInProteinNames
-    End Enum
-
-    Enum FixedFASTAFileValues
-        DuplicateProteinNamesSkippedCount
-        ProteinNamesInvalidCharsReplaced
-        ProteinNamesMultipleRefsRemoved
-        TruncatedProteinNameCount
-        UpdatedResidueLines
-        DuplicateProteinNamesRenamedCount
-        DuplicateProteinSeqsSkippedCount
-    End Enum
-
-    Enum ErrorWarningCountTypes
-        Specified
-        Unspecified
-        Total
-    End Enum
-
-    Enum eMsgTypeConstants
-        ErrorMsg = 0
-        WarningMsg = 1
-        StatusMsg = 2
-    End Enum
-
-    Enum eValidateFastaFileErrorCodes
-        NoError = 0
-        OptionsSectionNotFound = 1
-        ErrorReadingInputFile = 2
-        ErrorCreatingStatsFile = 4
-        ErrorVerifyingLinefeedAtEOF = 8
-        UnspecifiedError = -1
-    End Enum
-
-    Enum eLineEndingCharacters
-        CRLF  'Windows
-        CR    'Old Style Mac
-        LF    'Unix/Linux/OS X
-        LFCR  'Oddball (Just for completeness!)
-    End Enum
-#End Region
-
-#Region "Structures"
-
-    Private Structure udtErrorStatsType
-        Public MessageCode As Integer               ' Note: Custom rules start with message code CUSTOM_RULE_ID_START
-        Public CountSpecified As Integer
-        Public CountUnspecified As Integer
-
-        Public Overrides Function ToString() As String
-            Return MessageCode & ": " & CountSpecified & " specified, " & CountUnspecified & " unspecified"
-        End Function
-    End Structure
-
-    Private Structure udtItemSummaryIndexedType
-        Public ErrorStatsCount As Integer
-        Public ErrorStats() As udtErrorStatsType        ' Note: This array ranges from 0 to .ErrorStatsCount since it is Dimmed with extra space
-        Public MessageCodeToArrayIndex As Dictionary(Of Integer, Integer)
-    End Structure
-
-    Public Structure udtRuleDefinitionType
-        Public MatchRegEx As String
-        Public MatchIndicatesProblem As Boolean     ' True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
-        Public MessageWhenProblem As String         ' Message to display if a problem is present
-        Public Severity As Short                    ' 0 is lowest severity, 9 is highest severity; value >= 5 means error
-        Public DisplayMatchAsExtraInfo As Boolean   ' If true, then the matching text is stored as the context info
-        Public CustomRuleID As Integer              ' This value is auto-assigned
-
-        Public Overrides Function ToString() As String
-            Return CustomRuleID & ": " & MessageWhenProblem
-        End Function
-    End Structure
-
-    Private Structure udtRuleDefinitionExtendedType
-        Public RuleDefinition As udtRuleDefinitionType
-        Public reRule As Regex
-
-        ' ReSharper disable once NotAccessedField.Local
-        Public Valid As Boolean
-
-        Public Overrides Function ToString() As String
-            Return RuleDefinition.CustomRuleID & ": " & RuleDefinition.MessageWhenProblem
-        End Function
-    End Structure
-
-    Private Structure udtFixedFastaOptionsType
-        Public SplitOutMultipleRefsInProteinName As Boolean
-        Public SplitOutMultipleRefsForKnownAccession As Boolean
-        Public LongProteinNameSplitChars As Char()
-        Public ProteinNameInvalidCharsToRemove As Char()
-        Public RenameProteinsWithDuplicateNames As Boolean
-        Public KeepDuplicateNamedProteinsUnlessMatchingSequence As Boolean      ' Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true
-        Public ConsolidateProteinsWithDuplicateSeqs As Boolean
-        Public ConsolidateDupsIgnoreILDiff As Boolean
-        Public TruncateLongProteinNames As Boolean
-        Public WrapLongResidueLines As Boolean
-        Public RemoveInvalidResidues As Boolean
-    End Structure
-
-    Private Structure udtFixedFastaStatsType
-        Public TruncatedProteinNameCount As Integer
-        Public UpdatedResidueLines As Integer
-        Public ProteinNamesInvalidCharsReplaced As Integer
-        Public ProteinNamesMultipleRefsRemoved As Integer
-        Public DuplicateNameProteinsSkipped As Integer
-        Public DuplicateNameProteinsRenamed As Integer
-        Public DuplicateSequenceProteinsSkipped As Integer
-    End Structure
-
-    Private Structure udtProteinNameTruncationRegex
-        Public reMatchIPI As Regex
-        Public reMatchGI As Regex
-        Public reMatchJGI As Regex
-        Public reMatchJGIBaseAndID As Regex
-        Public reMatchGeneric As Regex
-        Public reMatchDoubleBarOrColonAndBar As Regex
-    End Structure
-
-#End Region
-
-#Region "Classwide Variables"
-
-    ''' <summary>
-    ''' Fasta file path being examined
-    ''' </summary>
-    ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected mFastaFilePath As String
-
-    Private mLineCount As Integer
-    Private mProteinCount As Integer
-    Private mResidueCount As Long
-
-    Private mFixedFastaStats As udtFixedFastaStatsType
-
-    Private mFileErrorCount As Integer
-    Private mFileErrors() As udtMsgInfoType
-    Private mFileErrorStats As udtItemSummaryIndexedType
-
-    Private mFileWarningCount As Integer
-
-    Private mFileWarnings() As udtMsgInfoType
-    Private mFileWarningStats As udtItemSummaryIndexedType
-
-    Private mHeaderLineRules() As udtRuleDefinitionType
-    Private mProteinNameRules() As udtRuleDefinitionType
-    Private mProteinDescriptionRules() As udtRuleDefinitionType
-    Private mProteinSequenceRules() As udtRuleDefinitionType
-    Private mMasterCustomRuleID As Integer = CUSTOM_RULE_ID_START
-
-    Private mProteinNameFirstRefSepChars() As Char
-    Private mProteinNameSubsequentRefSepChars() As Char
-
-    Private mAddMissingLinefeedAtEOF As Boolean
-    Private mCheckForDuplicateProteinNames As Boolean
-
-    ' This will be set to True if
-    '   mSaveProteinSequenceHashInfoFiles = True or mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = True
-    Private mCheckForDuplicateProteinSequences As Boolean
-
-    Private mMaximumFileErrorsToTrack As Integer        ' This is the maximum # of errors per type to track
-    Private mMinimumProteinNameLength As Integer
-    Private mMaximumProteinNameLength As Integer
-    Private mMaximumResiduesPerLine As Integer
-
-    Private mFixedFastaOptions As udtFixedFastaOptionsType     ' Used if mGenerateFixedFastaFile = True
-
-    Private mOutputToStatsFile As Boolean
-    Private mStatsFilePath As String
-
-    Private mGenerateFixedFastaFile As Boolean
-    Private mSaveProteinSequenceHashInfoFiles As Boolean
-
-    ' When true, creates a text file that will contain the protein name and sequence hash for each protein;
-    '  this option will not store protein names and/or hashes in memory, and is thus useful for processing
-    '  huge .Fasta files to determine duplicate proteins
-    Private mSaveBasicProteinHashInfoFile As Boolean
-
-    Private mProteinLineStartChar As Char
-
-    Private mAllowAsteriskInResidues As Boolean
-    Private mAllowDashInResidues As Boolean
-    Private mAllowAllSymbolsInProteinNames As Boolean
-
-    Private mWarnBlankLinesBetweenProteins As Boolean
-    Private mWarnLineStartsWithSpace As Boolean
-    Private mNormalizeFileLineEndCharacters As Boolean
-
-    ''' <summary>
-    ''' The number of characters at the start of key strings to use when adding items to clsNestedStringDictionary instances
-    ''' </summary>
-    ''' <remarks>
-    ''' If this value is too short, all of the items added to the clsNestedStringDictionary instance
-    ''' will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
-    ''' </remarks>
-    Private mProteinNameSpannerCharLength As Byte = 1
-
-    Private mLocalErrorCode As eValidateFastaFileErrorCodes
-
-    Private mMemoryUsageLogger As clsMemoryUsageLogger
-
-    Private mProcessMemoryUsageMBAtStart As Single
-
-    Private mSortUtilityErrorMessage As String
-
-    Private mTempFilesToDelete As List(Of String)
-
-#End Region
-
-#Region "Properties"
-
-    ''' <summary>
-    ''' Gets or sets a processing option
-    ''' </summary>
-    ''' <param name="SwitchName"></param>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-    Public Property OptionSwitch(switchName As SwitchOptions) As Boolean
-        Get
-            Return GetOptionSwitchValue(switchName)
-        End Get
-        Set
-            SetOptionSwitch(switchName, Value)
-        End Set
-    End Property
-
-    ''' <summary>
-    ''' Set a processing option
-    ''' </summary>
-    ''' <param name="SwitchName"></param>
-    ''' <param name="State"></param>
-    ''' <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-    Public Sub SetOptionSwitch(switchName As SwitchOptions, state As Boolean)
-
-        Select Case switchName
-            Case SwitchOptions.AddMissingLinefeedatEOF
-                mAddMissingLinefeedAtEOF = state
-            Case SwitchOptions.AllowAsteriskInResidues
-                mAllowAsteriskInResidues = state
-            Case SwitchOptions.CheckForDuplicateProteinNames
-                mCheckForDuplicateProteinNames = state
-            Case SwitchOptions.GenerateFixedFASTAFile
-                mGenerateFixedFastaFile = state
-            Case SwitchOptions.OutputToStatsFile
-                mOutputToStatsFile = state
-            Case SwitchOptions.SplitOutMultipleRefsInProteinName
-                mFixedFastaOptions.SplitOutMultipleRefsInProteinName = state
-            Case SwitchOptions.WarnBlankLinesBetweenProteins
-                mWarnBlankLinesBetweenProteins = state
-            Case SwitchOptions.WarnLineStartsWithSpace
-                mWarnLineStartsWithSpace = state
-            Case SwitchOptions.NormalizeFileLineEndCharacters
-                mNormalizeFileLineEndCharacters = state
-            Case SwitchOptions.CheckForDuplicateProteinSequences
-                mCheckForDuplicateProteinSequences = state
-            Case SwitchOptions.FixedFastaRenameDuplicateNameProteins
-                mFixedFastaOptions.RenameProteinsWithDuplicateNames = state
-            Case SwitchOptions.FixedFastaKeepDuplicateNamedProteins
-                mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence = state
-            Case SwitchOptions.SaveProteinSequenceHashInfoFiles
-                mSaveProteinSequenceHashInfoFiles = state
-            Case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
-                mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = state
-            Case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
-                mFixedFastaOptions.ConsolidateDupsIgnoreILDiff = state
-            Case SwitchOptions.FixedFastaTruncateLongProteinNames
-                mFixedFastaOptions.TruncateLongProteinNames = state
-            Case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
-                mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession = state
-            Case SwitchOptions.FixedFastaWrapLongResidueLines
-                mFixedFastaOptions.WrapLongResidueLines = state
-            Case SwitchOptions.FixedFastaRemoveInvalidResidues
-                mFixedFastaOptions.RemoveInvalidResidues = state
-            Case SwitchOptions.SaveBasicProteinHashInfoFile
-                mSaveBasicProteinHashInfoFile = state
-            Case SwitchOptions.AllowDashInResidues
-                mAllowDashInResidues = state
-            Case SwitchOptions.AllowAllSymbolsInProteinNames
-                mAllowAllSymbolsInProteinNames = state
-        End Select
-
-    End Sub
-
-    Public Function GetOptionSwitchValue(SwitchName As SwitchOptions) As Boolean
-
-        Select Case SwitchName
-            Case SwitchOptions.AddMissingLinefeedatEOF
-                Return mAddMissingLinefeedAtEOF
-            Case SwitchOptions.AllowAsteriskInResidues
-                Return mAllowAsteriskInResidues
-            Case SwitchOptions.CheckForDuplicateProteinNames
-                Return mCheckForDuplicateProteinNames
-            Case SwitchOptions.GenerateFixedFASTAFile
-                Return mGenerateFixedFastaFile
-            Case SwitchOptions.OutputToStatsFile
-                Return mOutputToStatsFile
-            Case SwitchOptions.SplitOutMultipleRefsInProteinName
-                Return mFixedFastaOptions.SplitOutMultipleRefsInProteinName
-            Case SwitchOptions.WarnBlankLinesBetweenProteins
-                Return mWarnBlankLinesBetweenProteins
-            Case SwitchOptions.WarnLineStartsWithSpace
-                Return mWarnLineStartsWithSpace
-            Case SwitchOptions.NormalizeFileLineEndCharacters
-                Return mNormalizeFileLineEndCharacters
-            Case SwitchOptions.CheckForDuplicateProteinSequences
-                Return mCheckForDuplicateProteinSequences
-            Case SwitchOptions.FixedFastaRenameDuplicateNameProteins
-                Return mFixedFastaOptions.RenameProteinsWithDuplicateNames
-            Case SwitchOptions.FixedFastaKeepDuplicateNamedProteins
-                Return mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence
-            Case SwitchOptions.SaveProteinSequenceHashInfoFiles
-                Return mSaveProteinSequenceHashInfoFiles
-            Case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs
-                Return mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs
-            Case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff
-                Return mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
-            Case SwitchOptions.FixedFastaTruncateLongProteinNames
-                Return mFixedFastaOptions.TruncateLongProteinNames
-            Case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession
-                Return mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession
-            Case SwitchOptions.FixedFastaWrapLongResidueLines
-                Return mFixedFastaOptions.WrapLongResidueLines
-            Case SwitchOptions.FixedFastaRemoveInvalidResidues
-                Return mFixedFastaOptions.RemoveInvalidResidues
-            Case SwitchOptions.SaveBasicProteinHashInfoFile
-                Return mSaveBasicProteinHashInfoFile
-            Case SwitchOptions.AllowDashInResidues
-                Return mAllowDashInResidues
-            Case SwitchOptions.AllowAllSymbolsInProteinNames
-                Return mAllowAllSymbolsInProteinNames
-        End Select
-
-        Return False
-
-    End Function
-
-    Public ReadOnly Property ErrorWarningCounts(
-      messageType As eMsgTypeConstants,
-      CountType As ErrorWarningCountTypes) As Integer
-
-        Get
-            Dim tmpValue As Integer
-            Select Case CountType
-                Case ErrorWarningCountTypes.Total
-                    Select Case messageType
-                        Case eMsgTypeConstants.ErrorMsg
-                            tmpValue = mFileErrorCount + ComputeTotalUnspecifiedCount(mFileErrorStats)
-                        Case eMsgTypeConstants.WarningMsg
-                            tmpValue = mFileWarningCount + ComputeTotalUnspecifiedCount(mFileWarningStats)
-                        Case eMsgTypeConstants.StatusMsg
-                            tmpValue = 0
-                    End Select
-                Case ErrorWarningCountTypes.Unspecified
-                    Select Case messageType
-                        Case eMsgTypeConstants.ErrorMsg
-                            tmpValue = ComputeTotalUnspecifiedCount(mFileErrorStats)
-                        Case eMsgTypeConstants.WarningMsg
-                            tmpValue = ComputeTotalSpecifiedCount(mFileWarningStats)
-                        Case eMsgTypeConstants.StatusMsg
-                            tmpValue = 0
-                    End Select
-                Case ErrorWarningCountTypes.Specified
-                    Select Case messageType
-                        Case eMsgTypeConstants.ErrorMsg
-                            tmpValue = mFileErrorCount
-                        Case eMsgTypeConstants.WarningMsg
-                            tmpValue = mFileWarningCount
-                        Case eMsgTypeConstants.StatusMsg
-                            tmpValue = 0
-                    End Select
-            End Select
-
-            Return tmpValue
-        End Get
-    End Property
-
-    Public ReadOnly Property FixedFASTAFileStats(valueType As FixedFASTAFileValues) As Integer
-        Get
-            Dim tmpValue As Integer
-            Select Case valueType
-                Case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount
-                    tmpValue = mFixedFastaStats.DuplicateNameProteinsSkipped
-                Case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced
-                    tmpValue = mFixedFastaStats.ProteinNamesInvalidCharsReplaced
-                Case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved
-                    tmpValue = mFixedFastaStats.ProteinNamesMultipleRefsRemoved
-                Case FixedFASTAFileValues.TruncatedProteinNameCount
-                    tmpValue = mFixedFastaStats.TruncatedProteinNameCount
-                Case FixedFASTAFileValues.UpdatedResidueLines
-                    tmpValue = mFixedFastaStats.UpdatedResidueLines
-                Case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount
-                    tmpValue = mFixedFastaStats.DuplicateNameProteinsRenamed
-                Case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount
-                    tmpValue = mFixedFastaStats.DuplicateSequenceProteinsSkipped
-            End Select
-            Return tmpValue
-
-        End Get
-    End Property
-
-    Public ReadOnly Property ProteinCount As Integer
-        Get
-            Return mProteinCount
-        End Get
-    End Property
-
-    Public ReadOnly Property LineCount As Integer
-        Get
-            Return mLineCount
-        End Get
-    End Property
-
-    Public ReadOnly Property LocalErrorCode As eValidateFastaFileErrorCodes
-        Get
-            Return mLocalErrorCode
-        End Get
-    End Property
-
-    Public ReadOnly Property ResidueCount As Long
-        Get
-            Return mResidueCount
-        End Get
-    End Property
-
-    Public ReadOnly Property FastaFilePath As String
-        Get
-            Return mFastaFilePath
-        End Get
-    End Property
-
-    Public ReadOnly Property ErrorMessageTextByIndex(
-      index As Integer,
-      valueSeparator As String) As String
-
-        Get
-            Return GetFileErrorTextByIndex(index, valueSeparator)
-        End Get
-    End Property
-
-    Public ReadOnly Property WarningMessageTextByIndex(
-      index As Integer,
-      valueSeparator As String) As String
-
-        Get
-            Return GetFileWarningTextByIndex(index, valueSeparator)
-        End Get
-    End Property
-
-    Public ReadOnly Property ErrorsByIndex(errorIndex As Integer) As udtMsgInfoType
-        Get
-            Return (GetFileErrorByIndex(errorIndex))
-        End Get
-    End Property
-
-    Public ReadOnly Property WarningsByIndex(warningIndex As Integer) As udtMsgInfoType
-        Get
-            Return GetFileWarningByIndex(warningIndex)
-        End Get
-    End Property
-
-    ''' <summary>
-    ''' Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public Property ExistingProteinHashFile As String
-
-    Public Property MaximumFileErrorsToTrack As Integer
-        Get
-            Return mMaximumFileErrorsToTrack
-        End Get
-        Set
-            If Value < 1 Then Value = 1
-            mMaximumFileErrorsToTrack = Value
-        End Set
-    End Property
-
-    Public Property MaximumProteinNameLength As Integer
-        Get
-            Return mMaximumProteinNameLength
-        End Get
-        Set
-            If Value < 8 Then
-                ' Do not allow maximum lengths less than 8; use the default
-                Value = DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH
-            End If
-            mMaximumProteinNameLength = Value
-        End Set
-    End Property
-
-    Public Property MinimumProteinNameLength As Integer
-        Get
-            Return mMinimumProteinNameLength
-        End Get
-        Set
-            If Value < 1 Then Value = DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH
-            mMinimumProteinNameLength = Value
-        End Set
-    End Property
-
-    Public Property MaximumResiduesPerLine As Integer
-        Get
-            Return mMaximumResiduesPerLine
-        End Get
-        Set
-            If Value = 0 Then
-                Value = DEFAULT_MAXIMUM_RESIDUES_PER_LINE
-            ElseIf Value < 40 Then
-                Value = 40
-            End If
-
-            mMaximumResiduesPerLine = Value
-        End Set
-    End Property
-
-    Public Property ProteinLineStartChar As Char
-        Get
-            Return mProteinLineStartChar
-        End Get
-        Set
-            mProteinLineStartChar = Value
-        End Set
-    End Property
-
-    Public ReadOnly Property StatsFilePath As String
-        Get
-            If mStatsFilePath Is Nothing Then
-                Return String.Empty
-            Else
-                Return mStatsFilePath
-            End If
-        End Get
-    End Property
-
-    Public Property ProteinNameInvalidCharsToRemove As String
-        Get
-            Return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
-        End Get
-        Set
-            If Value Is Nothing Then
-                Value = String.Empty
-            End If
-
-            ' Check for and remove any spaces from Value, since
-            ' a space does not make sense for an invalid protein name character
-            Value = Value.Replace(" "c, String.Empty)
-            If Value.Length > 0 Then
-                mFixedFastaOptions.ProteinNameInvalidCharsToRemove = Value.ToCharArray
-            Else
-                mFixedFastaOptions.ProteinNameInvalidCharsToRemove = New Char() {}      ' Default to an empty character array if Value is empty
-            End If
-        End Set
-    End Property
-
-    Public Property ProteinNameFirstRefSepChars As String
-        Get
-            Return CharArrayToString(mProteinNameFirstRefSepChars)
-        End Get
-        Set
-            If Value Is Nothing Then
-                Value = String.Empty
-            End If
-
-            ' Check for and remove any spaces from Value, since
-            ' a space does not make sense for a separation character
-            Value = Value.Replace(" "c, String.Empty)
-            If Value.Length > 0 Then
-                mProteinNameFirstRefSepChars = Value.ToCharArray
-            Else
-                mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray     ' Use the default if Value is empty
-            End If
-        End Set
-    End Property
-
-    Public Property ProteinNameSubsequentRefSepChars As String
-        Get
-            Return CharArrayToString(mProteinNameSubsequentRefSepChars)
-        End Get
-        Set
-            If Value Is Nothing Then
-                Value = String.Empty
-            End If
-
-            ' Check for and remove any spaces from Value, since
-            ' a space does not make sense for a separation character
-            Value = Value.Replace(" "c, String.Empty)
-            If Value.Length > 0 Then
-                mProteinNameSubsequentRefSepChars = Value.ToCharArray
-            Else
-                mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray     ' Use the default if Value is empty
-            End If
-        End Set
-    End Property
-
-    Public Property LongProteinNameSplitChars As String
-        Get
-            Return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars)
-        End Get
-        Set
-            If Not Value Is Nothing Then
-                ' Check for and remove any spaces from Value, since
-                ' a space does not make sense for a protein name split char
-                Value = Value.Replace(" "c, String.Empty)
-                If Value.Length > 0 Then
-                    mFixedFastaOptions.LongProteinNameSplitChars = Value.ToCharArray
-                End If
-            End If
-        End Set
-    End Property
-
-    Public ReadOnly Property FileWarningList As List(Of udtMsgInfoType)
-        Get
-            Return GetFileWarnings()
-        End Get
-    End Property
-
-    Public ReadOnly Property FileErrorList As List(Of udtMsgInfoType)
-        Get
-            Return GetFileErrors()
-        End Get
-    End Property
-
-#End Region
-
-    Public Event ProgressCompleted()
-
-    Public Event WroteLineEndNormalizedFASTA(newFilePath As String)
-
-    Private Sub OnProgressComplete() Handles MyBase.ProgressComplete
-        RaiseEvent ProgressCompleted()
-        OperationComplete()
-    End Sub
-
-    Private Sub OnWroteLineEndNormalizedFASTA(newFilePath As String)
-        RaiseEvent WroteLineEndNormalizedFASTA(newFilePath)
-    End Sub
-
-    ''' <summary>
-    ''' Examine the given fasta file to look for problems.
-    ''' Optionally create a new, fixed fasta file
-    ''' Optionally also consolidate proteins with duplicate sequences
-    ''' </summary>
-    ''' <param name="fastaFilePathToCheck"></param>
-    ''' <param name="preloadedProteinNamesToKeep">
-    ''' Preloaded list of protein names to include in the fixed fasta file
-    ''' Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
-    ''' </param>
-    ''' <returns>True if the file was successfully analyzed (even if errors were found)</returns>
-    ''' <remarks>Assumes fastaFilePathToCheck exists</remarks>
-    Private Function AnalyzeFastaFile(fastaFilePathToCheck As String, preloadedProteinNamesToKeep As clsNestedStringIntList) As Boolean
-
-        Dim fixedFastaWriter As StreamWriter = Nothing
-        Dim sequenceHashWriter As StreamWriter = Nothing
-
-        Dim fastaFilePathOut = "UndefinedFilePath.xyz"
-
-        Dim success As Boolean
-        Dim exceptionCaught = False
-
-        Dim consolidateDuplicateProteinSeqsInFasta = False
-        Dim keepDuplicateNamedProteinsUnlessMatchingSequence = False
-        Dim consolidateDupsIgnoreILDiff = False
-
-        ' This array tracks protein hash details
-        Dim proteinSequenceHashCount As Integer
-        Dim proteinSeqHashInfo() As clsProteinHashInfo
-
-        Dim headerLineRuleDetails() As udtRuleDefinitionExtendedType
-        Dim proteinNameRuleDetails() As udtRuleDefinitionExtendedType
-        Dim proteinDescriptionRuleDetails() As udtRuleDefinitionExtendedType
-        Dim proteinSequenceRuleDetails() As udtRuleDefinitionExtendedType
-
-        Try
-            ' Reset the data structures and variables
-            ResetStructures()
-            ReDim proteinSeqHashInfo(0)
-
-            ReDim headerLineRuleDetails(1)
-            ReDim proteinNameRuleDetails(1)
-            ReDim proteinDescriptionRuleDetails(1)
-            ReDim proteinSequenceRuleDetails(1)
-
-            ' This is a dictionary of dictionaries, with one dictionary for each letter or number that a SHA-1 hash could start with
-            ' This dictionary of dictionaries provides a quick lookup for existing protein hashes
-            ' This dictionary is not used if preloadedProteinNamesToKeep contains data
-            Const SPANNER_CHAR_LENGTH = 1
-            Dim proteinSequenceHashes = New clsNestedStringDictionary(Of Integer)(False, SPANNER_CHAR_LENGTH)
-            Dim usingPreloadedProteinNames = False
-
-            If Not preloadedProteinNamesToKeep Is Nothing AndAlso preloadedProteinNamesToKeep.Count > 0 Then
-                ' Auto enable/disable some options
-                mSaveBasicProteinHashInfoFile = False
-                mCheckForDuplicateProteinSequences = False
-
-                ' Auto-enable creating a fixed fasta file
-                mGenerateFixedFastaFile = True
-                mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = False
-                mFixedFastaOptions.RenameProteinsWithDuplicateNames = False
-
-                ' Note: do not change .ConsolidateDupsIgnoreILDiff
-                ' If .ConsolidateDupsIgnoreILDiff was enabled when the hash file was made with /B
-                ' it should also be enabled when using /HashFile
-
-                usingPreloadedProteinNames = True
-            End If
-
-            If mNormalizeFileLineEndCharacters Then
-                mFastaFilePath = NormalizeFileLineEndings(
-                    fastaFilePathToCheck,
-                 "CRLF_" & Path.GetFileName(fastaFilePathToCheck),
-                 eLineEndingCharacters.CRLF)
-
-                If mFastaFilePath <> fastaFilePathToCheck Then
-                    fastaFilePathToCheck = String.Copy(mFastaFilePath)
-                    OnWroteLineEndNormalizedFASTA(fastaFilePathToCheck)
-                End If
-            Else
-                mFastaFilePath = String.Copy(fastaFilePathToCheck)
-            End If
-
-            OnProgressUpdate("Parsing " & Path.GetFileName(mFastaFilePath), 0)
-
-            Dim proteinHeaderFound = False
-            Dim processingResidueBlock = False
-            Dim blankLineProcessed = False
-
-            Dim proteinName = String.Empty
-            Dim sbCurrentResidues = New StringBuilder
-
-            ' Initialize the RegEx objects
-
-            Dim reProteinNameTruncation = New udtProteinNameTruncationRegex
-            With reProteinNameTruncation
-                ' Note that each of these RegEx tests contain two groups with captured text:
-
-                ' The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
-                .reMatchIPI =
-                 New Regex("^(IPI:IPI[\w.]{2,})\|(.+)",
-                  RegexOptions.Singleline Or RegexOptions.Compiled)
-
-                ' The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
-                .reMatchGI =
-                 New Regex("^(gi\|\d+)\|(.+)",
-                  RegexOptions.Singleline Or RegexOptions.Compiled)
-
-                ' The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
-                .reMatchJGI =
-                 New Regex("^(jgi\|[^|]+\|[^|]+)\|(.+)",
-                  RegexOptions.Singleline Or RegexOptions.Compiled)
-
-                ' The following will extract bob|234384 from  bob|234384|ref|483293
-                '                         or bob|845832 from  bob|845832;ref|384923
-                .reMatchGeneric =
-                 New Regex("^(\w{2,}[" &
-                 CharArrayToString(mProteinNameFirstRefSepChars) & "][\w\d._]{2,})[" &
-                 CharArrayToString(mProteinNameSubsequentRefSepChars) & "](.+)",
-                 RegexOptions.Singleline Or RegexOptions.Compiled)
-            End With
-
-            With reProteinNameTruncation
-                ' The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
-                .reMatchJGIBaseAndID =
-                 New Regex("^jgi\|[^|]+\|\d+",
-                   RegexOptions.Singleline Or RegexOptions.Compiled)
-
-                ' Note that this RegEx contains a group with captured text:
-                .reMatchDoubleBarOrColonAndBar =
-                 New Regex("[" &
-                  CharArrayToString(mProteinNameFirstRefSepChars) & "][^" &
-                  CharArrayToString(mProteinNameSubsequentRefSepChars) & "]*([" &
-                  CharArrayToString(mProteinNameSubsequentRefSepChars) & "])",
-                  RegexOptions.Singleline Or RegexOptions.Compiled)
-            End With
-
-            ' Non-letter characters in residues
-            Dim allowedResidueChars = "A-Z"
-            If mAllowAsteriskInResidues Then allowedResidueChars &= "*"
-            If mAllowDashInResidues Then allowedResidueChars &= "-"
-
-            Dim reNonLetterResidues =
-              New Regex("[^" & allowedResidueChars & "]",
-              RegexOptions.Singleline Or RegexOptions.Compiled)
-
-            ' Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
-            If mFixedFastaOptions.LongProteinNameSplitChars Is Nothing OrElse mFixedFastaOptions.LongProteinNameSplitChars.Length = 0 Then
-                mFixedFastaOptions.LongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
-            End If
-
-            ' Initialize the rule details UDTs, which contain a RegEx object for each rule
-            InitializeRuleDetails(mHeaderLineRules, headerLineRuleDetails)
-            InitializeRuleDetails(mProteinNameRules, proteinNameRuleDetails)
-            InitializeRuleDetails(mProteinDescriptionRules, proteinDescriptionRuleDetails)
-            InitializeRuleDetails(mProteinSequenceRules, proteinSequenceRuleDetails)
-
-            ' Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
-            Dim terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck)
-
-            ' Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
-            AutoDetermineFastaProteinNameSpannerCharLength(mFastaFilePath, terminatorSize)
-
-            ' Open the input file
-            Dim startTime = DateTime.UtcNow
-
-            Using fastaReader = New StreamReader(New FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-
-                ' Optionally, open the output fasta file
-                If mGenerateFixedFastaFile Then
-
-                    Try
-                        fastaFilePathOut =
-                         Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
-                         Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & "_new.fasta")
-                        fixedFastaWriter = New StreamWriter(New FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-                    Catch ex As Exception
-                        ' Error opening output file
-                        RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-                         "Error creating output file " & fastaFilePathOut & ": " & ex.Message, String.Empty)
-                        OnErrorEvent("Error creating output file (Create _new.fasta)", ex)
-                        Return False
-                    End Try
-                End If
-
-                ' Optionally, open the Sequence Hash file
-                If mSaveBasicProteinHashInfoFile Then
-                    Dim basicProteinHashInfoFilePath = "<undefined>"
-
-                    Try
-                        basicProteinHashInfoFilePath =
-                         Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
-                         Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & PROTEIN_HASHES_FILENAME_SUFFIX)
-                        sequenceHashWriter = New StreamWriter(New FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                        Dim headerNames = New List(Of String) From {
-                            "Protein_ID",
-                            PROTEIN_NAME_COLUMN,
-                            SEQUENCE_LENGTH_COLUMN,
-                            SEQUENCE_HASH_COLUMN}
-
-                        sequenceHashWriter.WriteLine(FlattenList(headerNames))
-
-                    Catch ex As Exception
-                        ' Error opening output file
-                        RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-                         "Error creating output file " & basicProteinHashInfoFilePath & ": " & ex.Message, String.Empty)
-                        OnErrorEvent("Error creating output file (Create " & PROTEIN_HASHES_FILENAME_SUFFIX & ")", ex)
-                    End Try
-
-                End If
-
-                If mGenerateFixedFastaFile And (mFixedFastaOptions.RenameProteinsWithDuplicateNames OrElse mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence) Then
-                    ' Make sure mCheckForDuplicateProteinNames is enabled
-                    mCheckForDuplicateProteinNames = True
-                End If
-
-                ' Initialize proteinNames
-                Dim proteinNames = New SortedSet(Of String)(StringComparer.CurrentCultureIgnoreCase)
-
-                ' Optionally, initialize the protein sequence hash objects
-                If mSaveProteinSequenceHashInfoFiles Then
-                    mCheckForDuplicateProteinSequences = True
-                End If
-
-                If mGenerateFixedFastaFile And mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs Then
-                    mCheckForDuplicateProteinSequences = True
-                    mSaveProteinSequenceHashInfoFiles = Not usingPreloadedProteinNames
-                    consolidateDuplicateProteinSeqsInFasta = True
-                    keepDuplicateNamedProteinsUnlessMatchingSequence = mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence
-                    consolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
-                ElseIf mGenerateFixedFastaFile And mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence Then
-                    mCheckForDuplicateProteinSequences = True
-                    mSaveProteinSequenceHashInfoFiles = Not usingPreloadedProteinNames
-                    consolidateDuplicateProteinSeqsInFasta = False
-                    keepDuplicateNamedProteinsUnlessMatchingSequence = mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence
-                    consolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff
-                End If
-
-                If mCheckForDuplicateProteinSequences Then
-                    proteinSequenceHashes.Clear()
-                    proteinSequenceHashCount = 0
-                    ReDim proteinSeqHashInfo(99)
-                End If
-
-                ' Parse each line in the file
-                Dim bytesRead As Int64 = 0
-                Dim lastMemoryUsageReport = DateTime.UtcNow
-
-                ' Note: This value is updated only if the line length is < mMaximumResiduesPerLine
-                Dim currentValidResidueLineLengthMax = 0
-                Dim processingDuplicateOrInvalidProtein = False
-
-                Dim lastProgressReport = DateTime.UtcNow
-
-                Do While Not fastaReader.EndOfStream
-
-                    Dim lineIn As String
-
-                    Try
-                        lineIn = fastaReader.ReadLine()
-                    Catch ex As OutOfMemoryException
-                        OnErrorEvent(String.Format(
-                            "Error in AnalyzeFastaFile reading line {0}; " &
-                            "it is most likely millions of characters long, " &
-                            "indicating a corrupt fasta file", mLineCount + 1), ex)
-                        exceptionCaught = True
-                        Exit Do
-                    Catch ex As Exception
-                        OnErrorEvent(String.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount + 1), ex)
-                        exceptionCaught = True
-                        Exit Do
-                    End Try
-
-                    bytesRead += lineIn.Length + terminatorSize
-
-                    If mLineCount Mod 250 = 0 Then
-                        If MyBase.AbortProcessing Then Exit Do
-
-                        If DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5 Then
-                            lastProgressReport = DateTime.UtcNow
-                            Dim percentComplete = CType(bytesRead / CType(fastaReader.BaseStream.Length, Single) * 100.0, Single)
-                            If consolidateDuplicateProteinSeqsInFasta OrElse keepDuplicateNamedProteinsUnlessMatchingSequence Then
-                                ' Bump the % complete down so that 100% complete in this routine will equate to 75% complete
-                                ' The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
-                                percentComplete = percentComplete * 3 / 4
-                            End If
-
-                            MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(percentComplete, 0) & "% Done)", percentComplete)
-
-                            If DateTime.UtcNow.Subtract(lastMemoryUsageReport).TotalMinutes >= 1 Then
-                                lastMemoryUsageReport = DateTime.UtcNow
-                                ReportMemoryUsage(preloadedProteinNamesToKeep, proteinSequenceHashes, proteinNames, proteinSeqHashInfo)
-                            End If
-                        End If
-                    End If
-
-                    mLineCount += 1
-
-                    If (lineIn.Length > 10000000) Then
-                        RecordFastaFileError(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", String.Empty)
-                        Continue Do
-                    ElseIf (lineIn.Length > 1000000) Then
-                        RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", String.Empty)
-                    ElseIf (lineIn.Length > 100000) Then
-                        RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", String.Empty)
-                    End If
-
-                    If lineIn Is Nothing Then Continue Do
-
-                    If lineIn.Trim.Length = 0 Then
-                        ' We typically only want blank lines at the end of the fasta file or between two protein entries
-                        blankLineProcessed = True
-                        Continue Do
-                    End If
-
-                    If lineIn.Chars(0) = " "c Then
-                        If mWarnLineStartsWithSpace Then
-                            RecordFastaFileError(mLineCount, 0, String.Empty,
-                                                 eMessageCodeConstants.LineStartsWithSpace, String.Empty, ExtractContext(lineIn, 0))
-                        End If
-                    End If
-
-                    ' Note: Only trim the start of the line; do not trim the end of the line since Sequest incorrectly notates the peptide terminal state if a residue has a space after it
-                    lineIn = lineIn.TrimStart
-
-                    If lineIn.Chars(0) = mProteinLineStartChar Then
-                        ' Protein entry
-
-                        If sbCurrentResidues.Length > 0 Then
-                            ProcessResiduesForPreviousProtein(
-                                proteinName, sbCurrentResidues,
-                                proteinSequenceHashes,
-                                proteinSequenceHashCount, proteinSeqHashInfo,
-                                consolidateDupsIgnoreILDiff,
+﻿// This class will read a protein fasta file and validate its contents
+//
+// -------------------------------------------------------------------------------
+// Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
+// Program started March 21, 2005
+//
+// E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
+// Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
+// -------------------------------------------------------------------------------
+//
+// Licensed under the Apache License, Version 2.0; you may not use this file except
+// in compliance with the License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using PRISM;
+
+namespace ValidateFastaFile
+{
+    public class clsValidateFastaFile : PRISM.FileProcessor.ProcessFilesBase
+    {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public clsValidateFastaFile()
+        {
+            mFileDate = "April 15, 2020";
+            InitializeLocalVariables();
+        }
+
+        /// <summary>
+        /// Constructor that takes a parameter file
+        /// </summary>
+        /// <param name="parameterFilePath"></param>
+        public clsValidateFastaFile(string parameterFilePath) : this()
+        {
+            LoadParameterFileSettings(parameterFilePath);
+        }
+
+        #region "Constants and Enums"
+        private const int DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH = 3;
+
+        /// <summary>
+        /// The maximum suggested value when using SEQUEST is 34 characters
+        /// In contrast, MS-GF+ supports long protein names
+        /// </summary>
+        /// <remarks></remarks>
+        public const int DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH = 60;
+        private const int DEFAULT_MAXIMUM_RESIDUES_PER_LINE = 120;
+
+        public const char DEFAULT_PROTEIN_LINE_START_CHAR = '>';
+        public const char DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR = '|';
+        public const string DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS = ":|";
+        public const string DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS = ":|;";
+
+        private const char INVALID_PROTEIN_NAME_CHAR_REPLACEMENT = '_';
+
+        private const int CUSTOM_RULE_ID_START = 1000;
+        private const int DEFAULT_CONTEXT_LENGTH = 13;
+
+        public const string MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING = "Line contains a protein name, but not a description";
+        public const string MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG = "Protein description is over 900 characters long";
+        public const string MESSAGE_TEXT_ASTERISK_IN_RESIDUES = "An asterisk was found in the residues";
+        public const string MESSAGE_TEXT_DASH_IN_RESIDUES = "A dash was found in the residues";
+
+        public const string XML_SECTION_OPTIONS = "ValidateFastaFileOptions";
+        public const string XML_SECTION_FIXED_FASTA_FILE_OPTIONS = "ValidateFastaFixedFASTAFileOptions";
+
+        public const string XML_SECTION_FASTA_HEADER_LINE_RULES = "ValidateFastaHeaderLineRules";
+        public const string XML_SECTION_FASTA_PROTEIN_NAME_RULES = "ValidateFastaProteinNameRules";
+        public const string XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES = "ValidateFastaProteinDescriptionRules";
+        public const string XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES = "ValidateFastaProteinSequenceRules";
+
+        public const string XML_OPTION_ENTRY_RULE_COUNT = "RuleCount";
+
+        // The value of 7995 is chosen because the maximum varchar() value in Sql Server is varchar(8000)
+        // and we want to prevent truncation errors when importing protein names and descriptions into Sql Server
+        public const int MAX_PROTEIN_DESCRIPTION_LENGTH = 7995;
+
+        private const string MEM_USAGE_PREFIX = "MemUsage: ";
+        private const bool REPORT_DETAILED_MEMORY_USAGE = false;
+
+        private const string PROTEIN_NAME_COLUMN = "Protein_Name";
+        private const string SEQUENCE_LENGTH_COLUMN = "Sequence_Length";
+        private const string SEQUENCE_HASH_COLUMN = "Sequence_Hash";
+        private const string PROTEIN_HASHES_FILENAME_SUFFIX = "_ProteinHashes.txt";
+
+        private const int DEFAULT_WARNING_SEVERITY = 3;
+        private const int DEFAULT_ERROR_SEVERITY = 7;
+
+        // Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
+        // the values in enum eMessageCodeConstants should all be less than CUSTOM_RULE_ID_START
+        public enum eMessageCodeConstants
+        {
+            UnspecifiedError = 0,
+
+            // Error messages
+            ProteinNameIsTooLong = 1,
+            LineStartsWithSpace = 2,
+            // RightArrowFollowedBySpace = 3
+            // RightArrowFollowedByTab = 4
+            // RightArrowButNoProteinName = 5
+            BlankLineBetweenProteinNameAndResidues = 6,
+            BlankLineInMiddleOfResidues = 7,
+            ResiduesFoundWithoutProteinHeader = 8,
+            ProteinEntriesNotFound = 9,
+            FinalProteinEntryMissingResidues = 10,
+            FileDoesNotEndWithLinefeed = 11,
+            DuplicateProteinName = 12,
+
+            // Warning messages
+            ProteinNameIsTooShort = 13,
+            // ProteinNameContainsVerticalBars = 14
+            // ProteinNameContainsWarningCharacters = 21
+            // ProteinNameWithoutDescription = 14
+            BlankLineBeforeProteinName = 15,
+            // ProteinNameAndDescriptionSeparatedByTab = 16
+            // ProteinDescriptionWithTab = 25
+            // ProteinDescriptionWithQuotationMark = 26
+            // ProteinDescriptionWithEscapedSlash = 27
+            // ProteinDescriptionWithUndesirableCharacter = 28
+            ResiduesLineTooLong = 17,
+            // ResiduesLineContainsU = 30
+            DuplicateProteinSequence = 18,
+            RenamedProtein = 19,
+            ProteinRemovedSinceDuplicateSequence = 20,
+            DuplicateProteinNameRetained = 21
+        }
+
+        public struct udtMsgInfoType
+        {
+            public int LineNumber;
+            public int ColNumber;
+            public string ProteinName;
+            public int MessageCode;
+            public string ExtraInfo;
+            public string Context;
+
+            public override string ToString()
+            {
+                return string.Format("Line {0}, protein {1}, code {2}: {3}", LineNumber, ProteinName, MessageCode, ExtraInfo);
+            }
+        }
+
+        public struct udtOutputOptionsType
+        {
+            public string SourceFile;
+            public bool OutputToStatsFile;
+            public StreamWriter OutFile;
+            public string SepChar;
+
+            public override string ToString()
+            {
+                return SourceFile;
+            }
+        }
+
+        public enum RuleTypes
+        {
+            HeaderLine,
+            ProteinName,
+            ProteinDescription,
+            ProteinSequence
+        }
+
+        public enum SwitchOptions
+        {
+            AddMissingLineFeedAtEOF,
+            AllowAsteriskInResidues,
+            CheckForDuplicateProteinNames,
+            GenerateFixedFASTAFile,
+            SplitOutMultipleRefsInProteinName,
+            OutputToStatsFile,
+            WarnBlankLinesBetweenProteins,
+            WarnLineStartsWithSpace,
+            NormalizeFileLineEndCharacters,
+            CheckForDuplicateProteinSequences,
+            FixedFastaRenameDuplicateNameProteins,
+            SaveProteinSequenceHashInfoFiles,
+            FixedFastaConsolidateDuplicateProteinSeqs,
+            FixedFastaConsolidateDupsIgnoreILDiff,
+            FixedFastaTruncateLongProteinNames,
+            FixedFastaSplitOutMultipleRefsForKnownAccession,
+            FixedFastaWrapLongResidueLines,
+            FixedFastaRemoveInvalidResidues,
+            SaveBasicProteinHashInfoFile,
+            AllowDashInResidues,
+            FixedFastaKeepDuplicateNamedProteins,        // Keep duplicate named proteins, unless the name and sequence match exactly, then they're removed
+            AllowAllSymbolsInProteinNames
+        }
+
+        public enum FixedFASTAFileValues
+        {
+            DuplicateProteinNamesSkippedCount,
+            ProteinNamesInvalidCharsReplaced,
+            ProteinNamesMultipleRefsRemoved,
+            TruncatedProteinNameCount,
+            UpdatedResidueLines,
+            DuplicateProteinNamesRenamedCount,
+            DuplicateProteinSeqsSkippedCount
+        }
+
+        public enum ErrorWarningCountTypes
+        {
+            Specified,
+            Unspecified,
+            Total
+        }
+
+        public enum eMsgTypeConstants
+        {
+            ErrorMsg = 0,
+            WarningMsg = 1,
+            StatusMsg = 2
+        }
+
+        public enum eValidateFastaFileErrorCodes
+        {
+            NoError = 0,
+            OptionsSectionNotFound = 1,
+            ErrorReadingInputFile = 2,
+            ErrorCreatingStatsFile = 4,
+            ErrorVerifyingLinefeedAtEOF = 8,
+            UnspecifiedError = -1
+        }
+
+        public enum eLineEndingCharacters
+        {
+            CRLF,  // Windows
+            CR,    // Old Style Mac
+            LF,    // Unix/Linux/OS X
+            LFCR,  // Oddball (Just for completeness!)
+        }
+        #endregion
+
+        #region "Structures"
+
+        private struct udtErrorStatsType
+        {
+            public int MessageCode;               // Note: Custom rules start with message code CUSTOM_RULE_ID_START
+            public int CountSpecified;
+            public int CountUnspecified;
+
+            public override string ToString()
+            {
+                return MessageCode + ": " + CountSpecified + " specified, " + CountUnspecified + " unspecified";
+            }
+        }
+
+        private struct udtItemSummaryIndexedType
+        {
+            public int ErrorStatsCount;
+            public udtErrorStatsType[] ErrorStats;        // Note: This array ranges from 0 to .ErrorStatsCount since it is Dimmed with extra space
+            public Dictionary<int, int> MessageCodeToArrayIndex;
+        }
+
+        public struct udtRuleDefinitionType
+        {
+            public string MatchRegEx;
+            public bool MatchIndicatesProblem;        // True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
+            public string MessageWhenProblem;         // Message to display if a problem is present
+            public short Severity;                    // 0 is lowest severity, 9 is highest severity; value >= 5 means error
+            public bool DisplayMatchAsExtraInfo;      // If true, then the matching text is stored as the context info
+            public int CustomRuleID;                  // This value is auto-assigned
+
+            public override string ToString()
+            {
+                return CustomRuleID + ": " + MessageWhenProblem;
+            }
+        }
+
+        private struct udtRuleDefinitionExtendedType
+        {
+            public udtRuleDefinitionType RuleDefinition;
+            public Regex reRule;
+
+            // ReSharper disable once NotAccessedField.Local
+            public bool Valid;
+
+            public override string ToString()
+            {
+                return RuleDefinition.CustomRuleID + ": " + RuleDefinition.MessageWhenProblem;
+            }
+        }
+
+        private struct udtFixedFastaOptionsType
+        {
+            public bool SplitOutMultipleRefsInProteinName;
+            public bool SplitOutMultipleRefsForKnownAccession;
+            public char[] LongProteinNameSplitChars;
+            public char[] ProteinNameInvalidCharsToRemove;
+            public bool RenameProteinsWithDuplicateNames;
+            public bool KeepDuplicateNamedProteinsUnlessMatchingSequence;      // Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true
+            public bool ConsolidateProteinsWithDuplicateSeqs;
+            public bool ConsolidateDupsIgnoreILDiff;
+            public bool TruncateLongProteinNames;
+            public bool WrapLongResidueLines;
+            public bool RemoveInvalidResidues;
+        }
+
+        private struct udtFixedFastaStatsType
+        {
+            public int TruncatedProteinNameCount;
+            public int UpdatedResidueLines;
+            public int ProteinNamesInvalidCharsReplaced;
+            public int ProteinNamesMultipleRefsRemoved;
+            public int DuplicateNameProteinsSkipped;
+            public int DuplicateNameProteinsRenamed;
+            public int DuplicateSequenceProteinsSkipped;
+        }
+
+        private struct udtProteinNameTruncationRegex
+        {
+            public Regex reMatchIPI;
+            public Regex reMatchGI;
+            public Regex reMatchJGI;
+            public Regex reMatchJGIBaseAndID;
+            public Regex reMatchGeneric;
+            public Regex reMatchDoubleBarOrColonAndBar;
+        }
+
+        #endregion
+
+        #region "Classwide Variables"
+
+        /// <summary>
+        /// Fasta file path being examined
+        /// </summary>
+        /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
+        protected string mFastaFilePath;
+
+        private int mLineCount;
+        private int mProteinCount;
+        private long mResidueCount;
+
+        private udtFixedFastaStatsType mFixedFastaStats;
+
+        private int mFileErrorCount;
+        private udtMsgInfoType[] mFileErrors;
+        private udtItemSummaryIndexedType mFileErrorStats;
+
+        private int mFileWarningCount;
+
+        private udtMsgInfoType[] mFileWarnings;
+        private udtItemSummaryIndexedType mFileWarningStats;
+
+        private udtRuleDefinitionType[] mHeaderLineRules;
+        private udtRuleDefinitionType[] mProteinNameRules;
+        private udtRuleDefinitionType[] mProteinDescriptionRules;
+        private udtRuleDefinitionType[] mProteinSequenceRules;
+        private int mMasterCustomRuleID = CUSTOM_RULE_ID_START;
+
+        private char[] mProteinNameFirstRefSepChars;
+        private char[] mProteinNameSubsequentRefSepChars;
+
+        private bool mAddMissingLinefeedAtEOF;
+        private bool mCheckForDuplicateProteinNames;
+
+        // This will be set to True if
+        // mSaveProteinSequenceHashInfoFiles = True or mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = True
+        private bool mCheckForDuplicateProteinSequences;
+
+        private int mMaximumFileErrorsToTrack;        // This is the maximum # of errors per type to track
+        private int mMinimumProteinNameLength;
+        private int mMaximumProteinNameLength;
+        private int mMaximumResiduesPerLine;
+
+        private udtFixedFastaOptionsType mFixedFastaOptions;     // Used if mGenerateFixedFastaFile = True
+
+        private bool mOutputToStatsFile;
+        private string mStatsFilePath;
+
+        private bool mGenerateFixedFastaFile;
+        private bool mSaveProteinSequenceHashInfoFiles;
+
+        // When true, creates a text file that will contain the protein name and sequence hash for each protein;
+        // this option will not store protein names and/or hashes in memory, and is thus useful for processing
+        // huge .Fasta files to determine duplicate proteins
+        private bool mSaveBasicProteinHashInfoFile;
+
+        private char mProteinLineStartChar;
+
+        private bool mAllowAsteriskInResidues;
+        private bool mAllowDashInResidues;
+        private bool mAllowAllSymbolsInProteinNames;
+
+        private bool mWarnBlankLinesBetweenProteins;
+        private bool mWarnLineStartsWithSpace;
+        private bool mNormalizeFileLineEndCharacters;
+
+        /// <summary>
+        /// The number of characters at the start of key strings to use when adding items to clsNestedStringDictionary instances
+        /// </summary>
+        /// <remarks>
+        /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
+        /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+        /// </remarks>
+        private byte mProteinNameSpannerCharLength = 1;
+
+        private eValidateFastaFileErrorCodes mLocalErrorCode;
+
+        private clsMemoryUsageLogger mMemoryUsageLogger;
+
+        private float mProcessMemoryUsageMBAtStart;
+
+        private string mSortUtilityErrorMessage;
+
+        private List<string> mTempFilesToDelete;
+
+        #endregion
+
+        #region "Properties"
+
+        /// <summary>
+        /// Gets or sets a processing option
+        /// </summary>
+        /// <param name="SwitchName"></param>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
+        public bool get_OptionSwitch(SwitchOptions switchName)
+        {
+            return GetOptionSwitchValue(switchName);
+        }
+
+        public void set_OptionSwitch(SwitchOptions switchName, bool value)
+        {
+            SetOptionSwitch(switchName, value);
+        }
+
+        /// <summary>
+        /// Set a processing option
+        /// </summary>
+        /// <param name="SwitchName"></param>
+        /// <param name="State"></param>
+        /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
+        public void SetOptionSwitch(SwitchOptions switchName, bool state)
+        {
+            switch (switchName)
+            {
+                case SwitchOptions.AddMissingLineFeedAtEOF:
+                    mAddMissingLinefeedAtEOF = state;
+                    break;
+                case SwitchOptions.AllowAsteriskInResidues:
+                    mAllowAsteriskInResidues = state;
+                    break;
+                case SwitchOptions.CheckForDuplicateProteinNames:
+                    mCheckForDuplicateProteinNames = state;
+                    break;
+                case SwitchOptions.GenerateFixedFASTAFile:
+                    mGenerateFixedFastaFile = state;
+                    break;
+                case SwitchOptions.OutputToStatsFile:
+                    mOutputToStatsFile = state;
+                    break;
+                case SwitchOptions.SplitOutMultipleRefsInProteinName:
+                    mFixedFastaOptions.SplitOutMultipleRefsInProteinName = state;
+                    break;
+                case SwitchOptions.WarnBlankLinesBetweenProteins:
+                    mWarnBlankLinesBetweenProteins = state;
+                    break;
+                case SwitchOptions.WarnLineStartsWithSpace:
+                    mWarnLineStartsWithSpace = state;
+                    break;
+                case SwitchOptions.NormalizeFileLineEndCharacters:
+                    mNormalizeFileLineEndCharacters = state;
+                    break;
+                case SwitchOptions.CheckForDuplicateProteinSequences:
+                    mCheckForDuplicateProteinSequences = state;
+                    break;
+                case SwitchOptions.FixedFastaRenameDuplicateNameProteins:
+                    mFixedFastaOptions.RenameProteinsWithDuplicateNames = state;
+                    break;
+                case SwitchOptions.FixedFastaKeepDuplicateNamedProteins:
+                    mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence = state;
+                    break;
+                case SwitchOptions.SaveProteinSequenceHashInfoFiles:
+                    mSaveProteinSequenceHashInfoFiles = state;
+                    break;
+                case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs:
+                    mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = state;
+                    break;
+                case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff:
+                    mFixedFastaOptions.ConsolidateDupsIgnoreILDiff = state;
+                    break;
+                case SwitchOptions.FixedFastaTruncateLongProteinNames:
+                    mFixedFastaOptions.TruncateLongProteinNames = state;
+                    break;
+                case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession:
+                    mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession = state;
+                    break;
+                case SwitchOptions.FixedFastaWrapLongResidueLines:
+                    mFixedFastaOptions.WrapLongResidueLines = state;
+                    break;
+                case SwitchOptions.FixedFastaRemoveInvalidResidues:
+                    mFixedFastaOptions.RemoveInvalidResidues = state;
+                    break;
+                case SwitchOptions.SaveBasicProteinHashInfoFile:
+                    mSaveBasicProteinHashInfoFile = state;
+                    break;
+                case SwitchOptions.AllowDashInResidues:
+                    mAllowDashInResidues = state;
+                    break;
+                case SwitchOptions.AllowAllSymbolsInProteinNames:
+                    mAllowAllSymbolsInProteinNames = state;
+                    break;
+            }
+        }
+
+        public bool GetOptionSwitchValue(SwitchOptions SwitchName)
+        {
+            switch (SwitchName)
+            {
+                case SwitchOptions.AddMissingLineFeedAtEOF:
+                    return mAddMissingLinefeedAtEOF;
+                case SwitchOptions.AllowAsteriskInResidues:
+                    return mAllowAsteriskInResidues;
+                case SwitchOptions.CheckForDuplicateProteinNames:
+                    return mCheckForDuplicateProteinNames;
+                case SwitchOptions.GenerateFixedFASTAFile:
+                    return mGenerateFixedFastaFile;
+                case SwitchOptions.OutputToStatsFile:
+                    return mOutputToStatsFile;
+                case SwitchOptions.SplitOutMultipleRefsInProteinName:
+                    return mFixedFastaOptions.SplitOutMultipleRefsInProteinName;
+                case SwitchOptions.WarnBlankLinesBetweenProteins:
+                    return mWarnBlankLinesBetweenProteins;
+                case SwitchOptions.WarnLineStartsWithSpace:
+                    return mWarnLineStartsWithSpace;
+                case SwitchOptions.NormalizeFileLineEndCharacters:
+                    return mNormalizeFileLineEndCharacters;
+                case SwitchOptions.CheckForDuplicateProteinSequences:
+                    return mCheckForDuplicateProteinSequences;
+                case SwitchOptions.FixedFastaRenameDuplicateNameProteins:
+                    return mFixedFastaOptions.RenameProteinsWithDuplicateNames;
+                case SwitchOptions.FixedFastaKeepDuplicateNamedProteins:
+                    return mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence;
+                case SwitchOptions.SaveProteinSequenceHashInfoFiles:
+                    return mSaveProteinSequenceHashInfoFiles;
+                case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs:
+                    return mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs;
+                case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff:
+                    return mFixedFastaOptions.ConsolidateDupsIgnoreILDiff;
+                case SwitchOptions.FixedFastaTruncateLongProteinNames:
+                    return mFixedFastaOptions.TruncateLongProteinNames;
+                case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession:
+                    return mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession;
+                case SwitchOptions.FixedFastaWrapLongResidueLines:
+                    return mFixedFastaOptions.WrapLongResidueLines;
+                case SwitchOptions.FixedFastaRemoveInvalidResidues:
+                    return mFixedFastaOptions.RemoveInvalidResidues;
+                case SwitchOptions.SaveBasicProteinHashInfoFile:
+                    return mSaveBasicProteinHashInfoFile;
+                case SwitchOptions.AllowDashInResidues:
+                    return mAllowDashInResidues;
+                case SwitchOptions.AllowAllSymbolsInProteinNames:
+                    return mAllowAllSymbolsInProteinNames;
+            }
+
+            return false;
+        }
+
+        public int get_ErrorWarningCounts(
+            eMsgTypeConstants messageType,
+            ErrorWarningCountTypes CountType)
+        {
+            var tmpValue = default(int);
+            switch (CountType)
+            {
+                case ErrorWarningCountTypes.Total:
+                    switch (messageType)
+                    {
+                        case eMsgTypeConstants.ErrorMsg:
+                            tmpValue = mFileErrorCount + ComputeTotalUnspecifiedCount(mFileErrorStats);
+                            break;
+                        case eMsgTypeConstants.WarningMsg:
+                            tmpValue = mFileWarningCount + ComputeTotalUnspecifiedCount(mFileWarningStats);
+                            break;
+                        case eMsgTypeConstants.StatusMsg:
+                            tmpValue = 0;
+                            break;
+                    }
+
+                    break;
+
+                case ErrorWarningCountTypes.Unspecified:
+                    switch (messageType)
+                    {
+                        case eMsgTypeConstants.ErrorMsg:
+                            tmpValue = ComputeTotalUnspecifiedCount(mFileErrorStats);
+                            break;
+                        case eMsgTypeConstants.WarningMsg:
+                            tmpValue = ComputeTotalSpecifiedCount(mFileWarningStats);
+                            break;
+                        case eMsgTypeConstants.StatusMsg:
+                            tmpValue = 0;
+                            break;
+                    }
+
+                    break;
+
+                case ErrorWarningCountTypes.Specified:
+                    switch (messageType)
+                    {
+                        case eMsgTypeConstants.ErrorMsg:
+                            tmpValue = mFileErrorCount;
+                            break;
+                        case eMsgTypeConstants.WarningMsg:
+                            tmpValue = mFileWarningCount;
+                            break;
+                        case eMsgTypeConstants.StatusMsg:
+                            tmpValue = 0;
+                            break;
+                    }
+
+                    break;
+            }
+
+            return tmpValue;
+        }
+
+        public int get_FixedFASTAFileStats(FixedFASTAFileValues valueType)
+        {
+            var tmpValue = default(int);
+            switch (valueType)
+            {
+                case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount:
+                    tmpValue = mFixedFastaStats.DuplicateNameProteinsSkipped;
+                    break;
+                case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced:
+                    tmpValue = mFixedFastaStats.ProteinNamesInvalidCharsReplaced;
+                    break;
+                case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved:
+                    tmpValue = mFixedFastaStats.ProteinNamesMultipleRefsRemoved;
+                    break;
+                case FixedFASTAFileValues.TruncatedProteinNameCount:
+                    tmpValue = mFixedFastaStats.TruncatedProteinNameCount;
+                    break;
+                case FixedFASTAFileValues.UpdatedResidueLines:
+                    tmpValue = mFixedFastaStats.UpdatedResidueLines;
+                    break;
+                case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount:
+                    tmpValue = mFixedFastaStats.DuplicateNameProteinsRenamed;
+                    break;
+                case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount:
+                    tmpValue = mFixedFastaStats.DuplicateSequenceProteinsSkipped;
+                    break;
+            }
+
+            return tmpValue;
+        }
+
+        public int ProteinCount
+        {
+            get
+            {
+                return mProteinCount;
+            }
+        }
+
+        public int LineCount
+        {
+            get
+            {
+                return mLineCount;
+            }
+        }
+
+        public eValidateFastaFileErrorCodes LocalErrorCode
+        {
+            get
+            {
+                return mLocalErrorCode;
+            }
+        }
+
+        public long ResidueCount
+        {
+            get
+            {
+                return mResidueCount;
+            }
+        }
+
+        public string FastaFilePath
+        {
+            get
+            {
+                return mFastaFilePath;
+            }
+        }
+
+        public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
+        {
+            return GetFileErrorTextByIndex(index, valueSeparator);
+        }
+
+        public string get_WarningMessageTextByIndex(int index, string valueSeparator)
+        {
+            return GetFileWarningTextByIndex(index, valueSeparator);
+        }
+
+        public udtMsgInfoType get_ErrorsByIndex(int errorIndex)
+        {
+            return GetFileErrorByIndex(errorIndex);
+        }
+
+        public udtMsgInfoType get_WarningsByIndex(int warningIndex)
+        {
+            return GetFileWarningByIndex(warningIndex);
+        }
+
+        /// <summary>
+        /// Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string ExistingProteinHashFile { get; set; }
+
+        public int MaximumFileErrorsToTrack
+        {
+            get
+            {
+                return mMaximumFileErrorsToTrack;
+            }
+            set
+            {
+                if (value < 1)
+                    value = 1;
+
+                mMaximumFileErrorsToTrack = value;
+            }
+        }
+
+        public int MaximumProteinNameLength
+        {
+            get
+            {
+                return mMaximumProteinNameLength;
+            }
+            set
+            {
+                if (value < 8)
+                {
+                    // Do not allow maximum lengths less than 8; use the default
+                    value = DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH;
+                }
+
+                mMaximumProteinNameLength = value;
+            }
+        }
+
+        public int MinimumProteinNameLength
+        {
+            get
+            {
+                return mMinimumProteinNameLength;
+            }
+            set
+            {
+                if (value < 1)
+                    value = DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH;
+
+                mMinimumProteinNameLength = value;
+            }
+        }
+
+        public int MaximumResiduesPerLine
+        {
+            get
+            {
+                return mMaximumResiduesPerLine;
+            }
+            set
+            {
+                if (value == 0)
+                {
+                    value = DEFAULT_MAXIMUM_RESIDUES_PER_LINE;
+                }
+                else if (value < 40)
+                {
+                    value = 40;
+                }
+
+                mMaximumResiduesPerLine = value;
+            }
+        }
+
+        public char ProteinLineStartChar
+        {
+            get
+            {
+                return mProteinLineStartChar;
+            }
+            set
+            {
+                mProteinLineStartChar = value;
+            }
+        }
+
+        public string StatsFilePath
+        {
+            get
+            {
+                if (mStatsFilePath == null)
+                {
+                    return string.Empty;
+                }
+                else
+                {
+                    return mStatsFilePath;
+                }
+            }
+        }
+
+        public string ProteinNameInvalidCharsToRemove
+        {
+            get
+            {
+                return CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
+            }
+            set
+            {
+                if (value == null)
+                {
+                    value = string.Empty;
+                }
+
+                // Check for and remove any spaces from Value, since
+                // a space does not make sense for an invalid protein name character
+                value = value.Replace(" ", string.Empty);
+                if (value.Length > 0)
+                {
+                    mFixedFastaOptions.ProteinNameInvalidCharsToRemove = value.ToCharArray();
+                }
+                else
+                {
+                    mFixedFastaOptions.ProteinNameInvalidCharsToRemove = new char[] { };      // Default to an empty character array if Value is empty
+                }
+            }
+        }
+
+        public string ProteinNameFirstRefSepChars
+        {
+            get
+            {
+                return CharArrayToString(mProteinNameFirstRefSepChars);
+            }
+            set
+            {
+                if (value == null)
+                {
+                    value = string.Empty;
+                }
+
+                // Check for and remove any spaces from Value, since
+                // a space does not make sense for a separation character
+                value = value.Replace(" ", string.Empty);
+                if (value.Length > 0)
+                {
+                    mProteinNameFirstRefSepChars = value.ToCharArray();
+                }
+                else
+                {
+                    mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray();     // Use the default if Value is empty
+                }
+            }
+        }
+
+        public string ProteinNameSubsequentRefSepChars
+        {
+            get
+            {
+                return CharArrayToString(mProteinNameSubsequentRefSepChars);
+            }
+            set
+            {
+                if (value == null)
+                {
+                    value = string.Empty;
+                }
+
+                // Check for and remove any spaces from Value, since
+                // a space does not make sense for a separation character
+                value = value.Replace(" ", string.Empty);
+                if (value.Length > 0)
+                {
+                    mProteinNameSubsequentRefSepChars = value.ToCharArray();
+                }
+                else
+                {
+                    mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray();     // Use the default if Value is empty
+                }
+            }
+        }
+
+        public string LongProteinNameSplitChars
+        {
+            get
+            {
+                return CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars);
+            }
+            set
+            {
+                if (value != null)
+                {
+                    // Check for and remove any spaces from Value, since
+                    // a space does not make sense for a protein name split char
+                    value = value.Replace(" ", string.Empty);
+                    if (value.Length > 0)
+                    {
+                        mFixedFastaOptions.LongProteinNameSplitChars = value.ToCharArray();
+                    }
+                }
+            }
+        }
+
+        public List<udtMsgInfoType> FileWarningList
+        {
+            get
+            {
+                return GetFileWarnings();
+            }
+        }
+
+        public List<udtMsgInfoType> FileErrorList
+        {
+            get
+            {
+                return GetFileErrors();
+            }
+        }
+
+        #endregion
+        public event ProgressCompletedEventHandler ProgressCompleted;
+
+        public delegate void ProgressCompletedEventHandler();
+
+        public event WroteLineEndNormalizedFASTAEventHandler WroteLineEndNormalizedFASTA;
+
+        public delegate void WroteLineEndNormalizedFASTAEventHandler(string newFilePath);
+
+        private void OnProgressComplete()
+        {
+            ProgressCompleted?.Invoke();
+            OperationComplete();
+        }
+
+        private void OnWroteLineEndNormalizedFASTA(string newFilePath)
+        {
+            WroteLineEndNormalizedFASTA?.Invoke(newFilePath);
+        }
+
+        /// <summary>
+        /// Examine the given fasta file to look for problems.
+        /// Optionally create a new, fixed fasta file
+        /// Optionally also consolidate proteins with duplicate sequences
+        /// </summary>
+        /// <param name="fastaFilePathToCheck"></param>
+        /// <param name="preloadedProteinNamesToKeep">
+        /// Preloaded list of protein names to include in the fixed fasta file
+        /// Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+        /// </param>
+        /// <returns>True if the file was successfully analyzed (even if errors were found)</returns>
+        /// <remarks>Assumes fastaFilePathToCheck exists</remarks>
+        private bool AnalyzeFastaFile(string fastaFilePathToCheck, clsNestedStringIntList preloadedProteinNamesToKeep)
+        {
+            StreamWriter fixedFastaWriter = null;
+            StreamWriter sequenceHashWriter = null;
+
+            string fastaFilePathOut = "UndefinedFilePath.xyz";
+
+            bool success;
+            bool exceptionCaught = false;
+
+            bool consolidateDuplicateProteinSeqsInFasta = false;
+            bool keepDuplicateNamedProteinsUnlessMatchingSequence = false;
+            bool consolidateDupsIgnoreILDiff = false;
+
+            // This array tracks protein hash details
+            var proteinSequenceHashCount = default(int);
+            clsProteinHashInfo[] proteinSeqHashInfo;
+
+            udtRuleDefinitionExtendedType[] headerLineRuleDetails;
+            udtRuleDefinitionExtendedType[] proteinNameRuleDetails;
+            udtRuleDefinitionExtendedType[] proteinDescriptionRuleDetails;
+            udtRuleDefinitionExtendedType[] proteinSequenceRuleDetails;
+
+            try
+            {
+                // Reset the data structures and variables
+                ResetStructures();
+                proteinSeqHashInfo = new clsProteinHashInfo[1];
+
+                headerLineRuleDetails = new udtRuleDefinitionExtendedType[2];
+                proteinNameRuleDetails = new udtRuleDefinitionExtendedType[2];
+                proteinDescriptionRuleDetails = new udtRuleDefinitionExtendedType[2];
+                proteinSequenceRuleDetails = new udtRuleDefinitionExtendedType[2];
+
+                // This is a dictionary of dictionaries, with one dictionary for each letter or number that a SHA-1 hash could start with
+                // This dictionary of dictionaries provides a quick lookup for existing protein hashes
+                // This dictionary is not used if preloadedProteinNamesToKeep contains data
+                const int SPANNER_CHAR_LENGTH = 1;
+                var proteinSequenceHashes = new clsNestedStringDictionary<int>(false, SPANNER_CHAR_LENGTH);
+                bool usingPreloadedProteinNames = false;
+
+                if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
+                {
+                    // Auto enable/disable some options
+                    mSaveBasicProteinHashInfoFile = false;
+                    mCheckForDuplicateProteinSequences = false;
+
+                    // Auto-enable creating a fixed fasta file
+                    mGenerateFixedFastaFile = true;
+                    mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = false;
+                    mFixedFastaOptions.RenameProteinsWithDuplicateNames = false;
+
+                    // Note: do not change .ConsolidateDupsIgnoreILDiff
+                    // If .ConsolidateDupsIgnoreILDiff was enabled when the hash file was made with /B
+                    // it should also be enabled when using /HashFile
+
+                    usingPreloadedProteinNames = true;
+                }
+
+                if (mNormalizeFileLineEndCharacters)
+                {
+                    mFastaFilePath = NormalizeFileLineEndings(
+                        fastaFilePathToCheck,
+                        "CRLF_" + Path.GetFileName(fastaFilePathToCheck),
+                        eLineEndingCharacters.CRLF);
+
+                    if ((mFastaFilePath ?? "") != (fastaFilePathToCheck ?? ""))
+                    {
+                        fastaFilePathToCheck = string.Copy(mFastaFilePath);
+                        OnWroteLineEndNormalizedFASTA(fastaFilePathToCheck);
+                    }
+                }
+                else
+                {
+                    mFastaFilePath = string.Copy(fastaFilePathToCheck);
+                }
+
+                OnProgressUpdate("Parsing " + Path.GetFileName(mFastaFilePath), 0);
+
+                bool proteinHeaderFound = false;
+                bool processingResidueBlock = false;
+                bool blankLineProcessed = false;
+
+                string proteinName = string.Empty;
+                var sbCurrentResidues = new StringBuilder();
+
+                // Initialize the RegEx objects
+
+                var reProteinNameTruncation = new udtProteinNameTruncationRegex();
+
+                // Note that each of these RegEx tests contain two groups with captured text:
+
+                // The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
+                reProteinNameTruncation.reMatchIPI =
+                    new Regex(@"^(IPI:IPI[\w.]{2,})\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
+                reProteinNameTruncation.reMatchGI =
+                    new Regex(@"^(gi\|\d+)\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
+                reProteinNameTruncation.reMatchJGI =
+                    new Regex(@"^(jgi\|[^|]+\|[^|]+)\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract bob|234384 from  bob|234384|ref|483293
+                // or bob|845832 from  bob|845832;ref|384923
+                reProteinNameTruncation.reMatchGeneric =
+                    new Regex(@"^(\w{2,}[" +
+                        CharArrayToString(mProteinNameFirstRefSepChars) + @"][\w\d._]{2,})[" +
+                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "](.+)",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
+                // The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
+                reProteinNameTruncation.reMatchJGIBaseAndID =
+                new Regex(@"^jgi\|[^|]+\|\d+",
+                RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // Note that this RegEx contains a group with captured text:
+                reProteinNameTruncation.reMatchDoubleBarOrColonAndBar =
+                    new Regex("[" +
+                        CharArrayToString(mProteinNameFirstRefSepChars) + "][^" +
+                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "]*([" +
+                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "])",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // Non-letter characters in residues
+                string allowedResidueChars = "A-Z";
+                if (mAllowAsteriskInResidues)
+                    allowedResidueChars += "*";
+                if (mAllowDashInResidues)
+                    allowedResidueChars += "-";
+
+                var reNonLetterResidues =
+                    new Regex("[^" + allowedResidueChars + "]",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
+                if (mFixedFastaOptions.LongProteinNameSplitChars == null || mFixedFastaOptions.LongProteinNameSplitChars.Length == 0)
+                {
+                    mFixedFastaOptions.LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
+                }
+
+                // Initialize the rule details UDTs, which contain a RegEx object for each rule
+                InitializeRuleDetails(ref mHeaderLineRules, ref headerLineRuleDetails);
+                InitializeRuleDetails(ref mProteinNameRules, ref proteinNameRuleDetails);
+                InitializeRuleDetails(ref mProteinDescriptionRules, ref proteinDescriptionRuleDetails);
+                InitializeRuleDetails(ref mProteinSequenceRules, ref proteinSequenceRuleDetails);
+
+                // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
+                int terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck);
+
+                // Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+                AutoDetermineFastaProteinNameSpannerCharLength(mFastaFilePath, terminatorSize);
+
+                // Open the input file
+                var startTime = DateTime.UtcNow;
+
+                using (var fastaReader = new StreamReader(new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    // Optionally, open the output fasta file
+                    if (mGenerateFixedFastaFile)
+                    {
+                        try
+                        {
+                            fastaFilePathOut =
+                                Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                                Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_new.fasta");
+                            fixedFastaWriter = new StreamWriter(new FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+                        }
+                        catch (Exception ex)
+                        {
+                            // Error opening output file
+                            RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                                "Error creating output file " + fastaFilePathOut + ": " + ex.Message, string.Empty);
+                            OnErrorEvent("Error creating output file (Create _new.fasta)", ex);
+                            return false;
+                        }
+                    }
+
+                    // Optionally, open the Sequence Hash file
+                    if (mSaveBasicProteinHashInfoFile)
+                    {
+                        string basicProteinHashInfoFilePath = "<undefined>";
+
+                        try
+                        {
+                            basicProteinHashInfoFilePath =
+                                Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                                Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + PROTEIN_HASHES_FILENAME_SUFFIX);
+                            sequenceHashWriter = new StreamWriter(new FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+
+                            var headerNames = new List<string>()
+                            {
+                                "Protein_ID",
+                                PROTEIN_NAME_COLUMN,
+                                SEQUENCE_LENGTH_COLUMN,
+                                SEQUENCE_HASH_COLUMN
+                            };
+
+                            sequenceHashWriter.WriteLine(FlattenList(headerNames));
+                        }
+                        catch (Exception ex)
+                        {
+                            // Error opening output file
+                            RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                                "Error creating output file " + basicProteinHashInfoFilePath + ": " + ex.Message, string.Empty);
+                            OnErrorEvent("Error creating output file (Create " + PROTEIN_HASHES_FILENAME_SUFFIX + ")", ex);
+                        }
+                    }
+
+                    if (mGenerateFixedFastaFile && (mFixedFastaOptions.RenameProteinsWithDuplicateNames || mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence))
+                    {
+                        // Make sure mCheckForDuplicateProteinNames is enabled
+                        mCheckForDuplicateProteinNames = true;
+                    }
+
+                    // Initialize proteinNames
+                    var proteinNames = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+
+                    // Optionally, initialize the protein sequence hash objects
+                    if (mSaveProteinSequenceHashInfoFiles)
+                    {
+                        mCheckForDuplicateProteinSequences = true;
+                    }
+
+                    if (mGenerateFixedFastaFile && mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs)
+                    {
+                        mCheckForDuplicateProteinSequences = true;
+                        mSaveProteinSequenceHashInfoFiles = !usingPreloadedProteinNames;
+                        consolidateDuplicateProteinSeqsInFasta = true;
+                        keepDuplicateNamedProteinsUnlessMatchingSequence = mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence;
+                        consolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff;
+                    }
+                    else if (mGenerateFixedFastaFile && mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence)
+                    {
+                        mCheckForDuplicateProteinSequences = true;
+                        mSaveProteinSequenceHashInfoFiles = !usingPreloadedProteinNames;
+                        consolidateDuplicateProteinSeqsInFasta = false;
+                        keepDuplicateNamedProteinsUnlessMatchingSequence = mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence;
+                        consolidateDupsIgnoreILDiff = mFixedFastaOptions.ConsolidateDupsIgnoreILDiff;
+                    }
+
+                    if (mCheckForDuplicateProteinSequences)
+                    {
+                        proteinSequenceHashes.Clear();
+                        proteinSequenceHashCount = 0;
+                        proteinSeqHashInfo = new clsProteinHashInfo[100];
+                    }
+
+                    // Parse each line in the file
+                    long bytesRead = 0;
+                    var lastMemoryUsageReport = DateTime.UtcNow;
+
+                    // Note: This value is updated only if the line length is < mMaximumResiduesPerLine
+                    int currentValidResidueLineLengthMax = 0;
+                    bool processingDuplicateOrInvalidProtein = false;
+
+                    var lastProgressReport = DateTime.UtcNow;
+
+                    while (!fastaReader.EndOfStream)
+                    {
+                        string lineIn;
+                        try
+                        {
+                            lineIn = fastaReader.ReadLine();
+                        }
+                        catch (OutOfMemoryException ex)
+                        {
+                            OnErrorEvent(string.Format(
+                                "Error in AnalyzeFastaFile reading line {0}; " +
+                                "it is most likely millions of characters long, " +
+                                "indicating a corrupt fasta file", mLineCount + 1), ex);
+                            exceptionCaught = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount + 1), ex);
+                            exceptionCaught = true;
+                            break;
+                        }
+
+                        bytesRead += lineIn.Length + terminatorSize;
+
+                        if (mLineCount % 250 == 0)
+                        {
+                            if (AbortProcessing)
+                                break;
+
+                            if (DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5)
+                            {
+                                lastProgressReport = DateTime.UtcNow;
+                                float percentComplete = (float)(bytesRead / (double)fastaReader.BaseStream.Length * 100.0);
+                                if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
+                                {
+                                    // Bump the % complete down so that 100% complete in this routine will equate to 75% complete
+                                    // The remaining 25% will occur in ConsolidateDuplicateProteinSeqsInFasta
+                                    percentComplete = percentComplete * 3 / 4;
+                                }
+
+                                UpdateProgress("Validating FASTA File (" + Math.Round(percentComplete, 0) + "% Done)", percentComplete);
+
+                                if (DateTime.UtcNow.Subtract(lastMemoryUsageReport).TotalMinutes >= 1)
+                                {
+                                    lastMemoryUsageReport = DateTime.UtcNow;
+                                    ReportMemoryUsage(preloadedProteinNamesToKeep, proteinSequenceHashes, proteinNames, proteinSeqHashInfo);
+                                }
+                            }
+                        }
+
+                        mLineCount += 1;
+
+                        if (lineIn.Length > 10000000)
+                        {
+                            RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", string.Empty);
+                            continue;
+                        }
+                        else if (lineIn.Length > 1000000)
+                        {
+                            RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", string.Empty);
+                        }
+                        else if (lineIn.Length > 100000)
+                        {
+                            RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", string.Empty);
+                        }
+
+                        if (lineIn == null)
+                            continue;
+
+                        if (lineIn.Trim().Length == 0)
+                        {
+                            // We typically only want blank lines at the end of the fasta file or between two protein entries
+                            blankLineProcessed = true;
+                            continue;
+                        }
+
+                        if (lineIn[0] == ' ')
+                        {
+                            if (mWarnLineStartsWithSpace)
+                            {
+                                RecordFastaFileError(mLineCount, 0, string.Empty,
+                                                     (int)eMessageCodeConstants.LineStartsWithSpace, string.Empty, ExtractContext(lineIn, 0));
+                            }
+                        }
+
+                        // Note: Only trim the start of the line; do not trim the end of the line since Sequest incorrectly notates the peptide terminal state if a residue has a space after it
+                        lineIn = lineIn.TrimStart();
+
+                        if (lineIn[0] == mProteinLineStartChar)
+                        {
+                            // Protein entry
+
+                            if (sbCurrentResidues.Length > 0)
+                            {
+                                ProcessResiduesForPreviousProtein(
+                                    proteinName, sbCurrentResidues,
+                                    proteinSequenceHashes,
+                                    ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                                    consolidateDupsIgnoreILDiff,
+                                    fixedFastaWriter,
+                                    currentValidResidueLineLengthMax,
+                                    sequenceHashWriter);
+
+                                currentValidResidueLineLengthMax = 0;
+                            }
+
+                            // Now process this protein entry
+                            mProteinCount += 1;
+                            proteinHeaderFound = true;
+                            processingResidueBlock = false;
+                            processingDuplicateOrInvalidProtein = false;
+
+                            proteinName = string.Empty;
+
+                            AnalyzeFastaProcessProteinHeader(
                                 fixedFastaWriter,
-                                currentValidResidueLineLengthMax,
-                                sequenceHashWriter)
-
-                            currentValidResidueLineLengthMax = 0
-                        End If
-
-                        ' Now process this protein entry
-                        mProteinCount += 1
-                        proteinHeaderFound = True
-                        processingResidueBlock = False
-                        processingDuplicateOrInvalidProtein = False
-
-                        proteinName = String.Empty
-
-                        AnalyzeFastaProcessProteinHeader(
-                            fixedFastaWriter,
-                            lineIn,
-                            proteinName,
-                            processingDuplicateOrInvalidProtein,
-                            preloadedProteinNamesToKeep,
-                            proteinNames,
-                            headerLineRuleDetails,
-                            proteinNameRuleDetails,
-                            proteinDescriptionRuleDetails,
-                            reProteinNameTruncation)
-
-                        If blankLineProcessed Then
-                            ' The previous line was blank; raise a warning
-                            If mWarnBlankLinesBetweenProteins Then
-                                RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.BlankLineBeforeProteinName)
-                            End If
-                        End If
-
-                    Else
-                        ' Protein residues
-
-                        If Not processingResidueBlock Then
-                            If proteinHeaderFound Then
-                                proteinHeaderFound = False
-
-                                If blankLineProcessed Then
-                                    RecordFastaFileError(mLineCount, 0, proteinName, eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues)
-                                End If
-                            Else
-                                RecordFastaFileError(mLineCount, 0, String.Empty, eMessageCodeConstants.ResiduesFoundWithoutProteinHeader)
-                            End If
-
-                            processingResidueBlock = True
-                        Else
-                            If blankLineProcessed Then
-                                RecordFastaFileError(mLineCount, 0, proteinName, eMessageCodeConstants.BlankLineInMiddleOfResidues)
-                            End If
-                        End If
-
-                        Dim newResidueCount = lineIn.Length
-                        mResidueCount += newResidueCount
-
-                        ' Check the line length; raise a warning if longer than suggested
-                        If newResidueCount > mMaximumResiduesPerLine Then
-                            RecordFastaFileWarning(mLineCount, 0, proteinName, eMessageCodeConstants.ResiduesLineTooLong, newResidueCount.ToString, String.Empty)
-                        End If
-
-                        ' Test the protein sequence rules
-                        EvaluateRules(proteinSequenceRuleDetails, proteinName, lineIn, 0, lineIn, 5)
-
-                        If mGenerateFixedFastaFile OrElse mCheckForDuplicateProteinSequences OrElse mSaveBasicProteinHashInfoFile Then
-                            Dim residuesClean As String
-
-                            If mFixedFastaOptions.RemoveInvalidResidues Then
-                                ' Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
-                                residuesClean = reNonLetterResidues.Replace(lineIn, String.Empty)
-                            Else
-                                ' Do not remove non-letter characters, but do remove leading or trailing whitespace
-                                residuesClean = String.Copy(lineIn.Trim())
-                            End If
-
-                            If Not fixedFastaWriter Is Nothing AndAlso Not processingDuplicateOrInvalidProtein Then
-                                If residuesClean <> lineIn Then
-                                    mFixedFastaStats.UpdatedResidueLines += 1
-                                End If
-
-                                If Not mFixedFastaOptions.WrapLongResidueLines Then
-                                    ' Only write out this line if not auto-wrapping long residue lines
-                                    ' If we are auto-wrapping, then the residues will be written out by the call to ProcessResiduesForPreviousProtein
-                                    fixedFastaWriter.WriteLine(residuesClean)
-                                End If
-                            End If
-
-                            If mCheckForDuplicateProteinSequences OrElse mFixedFastaOptions.WrapLongResidueLines Then
-                                ' Only add the residues if this is not a duplicate/invalid protein
-                                If Not processingDuplicateOrInvalidProtein Then
-                                    sbCurrentResidues.Append(residuesClean)
-                                    If residuesClean.Length > currentValidResidueLineLengthMax Then
-                                        currentValidResidueLineLengthMax = residuesClean.Length
-                                    End If
-                                End If
-                            End If
-                        End If
-
-                        ' Reset the blank line tracking variable
-                        blankLineProcessed = False
-
-                    End If
-
-                Loop
-
-                If sbCurrentResidues.Length > 0 Then
-                    ProcessResiduesForPreviousProtein(
-                       proteinName, sbCurrentResidues,
-                       proteinSequenceHashes,
-                       proteinSequenceHashCount, proteinSeqHashInfo,
-                       consolidateDupsIgnoreILDiff,
-                       fixedFastaWriter, currentValidResidueLineLengthMax,
-                       sequenceHashWriter)
-                End If
-
-                If mCheckForDuplicateProteinSequences Then
-                    ' Step through proteinSeqHashInfo and look for duplicate sequences
-                    For index = 0 To proteinSequenceHashCount - 1
-                        If proteinSeqHashInfo(index).AdditionalProteins.Count > 0 Then
-                            With proteinSeqHashInfo(index)
-                                RecordFastaFileWarning(mLineCount, 0, .ProteinNameFirst, eMessageCodeConstants.DuplicateProteinSequence,
-                                  .ProteinNameFirst & ", " & FlattenArray(.AdditionalProteins, ","c), .SequenceStart)
-                            End With
-                        End If
-                    Next index
-                End If
-
-                Dim memoryUsageMB = clsMemoryUsageLogger.GetProcessMemoryUsageMB
-                If memoryUsageMB > mProcessMemoryUsageMBAtStart * 4 OrElse
-                   memoryUsageMB - mProcessMemoryUsageMBAtStart > 50 Then
-                    ReportMemoryUsage(preloadedProteinNamesToKeep, proteinSequenceHashes, proteinNames, proteinSeqHashInfo)
-                End If
-
-            End Using
-
-            Dim totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds
-            If totalSeconds > 5 Then
-                Dim linesPerSecond = CInt(Math.Round(mLineCount / totalSeconds))
-                Console.WriteLine()
-                ShowMessage(String.Format(
-                    "Processing complete after {0:N0} seconds; read {1:N0} lines/second",
-                    totalSeconds, linesPerSecond))
-            End If
-
-            ' Close the output files
-            If Not fixedFastaWriter Is Nothing Then
-                fixedFastaWriter.Close()
-            End If
-
-            If Not sequenceHashWriter Is Nothing Then
-                sequenceHashWriter.Close()
-            End If
-
-            If mProteinCount = 0 Then
-                RecordFastaFileError(mLineCount, 0, String.Empty, eMessageCodeConstants.ProteinEntriesNotFound)
-            ElseIf proteinHeaderFound Then
-                RecordFastaFileError(mLineCount, 0, proteinName, eMessageCodeConstants.FinalProteinEntryMissingResidues)
-            ElseIf Not blankLineProcessed Then
-                ' File does not end in multiple blank lines; need to re-open it using a binary reader and check the last two characters to make sure they're valid
-                Threading.Thread.Sleep(100)
-
-                If Not VerifyLinefeedAtEOF(fastaFilePathToCheck, mAddMissingLinefeedAtEOF) Then
-                    RecordFastaFileError(mLineCount, 0, String.Empty, eMessageCodeConstants.FileDoesNotEndWithLinefeed)
-                End If
-            End If
-
-            If usingPreloadedProteinNames Then
-                ' Report stats on the number of proteins read, the number written, and any that had duplicate protein names in the original fasta file
-                Dim nameCountNotFound = 0
-                Dim duplicateProteinNameCount = 0
-                Dim proteinCountWritten = 0
-                Dim preloadedProteinNameCount = 0
-
-                For Each spanningKey In preloadedProteinNamesToKeep.GetSpanningKeys
-                    Dim proteinsForKey = preloadedProteinNamesToKeep.GetListForSpanningKey(spanningKey)
-                    preloadedProteinNameCount += proteinsForKey.Count
-
-                    For Each proteinEntry In proteinsForKey
-                        If proteinEntry.Value = 0 Then
-                            nameCountNotFound += 1
-                        Else
-                            proteinCountWritten += 1
-                            If proteinEntry.Value > 1 Then
-                                duplicateProteinNameCount += 1
-                            End If
-                        End If
-                    Next
-                Next
-
-                Console.WriteLine()
-                If proteinCountWritten = preloadedProteinNameCount Then
-                    ShowMessage("Fixed Fasta has all " & proteinCountWritten.ToString("#,##0") & " proteins determined from the pre-existing protein hash file")
-                Else
-                    ShowMessage("Fixed Fasta has " & proteinCountWritten.ToString("#,##0") & " of the " & preloadedProteinNameCount.ToString("#,##0") & " proteins determined from the pre-existing protein hash file")
-                End If
-
-                If nameCountNotFound > 0 Then
-                    ShowMessage("WARNING: " & nameCountNotFound.ToString("#,##0") & " protein names were in the protein name list to keep, but were not found in the fasta file")
-                End If
-
-                If duplicateProteinNameCount > 0 Then
-                    ShowMessage("WARNING: " & duplicateProteinNameCount.ToString("#,##0") & " protein names were present multiple times in the fasta file; duplicate entries were skipped")
-                End If
-
-                success = Not exceptionCaught
-
-            ElseIf mSaveProteinSequenceHashInfoFiles Then
-                Dim percentComplete = 98.0!
-                If consolidateDuplicateProteinSeqsInFasta OrElse keepDuplicateNamedProteinsUnlessMatchingSequence Then
-                    percentComplete = percentComplete * 3 / 4
-                End If
-                MyBase.UpdateProgress("Validating FASTA File (" & Math.Round(percentComplete, 0) & "% Done)", percentComplete)
-
-                Dim hashInfoSuccess = AnalyzeFastaSaveHashInfo(
-                    fastaFilePathToCheck,
-                    proteinSequenceHashCount,
-                    proteinSeqHashInfo,
-                    consolidateDuplicateProteinSeqsInFasta,
-                    consolidateDupsIgnoreILDiff,
-                    keepDuplicateNamedProteinsUnlessMatchingSequence,
-                    fastaFilePathOut)
-
-                success = hashInfoSuccess And Not exceptionCaught
-            Else
-                success = Not exceptionCaught
-            End If
-
-            If MyBase.AbortProcessing Then
-                MyBase.UpdateProgress("Parsing aborted")
-            Else
-                MyBase.UpdateProgress("Parsing complete", 100)
-            End If
-
-        Catch ex As Exception
-            OnErrorEvent(String.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount), ex)
-            success = False
-        Finally
-            ' These close statements will typically be redundant,
-            ' However, if an exception occurs, then they will be needed to close the files
-
-            If Not fixedFastaWriter Is Nothing Then
-                fixedFastaWriter.Close()
-            End If
-
-            If Not sequenceHashWriter Is Nothing Then
-                sequenceHashWriter.Close()
-            End If
-
-        End Try
-
-        Return success
-
-    End Function
-
-    Private Sub AnalyzeFastaProcessProteinHeader(
-      fixedFastaWriter As TextWriter,
-      lineIn As String,
-      <Out> ByRef proteinName As String,
-      <Out> ByRef processingDuplicateOrInvalidProtein As Boolean,
-      preloadedProteinNamesToKeep As clsNestedStringIntList,
-      proteinNames As ISet(Of String),
-      headerLineRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-      proteinNameRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-      proteinDescriptionRuleDetails As IList(Of udtRuleDefinitionExtendedType),
-      reProteinNameTruncation As udtProteinNameTruncationRegex)
-
-        Dim descriptionStartIndex As Integer
-
-        Dim proteinDescription As String = String.Empty
-
-        Dim skipDuplicateProtein = False
-
-        proteinName = String.Empty
-        processingDuplicateOrInvalidProtein = True
-
-        Try
-            SplitFastaProteinHeaderLine(lineIn, proteinName, proteinDescription, descriptionStartIndex)
-
-            If proteinName.Length = 0 Then
-                processingDuplicateOrInvalidProtein = True
-            Else
-                processingDuplicateOrInvalidProtein = False
-            End If
-
-            ' Test the header line rules
-            EvaluateRules(headerLineRuleDetails, proteinName, lineIn, 0, lineIn, DEFAULT_CONTEXT_LENGTH)
-
-            If proteinDescription.Length > 0 Then
-                ' Test the protein description rules
-
-                EvaluateRules(
-                    proteinDescriptionRuleDetails, proteinName, proteinDescription,
-                    descriptionStartIndex, lineIn, DEFAULT_CONTEXT_LENGTH)
-            End If
-
-            If proteinName.Length > 0 Then
-
-                ' Check for protein names that are too long or too short
-                If proteinName.Length < mMinimumProteinNameLength Then
-                    RecordFastaFileWarning(mLineCount, 1, proteinName,
-                     eMessageCodeConstants.ProteinNameIsTooShort, proteinName.Length.ToString, String.Empty)
-                ElseIf proteinName.Length > mMaximumProteinNameLength Then
-                    RecordFastaFileError(mLineCount, 1, proteinName,
-                     eMessageCodeConstants.ProteinNameIsTooLong, proteinName.Length.ToString, String.Empty)
-                End If
-
-                ' Test the protein name rules
-                EvaluateRules(proteinNameRuleDetails, proteinName, proteinName, 1, lineIn, DEFAULT_CONTEXT_LENGTH)
-
-                If Not preloadedProteinNamesToKeep Is Nothing AndAlso preloadedProteinNamesToKeep.Count > 0 Then
-                    ' See if preloadedProteinNamesToKeep contains proteinName
-                    Dim matchCount As Integer = preloadedProteinNamesToKeep.GetValueForItem(proteinName, -1)
-
-                    If matchCount >= 0 Then
-                        ' Name is known; increment the value for this protein
-
-                        If matchCount = 0 Then
-                            skipDuplicateProtein = False
-                        Else
-                            ' An entry with this protein name has already been written
-                            ' Do not include the duplicate
-                            skipDuplicateProtein = True
-                        End If
-
-                        If Not preloadedProteinNamesToKeep.SetValueForItem(proteinName, matchCount + 1) Then
-                            ShowMessage("WARNING: protein " & proteinName & " not found in preloadedProteinNamesToKeep")
-                        End If
-
-                    Else
-                        ' Unknown protein name; do not keep this protein
-                        skipDuplicateProtein = True
-                        processingDuplicateOrInvalidProtein = True
-                    End If
-
-                    If mGenerateFixedFastaFile Then
-                        ' Make sure proteinDescription doesn't start with a | or space
-                        If proteinDescription.Length > 0 Then
-                            proteinDescription = proteinDescription.TrimStart(New Char() {"|"c, " "c})
-                        End If
-                    End If
-
-                Else
-
-                    If mGenerateFixedFastaFile Then
-                        proteinName = AutoFixProteinNameAndDescription(proteinName, proteinDescription, reProteinNameTruncation)
-                    End If
-
-                    ' Optionally, check for duplicate protein names
-                    If mCheckForDuplicateProteinNames Then
-                        proteinName = ExamineProteinName(proteinName, proteinNames, skipDuplicateProtein, processingDuplicateOrInvalidProtein)
-
-                        If skipDuplicateProtein Then
-                            processingDuplicateOrInvalidProtein = True
-                        End If
-                    End If
-
-                End If
-
-                If Not fixedFastaWriter Is Nothing AndAlso Not skipDuplicateProtein Then
-                    fixedFastaWriter.WriteLine(ConstructFastaHeaderLine(proteinName.Trim, proteinDescription.Trim))
-                End If
-            End If
-
-
-        Catch ex As Exception
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error parsing protein header line '" & lineIn & "': " & ex.Message, String.Empty)
-            OnErrorEvent("Error parsing protein header line", ex)
-        End Try
-
-
-    End Sub
-
-    Private Function AnalyzeFastaSaveHashInfo(
-      fastaFilePathToCheck As String,
-      proteinSequenceHashCount As Integer,
-      proteinSeqHashInfo As IList(Of clsProteinHashInfo),
-      consolidateDuplicateProteinSeqsInFasta As Boolean,
-      consolidateDupsIgnoreILDiff As Boolean,
-      keepDuplicateNamedProteinsUnlessMatchingSequence As Boolean,
-      fastaFilePathOut As String) As Boolean
-
-        Dim swUniqueProteinSeqsOut As StreamWriter
-        Dim swDuplicateProteinMapping As StreamWriter = Nothing
-
-        Dim uniqueProteinSeqsFileOut As String = String.Empty
-        Dim duplicateProteinMappingFileOut As String = String.Empty
-
-        Dim index As Integer
-        Dim duplicateIndex As Integer
-
-        Dim duplicateProteinSeqsFound As Boolean
-        Dim success As Boolean
-
-        duplicateProteinSeqsFound = False
-
-        Try
-            uniqueProteinSeqsFileOut =
-             Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
-             Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & "_UniqueProteinSeqs.txt")
-
-            ' Create swUniqueProteinSeqsOut
-            swUniqueProteinSeqsOut = New StreamWriter(New FileStream(uniqueProteinSeqsFileOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-        Catch ex As Exception
-            ' Error opening output file
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error creating output file " & uniqueProteinSeqsFileOut & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error creating output file (SaveHashInfo to _UniqueProteinSeqs.txt)", ex)
-            Return False
-        End Try
-
-        Try
-            ' Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
-            ' We'll only create it if two or more proteins have the same protein sequence
-            duplicateProteinMappingFileOut =
-              Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
-              Path.GetFileNameWithoutExtension(fastaFilePathToCheck) & "_UniqueProteinSeqDuplicates.txt")                       ' Look for duplicateProteinMappingFileOut and erase it if it exists
-
-            If File.Exists(duplicateProteinMappingFileOut) Then
-                File.Delete(duplicateProteinMappingFileOut)
-            End If
-        Catch ex As Exception
-            ' Error deleting output file
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error deleting output file " & duplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error deleting output file (SaveHashInfo to _UniqueProteinSeqDuplicates.txt)", ex)
-            Return False
-        End Try
-
-        Try
-
-            Dim headerColumns = New List(Of String) From {
-                "Sequence_Index",
-                "Protein_Name_First",
-                SEQUENCE_LENGTH_COLUMN,
-                SEQUENCE_HASH_COLUMN,
-                "Protein_Count",
-                "Duplicate_Proteins"}
-
-            swUniqueProteinSeqsOut.WriteLine(FlattenList(headerColumns))
-
-            For index = 0 To proteinSequenceHashCount - 1
-                With proteinSeqHashInfo(index)
-
-                    Dim dataValues = New List(Of String) From {
-                        (index + 1).ToString,
-                        .ProteinNameFirst,
-                        .SequenceLength.ToString(),
-                        .SequenceHash,
-                        (.AdditionalProteins.Count + 1).ToString(),
-                        FlattenArray(.AdditionalProteins, ","c)}
-
-                    swUniqueProteinSeqsOut.WriteLine(FlattenList(dataValues))
-
-                    If .AdditionalProteins.Count > 0 Then
-                        duplicateProteinSeqsFound = True
-
-                        If swDuplicateProteinMapping Is Nothing Then
-                            ' Need to create swDuplicateProteinMapping
-                            swDuplicateProteinMapping = New StreamWriter(New FileStream(duplicateProteinMappingFileOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                            Dim proteinHeaderColumns = New List(Of String) From {
+                                lineIn,
+                                out proteinName,
+                                out processingDuplicateOrInvalidProtein,
+                                preloadedProteinNamesToKeep,
+                                proteinNames,
+                                headerLineRuleDetails,
+                                proteinNameRuleDetails,
+                                proteinDescriptionRuleDetails,
+                                reProteinNameTruncation);
+
+                            if (blankLineProcessed)
+                            {
+                                // The previous line was blank; raise a warning
+                                if (mWarnBlankLinesBetweenProteins)
+                                {
+                                    RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBeforeProteinName);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Protein residues
+
+                            if (!processingResidueBlock)
+                            {
+                                if (proteinHeaderFound)
+                                {
+                                    proteinHeaderFound = false;
+
+                                    if (blankLineProcessed)
+                                    {
+                                        RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues);
+                                    }
+                                }
+                                else
+                                {
+                                    RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.ResiduesFoundWithoutProteinHeader);
+                                }
+
+                                processingResidueBlock = true;
+                            }
+                            else if (blankLineProcessed)
+                            {
+                                RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineInMiddleOfResidues);
+                            }
+
+                            int newResidueCount = lineIn.Length;
+                            mResidueCount += newResidueCount;
+
+                            // Check the line length; raise a warning if longer than suggested
+                            if (newResidueCount > mMaximumResiduesPerLine)
+                            {
+                                RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, newResidueCount.ToString(), string.Empty);
+                            }
+
+                            // Test the protein sequence rules
+                            EvaluateRules(proteinSequenceRuleDetails, proteinName, lineIn, 0, lineIn, 5);
+
+                            if (mGenerateFixedFastaFile || mCheckForDuplicateProteinSequences || mSaveBasicProteinHashInfoFile)
+                            {
+                                string residuesClean;
+
+                                if (mFixedFastaOptions.RemoveInvalidResidues)
+                                {
+                                    // Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
+                                    residuesClean = reNonLetterResidues.Replace(lineIn, string.Empty);
+                                }
+                                else
+                                {
+                                    // Do not remove non-letter characters, but do remove leading or trailing whitespace
+                                    residuesClean = string.Copy(lineIn.Trim());
+                                }
+
+                                if (fixedFastaWriter != null && !processingDuplicateOrInvalidProtein)
+                                {
+                                    if ((residuesClean ?? "") != (lineIn ?? ""))
+                                    {
+                                        mFixedFastaStats.UpdatedResidueLines += 1;
+                                    }
+
+                                    if (!mFixedFastaOptions.WrapLongResidueLines)
+                                    {
+                                        // Only write out this line if not auto-wrapping long residue lines
+                                        // If we are auto-wrapping, then the residues will be written out by the call to ProcessResiduesForPreviousProtein
+                                        fixedFastaWriter.WriteLine(residuesClean);
+                                    }
+                                }
+
+                                if (mCheckForDuplicateProteinSequences || mFixedFastaOptions.WrapLongResidueLines)
+                                {
+                                    // Only add the residues if this is not a duplicate/invalid protein
+                                    if (!processingDuplicateOrInvalidProtein)
+                                    {
+                                        sbCurrentResidues.Append(residuesClean);
+                                        if (residuesClean.Length > currentValidResidueLineLengthMax)
+                                        {
+                                            currentValidResidueLineLengthMax = residuesClean.Length;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Reset the blank line tracking variable
+                            blankLineProcessed = false;
+                        }
+                    }
+
+                    if (sbCurrentResidues.Length > 0)
+                    {
+                        ProcessResiduesForPreviousProtein(
+                            proteinName, sbCurrentResidues,
+                            proteinSequenceHashes,
+                            ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                            consolidateDupsIgnoreILDiff,
+                            fixedFastaWriter, currentValidResidueLineLengthMax,
+                            sequenceHashWriter);
+                    }
+
+                    if (mCheckForDuplicateProteinSequences)
+                    {
+                        // Step through proteinSeqHashInfo and look for duplicate sequences
+                        for (int index = 0; index <= proteinSequenceHashCount - 1; index++)
+                        {
+                            if (proteinSeqHashInfo[index].AdditionalProteins.Count() > 0)
+                            {
+                                var proteinHashInfo = proteinSeqHashInfo[index];
+                                RecordFastaFileWarning(mLineCount, 0, proteinHashInfo.ProteinNameFirst, (int)eMessageCodeConstants.DuplicateProteinSequence,
+                                    proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ','), proteinHashInfo.SequenceStart);
+                            }
+                        }
+                    }
+
+                    float memoryUsageMB = clsMemoryUsageLogger.GetProcessMemoryUsageMB();
+                    if (memoryUsageMB > mProcessMemoryUsageMBAtStart * 4 ||
+                        memoryUsageMB - mProcessMemoryUsageMBAtStart > 50)
+                    {
+                        ReportMemoryUsage(preloadedProteinNamesToKeep, proteinSequenceHashes, proteinNames, proteinSeqHashInfo);
+                    }
+                }
+
+                double totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds;
+                if (totalSeconds > 5)
+                {
+                    int linesPerSecond = (int)Math.Round(mLineCount / totalSeconds);
+                    Console.WriteLine();
+                    ShowMessage(string.Format(
+                        "Processing complete after {0:N0} seconds; read {1:N0} lines/second",
+                        totalSeconds, linesPerSecond));
+                }
+
+                // Close the output files
+                if (fixedFastaWriter != null)
+                {
+                    fixedFastaWriter.Close();
+                }
+
+                if (sequenceHashWriter != null)
+                {
+                    sequenceHashWriter.Close();
+                }
+
+                if (mProteinCount == 0)
+                {
+                    RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.ProteinEntriesNotFound);
+                }
+                else if (proteinHeaderFound)
+                {
+                    RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.FinalProteinEntryMissingResidues);
+                }
+                else if (!blankLineProcessed)
+                {
+                    // File does not end in multiple blank lines; need to re-open it using a binary reader and check the last two characters to make sure they're valid
+                    System.Threading.Thread.Sleep(100);
+
+                    if (!VerifyLinefeedAtEOF(fastaFilePathToCheck, mAddMissingLinefeedAtEOF))
+                    {
+                        RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.FileDoesNotEndWithLinefeed);
+                    }
+                }
+
+                if (usingPreloadedProteinNames)
+                {
+                    // Report stats on the number of proteins read, the number written, and any that had duplicate protein names in the original fasta file
+                    int nameCountNotFound = 0;
+                    int duplicateProteinNameCount = 0;
+                    int proteinCountWritten = 0;
+                    int preloadedProteinNameCount = 0;
+
+                    foreach (var spanningKey in preloadedProteinNamesToKeep.GetSpanningKeys())
+                    {
+                        var proteinsForKey = preloadedProteinNamesToKeep.GetListForSpanningKey(spanningKey);
+                        preloadedProteinNameCount += proteinsForKey.Count;
+
+                        foreach (var proteinEntry in proteinsForKey)
+                        {
+                            if (proteinEntry.Value == 0)
+                            {
+                                nameCountNotFound += 1;
+                            }
+                            else
+                            {
+                                proteinCountWritten += 1;
+                                if (proteinEntry.Value > 1)
+                                {
+                                    duplicateProteinNameCount += 1;
+                                }
+                            }
+                        }
+                    }
+
+                    Console.WriteLine();
+                    if (proteinCountWritten == preloadedProteinNameCount)
+                    {
+                        ShowMessage("Fixed Fasta has all " + proteinCountWritten.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
+                    }
+                    else
+                    {
+                        ShowMessage("Fixed Fasta has " + proteinCountWritten.ToString("#,##0") + " of the " + preloadedProteinNameCount.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
+                    }
+
+                    if (nameCountNotFound > 0)
+                    {
+                        ShowMessage("WARNING: " + nameCountNotFound.ToString("#,##0") + " protein names were in the protein name list to keep, but were not found in the fasta file");
+                    }
+
+                    if (duplicateProteinNameCount > 0)
+                    {
+                        ShowMessage("WARNING: " + duplicateProteinNameCount.ToString("#,##0") + " protein names were present multiple times in the fasta file; duplicate entries were skipped");
+                    }
+
+                    success = !exceptionCaught;
+                }
+                else if (mSaveProteinSequenceHashInfoFiles)
+                {
+                    float percentComplete = 98.0F;
+                    if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
+                    {
+                        percentComplete = percentComplete * 3 / 4;
+                    }
+
+                    UpdateProgress("Validating FASTA File (" + Math.Round(percentComplete, 0) + "% Done)", percentComplete);
+
+                    bool hashInfoSuccess = AnalyzeFastaSaveHashInfo(
+                        fastaFilePathToCheck,
+                        proteinSequenceHashCount,
+                        proteinSeqHashInfo,
+                        consolidateDuplicateProteinSeqsInFasta,
+                        consolidateDupsIgnoreILDiff,
+                        keepDuplicateNamedProteinsUnlessMatchingSequence,
+                        fastaFilePathOut);
+
+                    success = hashInfoSuccess && !exceptionCaught;
+                }
+                else
+                {
+                    success = !exceptionCaught;
+                }
+
+                if (AbortProcessing)
+                {
+                    UpdateProgress("Parsing aborted");
+                }
+                else
+                {
+                    UpdateProgress("Parsing complete", 100);
+                }
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount), ex);
+                success = false;
+            }
+            finally
+            {
+                // These close statements will typically be redundant,
+                // However, if an exception occurs, then they will be needed to close the files
+
+                if (fixedFastaWriter != null)
+                {
+                    fixedFastaWriter.Close();
+                }
+
+                if (sequenceHashWriter != null)
+                {
+                    sequenceHashWriter.Close();
+                }
+            }
+
+            return success;
+        }
+
+        private void AnalyzeFastaProcessProteinHeader(
+            TextWriter fixedFastaWriter,
+            string lineIn,
+            out string proteinName,
+            out bool processingDuplicateOrInvalidProtein,
+            clsNestedStringIntList preloadedProteinNamesToKeep,
+            ISet<string> proteinNames,
+            IList<udtRuleDefinitionExtendedType> headerLineRuleDetails,
+            IList<udtRuleDefinitionExtendedType> proteinNameRuleDetails,
+            IList<udtRuleDefinitionExtendedType> proteinDescriptionRuleDetails,
+            udtProteinNameTruncationRegex reProteinNameTruncation)
+        {
+            int descriptionStartIndex;
+
+            string proteinDescription = string.Empty;
+
+            bool skipDuplicateProtein = false;
+
+            proteinName = string.Empty;
+            processingDuplicateOrInvalidProtein = true;
+
+            try
+            {
+                SplitFastaProteinHeaderLine(lineIn, out proteinName, out proteinDescription, out descriptionStartIndex);
+
+                if (proteinName.Length == 0)
+                {
+                    processingDuplicateOrInvalidProtein = true;
+                }
+                else
+                {
+                    processingDuplicateOrInvalidProtein = false;
+                }
+
+                // Test the header line rules
+                EvaluateRules(headerLineRuleDetails, proteinName, lineIn, 0, lineIn, DEFAULT_CONTEXT_LENGTH);
+
+                if (proteinDescription.Length > 0)
+                {
+                    // Test the protein description rules
+
+                    EvaluateRules(
+                        proteinDescriptionRuleDetails, proteinName, proteinDescription,
+                        descriptionStartIndex, lineIn, DEFAULT_CONTEXT_LENGTH);
+                }
+
+                if (proteinName.Length > 0)
+                {
+
+                    // Check for protein names that are too long or too short
+                    if (proteinName.Length < mMinimumProteinNameLength)
+                    {
+                        RecordFastaFileWarning(mLineCount, 1, proteinName,
+                            (int)eMessageCodeConstants.ProteinNameIsTooShort, proteinName.Length.ToString(), string.Empty);
+                    }
+                    else if (proteinName.Length > mMaximumProteinNameLength)
+                    {
+                        RecordFastaFileError(mLineCount, 1, proteinName,
+                            (int)eMessageCodeConstants.ProteinNameIsTooLong, proteinName.Length.ToString(), string.Empty);
+                    }
+
+                    // Test the protein name rules
+                    EvaluateRules(proteinNameRuleDetails, proteinName, proteinName, 1, lineIn, DEFAULT_CONTEXT_LENGTH);
+
+                    if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
+                    {
+                        // See if preloadedProteinNamesToKeep contains proteinName
+                        int matchCount = preloadedProteinNamesToKeep.GetValueForItem(proteinName, -1);
+
+                        if (matchCount >= 0)
+                        {
+                            // Name is known; increment the value for this protein
+
+                            if (matchCount == 0)
+                            {
+                                skipDuplicateProtein = false;
+                            }
+                            else
+                            {
+                                // An entry with this protein name has already been written
+                                // Do not include the duplicate
+                                skipDuplicateProtein = true;
+                            }
+
+                            if (!preloadedProteinNamesToKeep.SetValueForItem(proteinName, matchCount + 1))
+                            {
+                                ShowMessage("WARNING: protein " + proteinName + " not found in preloadedProteinNamesToKeep");
+                            }
+                        }
+                        else
+                        {
+                            // Unknown protein name; do not keep this protein
+                            skipDuplicateProtein = true;
+                            processingDuplicateOrInvalidProtein = true;
+                        }
+
+                        if (mGenerateFixedFastaFile)
+                        {
+                            // Make sure proteinDescription doesn't start with a | or space
+                            if (proteinDescription.Length > 0)
+                            {
+                                proteinDescription = proteinDescription.TrimStart(new char[] { '|', ' ' });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (mGenerateFixedFastaFile)
+                        {
+                            proteinName = AutoFixProteinNameAndDescription(ref proteinName, ref proteinDescription, reProteinNameTruncation);
+                        }
+
+                        // Optionally, check for duplicate protein names
+                        if (mCheckForDuplicateProteinNames)
+                        {
+                            proteinName = ExamineProteinName(ref proteinName, proteinNames, out skipDuplicateProtein, ref processingDuplicateOrInvalidProtein);
+
+                            if (skipDuplicateProtein)
+                            {
+                                processingDuplicateOrInvalidProtein = true;
+                            }
+                        }
+                    }
+
+                    if (fixedFastaWriter != null && !skipDuplicateProtein)
+                    {
+                        fixedFastaWriter.WriteLine(ConstructFastaHeaderLine(proteinName.Trim(), proteinDescription.Trim()));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error parsing protein header line '" + lineIn + "': " + ex.Message, string.Empty);
+                OnErrorEvent("Error parsing protein header line", ex);
+            }
+        }
+
+        private bool AnalyzeFastaSaveHashInfo(
+            string fastaFilePathToCheck,
+            int proteinSequenceHashCount,
+            IList<clsProteinHashInfo> proteinSeqHashInfo,
+            bool consolidateDuplicateProteinSeqsInFasta,
+            bool consolidateDupsIgnoreILDiff,
+            bool keepDuplicateNamedProteinsUnlessMatchingSequence,
+            string fastaFilePathOut)
+        {
+            StreamWriter swUniqueProteinSeqsOut;
+            StreamWriter swDuplicateProteinMapping = null;
+
+            string uniqueProteinSeqsFileOut = string.Empty;
+            string duplicateProteinMappingFileOut = string.Empty;
+
+            int index;
+            var duplicateIndex = default(int);
+
+            bool duplicateProteinSeqsFound;
+            bool success;
+
+            duplicateProteinSeqsFound = false;
+
+            try
+            {
+                uniqueProteinSeqsFileOut =
+                    Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                    Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqs.txt");
+
+                // Create swUniqueProteinSeqsOut
+                swUniqueProteinSeqsOut = new StreamWriter(new FileStream(uniqueProteinSeqsFileOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+            }
+            catch (Exception ex)
+            {
+                // Error opening output file
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error creating output file " + uniqueProteinSeqsFileOut + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error creating output file (SaveHashInfo to _UniqueProteinSeqs.txt)", ex);
+                return false;
+            }
+
+            try
+            {
+                // Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
+                // We'll only create it if two or more proteins have the same protein sequence
+                duplicateProteinMappingFileOut =
+                    Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                    Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqDuplicates.txt");                       // Look for duplicateProteinMappingFileOut and erase it if it exists
+
+                if (File.Exists(duplicateProteinMappingFileOut))
+                {
+                    File.Delete(duplicateProteinMappingFileOut);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Error deleting output file
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error deleting output file " + duplicateProteinMappingFileOut + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error deleting output file (SaveHashInfo to _UniqueProteinSeqDuplicates.txt)", ex);
+                return false;
+            }
+
+            try
+            {
+                var headerColumns = new List<string>()
+                {
+                    "Sequence_Index",
+                    "Protein_Name_First",
+                    SEQUENCE_LENGTH_COLUMN,
+                    SEQUENCE_HASH_COLUMN,
+                    "Protein_Count",
+                    "Duplicate_Proteins"
+                };
+
+                swUniqueProteinSeqsOut.WriteLine(FlattenList(headerColumns));
+
+                for (index = 0; index <= proteinSequenceHashCount - 1; index++)
+                {
+                    var proteinHashInfo = proteinSeqHashInfo[index];
+
+                    var dataValues = new List<string>()
+                    {
+                        (index + 1).ToString(),
+                        proteinHashInfo.ProteinNameFirst,
+                        proteinHashInfo.SequenceLength.ToString(),
+                        proteinHashInfo.SequenceHash,
+                        (proteinHashInfo.AdditionalProteins.Count() + 1).ToString(),
+                        FlattenArray(proteinHashInfo.AdditionalProteins, ',')
+                    };
+
+                    swUniqueProteinSeqsOut.WriteLine(FlattenList(dataValues));
+
+                    if (proteinHashInfo.AdditionalProteins.Count() > 0)
+                    {
+                        duplicateProteinSeqsFound = true;
+
+                        if (swDuplicateProteinMapping == null)
+                        {
+                            // Need to create swDuplicateProteinMapping
+                            swDuplicateProteinMapping = new StreamWriter(new FileStream(duplicateProteinMappingFileOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+
+                            var proteinHeaderColumns = new List<string>()
+                            {
                                 "Sequence_Index",
                                 "Protein_Name_First",
                                 SEQUENCE_LENGTH_COLUMN,
-                                "Duplicate_Protein"}
-
-                            swDuplicateProteinMapping.WriteLine(FlattenList(proteinHeaderColumns))
-                        End If
-
-                        For Each additionalProtein As String In .AdditionalProteins
-                            If Not .AdditionalProteins(duplicateIndex) Is Nothing Then
-                                If additionalProtein.Trim.Length > 0 Then
-                                    Dim proteinDataValues = New List(Of String) From {
-                                        (index + 1).ToString,
-                                        .ProteinNameFirst,
-                                        .SequenceLength.ToString(),
-                                        additionalProtein}
-
-                                    swDuplicateProteinMapping.WriteLine(FlattenList(proteinDataValues))
-                                End If
-                            End If
-                        Next
-
-                    ElseIf .DuplicateProteinNameCount > 0 Then
-                        duplicateProteinSeqsFound = True
-                    End If
-                End With
-
-            Next index
-
-            swUniqueProteinSeqsOut.Close()
-            If Not swDuplicateProteinMapping Is Nothing Then swDuplicateProteinMapping.Close()
-
-            success = True
-
-        Catch ex As Exception
-            ' Error writing results
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error writing results to " & uniqueProteinSeqsFileOut & " or " & duplicateProteinMappingFileOut & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error writing results to " & uniqueProteinSeqsFileOut & " or " & duplicateProteinMappingFileOut, ex)
-            success = False
-        End Try
-
-        If success And proteinSequenceHashCount > 0 And duplicateProteinSeqsFound Then
-            If consolidateDuplicateProteinSeqsInFasta OrElse keepDuplicateNamedProteinsUnlessMatchingSequence Then
-                success = CorrectForDuplicateProteinSeqsInFasta(consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff, fastaFilePathOut, proteinSequenceHashCount, proteinSeqHashInfo)
-            End If
-        End If
-
-        Return success
-
-    End Function
-
-    ''' <summary>
-    ''' Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
-    ''' </summary>
-    ''' <param name="fastaFilePathToTest">Fasta file to examine</param>
-    ''' <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
-    ''' <remarks>
-    ''' Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
-    ''' Keeps track of the portion of protein names in common between adjacent proteins
-    ''' Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
-    ''' </remarks>
-    Private Sub AutoDetermineFastaProteinNameSpannerCharLength(fastaFilePathToTest As String, terminatorSize As Integer)
-
-        Const PARTS_TO_SAMPLE = 10
-        Const KILOBYTES_PER_SAMPLE = 51200
-
-        Dim proteinStartLetters = New Dictionary(Of String, Integer)
-        Dim startTime = DateTime.UtcNow
-        Dim showStats = False
-
-        Dim fastaFile = New FileInfo(fastaFilePathToTest)
-        If Not fastaFile.Exists Then Return
-
-        Dim fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE
-        Dim linesReadTotal As Int64
-
-        If fastaFile.Length < fullScanLengthBytes Then
-            fullScanLengthBytes = fastaFile.Length
-            linesReadTotal = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, 0, fastaFile.Length)
-        Else
-
-            Dim stepSizeBytes = CLng(Math.Round(fastaFile.Length / PARTS_TO_SAMPLE, 0))
-
-            For byteOffsetStart As Int64 = 0 To fastaFile.Length Step stepSizeBytes
-                Dim linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024)
-
-                If linesRead < 0 Then
-                    ' This indicates an error, probably from a corrupt file; do not read further
-                    Exit For
-                End If
-
-                linesReadTotal += linesRead
-
-                If Not showStats AndAlso DateTime.UtcNow.Subtract(startTime).TotalMilliseconds > 500 Then
-                    showStats = True
-                    ShowMessage("Pre-scanning the file to look for common base protein names")
-                End If
-            Next
-        End If
-
-        If proteinStartLetters.Count = 0 Then
-            mProteinNameSpannerCharLength = 1
-        Else
-            Dim preScanProteinCount = (From item In proteinStartLetters Select item.Value).Sum()
-
-            If showStats Then
-                Dim percentFileProcessed = fullScanLengthBytes / fastaFile.Length * 100
-                ShowMessage(String.Format(
-                    "  parsed {0:0}% of the file, reading {1:#,##0} lines and finding {2:#,##0} proteins",
-                    percentFileProcessed, linesReadTotal, preScanProteinCount))
-            End If
-
-            ' Determine the appropriate spanner length given the observation counts of the base names
-            mProteinNameSpannerCharLength = clsNestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(proteinStartLetters)
-        End If
-
-        ShowMessage("Using ProteinNameSpannerCharLength = " & mProteinNameSpannerCharLength)
-        Console.WriteLine()
-
-    End Sub
-
-    ''' <summary>
-    ''' Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
-    ''' </summary>
-    ''' <param name="fastaFile"></param>
-    ''' <param name="terminatorSize"></param>
-    ''' <param name="proteinStartLetters"></param>
-    ''' <param name="startOffset"></param>
-    ''' <param name="bytesToRead"></param>
-    ''' <returns>The number of lines read</returns>
-    ''' <remarks></remarks>
-    Private Function AutoDetermineFastaProteinNameSpannerCharLength(
-      fastaFile As FileInfo,
-      terminatorSize As Integer,
-      proteinStartLetters As IDictionary(Of String, Integer),
-      startOffset As Int64,
-      bytesToRead As Int64) As Int64
-
-        Dim linesRead = 0L
-
-        Try
-            Dim previousProteinLength = 0
-            Dim previousProteinName = String.Empty
-
-            If startOffset >= fastaFile.Length Then
-                ShowMessage("Ignoring byte offset of " & startOffset &
-                            " in AutoDetermineProteinNameSpannerCharLength since past the end of the file " &
-                            "(" & fastaFile.Length & " bytes")
-                Return 0
-            End If
-
-            Dim bytesRead As Int64 = 0
-
-            Dim firstLineDiscarded As Boolean
-            If startOffset = 0 Then
-                firstLineDiscarded = True
-            End If
-
-            Using inStream = New FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-                inStream.Position = startOffset
-
-                Using reader = New StreamReader(inStream)
-
-                    Do While Not reader.EndOfStream
-
-                        Dim lineIn = reader.ReadLine()
-                        bytesRead += terminatorSize
-                        linesRead += 1
-
-                        If String.IsNullOrEmpty(lineIn) Then
-                            Continue Do
-                        End If
-
-                        bytesRead += lineIn.Length
-                        If Not firstLineDiscarded Then
-                            ' We can't trust that this was a full line of text; skip it
-                            firstLineDiscarded = True
-                            Continue Do
-                        End If
-
-                        If bytesRead > bytesToRead Then
-                            Exit Do
-                        End If
-
-                        If Not lineIn.Chars(0) = mProteinLineStartChar Then
-                            Continue Do
-                        End If
-
-                        ' Make sure the protein name and description are valid
-                        ' Find the first space and/or tab
-                        Dim spaceIndex = GetBestSpaceIndex(lineIn)
-                        Dim proteinName As String
-
-                        If spaceIndex > 1 Then
-                            proteinName = lineIn.Substring(1, spaceIndex - 1)
-                        Else
-                            ' Line does not contain a description
-                            If spaceIndex <= 0 Then
-                                If lineIn.Trim.Length <= 1 Then
-                                    Continue Do
-                                Else
-                                    ' The line contains a protein name, but not a description
-                                    proteinName = lineIn.Substring(1)
-                                End If
-                            Else
-                                ' Space or tab found directly after the > symbol
-                                Continue Do
-                            End If
-                        End If
-
-                        If previousProteinLength = 0 Then
-                            previousProteinName = String.Copy(proteinName)
-                            previousProteinLength = previousProteinName.Length
-                            Continue Do
-                        End If
-
-                        Dim currentNameLength = proteinName.Length
-                        Dim charIndex = 0
-
-                        While charIndex < previousProteinLength
-                            If charIndex >= currentNameLength Then
-                                Exit While
-                            End If
-
-                            If previousProteinName(charIndex) <> proteinName.Chars(charIndex) Then
-                                ' Difference found; add/update the dictionary
-                                Exit While
-                            End If
-
-                            charIndex += 1
-                        End While
-
-                        Dim charsInCommon = charIndex
-                        If charsInCommon > 0 Then
-                            Dim baseName As String = previousProteinName.Substring(0, charsInCommon)
-                            Dim matchCount = 0
-
-                            If proteinStartLetters.TryGetValue(baseName, matchCount) Then
-                                proteinStartLetters(baseName) = matchCount + 1
-                            Else
-                                proteinStartLetters.Add(baseName, 1)
-                            End If
-                        End If
-
-                        previousProteinName = String.Copy(proteinName)
-                        previousProteinLength = previousProteinName.Length
-                    Loop
-
-                End Using
-
-            End Using
-
-        Catch ex As OutOfMemoryException
-            OnErrorEvent("Out of memory exception in AutoDetermineProteinNameSpannerCharLength", ex)
-
-            ' Example message: Insufficient memory to continue the execution of the program
-            ' This can happen with a corrupt .fasta file with a line that has millions of characters
-            Return -1
-
-        Catch ex As Exception
-            OnErrorEvent("Error in AutoDetermineProteinNameSpannerCharLength", ex)
-        End Try
-
-        Return linesRead
-
-    End Function
-
-    Private Function AutoFixProteinNameAndDescription(
-      ByRef proteinName As String,
-      ByRef proteinDescription As String,
-      reProteinNameTruncation As udtProteinNameTruncationRegex) As String
-
-        Dim proteinNameTooLong As Boolean
-        Dim reMatch As Match
-        Dim newProteinName As String
-        Dim charIndex As Integer
-        Dim minCharIndex As Integer
-        Dim extraProteinNameText As String
-        Dim invalidChar As Char
-
-        Dim multipleRefsSplitOutFromKnownAccession = False
-
-        ' Auto-fix potential errors in the protein name
-
-        ' Possibly truncate to mMaximumProteinNameLength characters
-        If proteinName.Length > mMaximumProteinNameLength Then
-            proteinNameTooLong = True
-        Else
-            proteinNameTooLong = False
-        End If
-
-        If mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession OrElse
-           (mFixedFastaOptions.TruncateLongProteinNames And proteinNameTooLong) Then
-
-            ' First see if the name fits the pattern IPI:IPI00048500.11|
-            ' Next see if the name fits the pattern gi|7110699|
-            ' Next see if the name fits the pattern jgi
-            ' Next see if the name fits the generic pattern defined by reProteinNameTruncation.reMatchGeneric
-            ' Otherwise, use mFixedFastaOptions.LongProteinNameSplitChars to define where to truncate
-
-            newProteinName = String.Copy(proteinName)
-            extraProteinNameText = String.Empty
-
-            reMatch = reProteinNameTruncation.reMatchIPI.Match(proteinName)
-            If reMatch.Success Then
-                multipleRefsSplitOutFromKnownAccession = True
-            Else
-                ' IPI didn't match; try gi
-                reMatch = reProteinNameTruncation.reMatchGI.Match(proteinName)
-            End If
-
-            If reMatch.Success Then
-                multipleRefsSplitOutFromKnownAccession = True
-            Else
-                ' GI didn't match; try jgi
-                reMatch = reProteinNameTruncation.reMatchJGI.Match(proteinName)
-            End If
-
-            If reMatch.Success Then
-                multipleRefsSplitOutFromKnownAccession = True
-            Else
-                ' jgi didn't match; try generic (text separated by a series of colons or bars),
-                '  but only if the name is too long
-                If mFixedFastaOptions.TruncateLongProteinNames And proteinNameTooLong Then
-                    reMatch = reProteinNameTruncation.reMatchGeneric.Match(proteinName)
-                End If
-            End If
-
-            If reMatch.Success Then
-                ' Truncate the protein name, but move the truncated portion into the next group
-                newProteinName = reMatch.Groups(1).Value
-                extraProteinNameText = reMatch.Groups(2).Value
-
-            ElseIf mFixedFastaOptions.TruncateLongProteinNames And proteinNameTooLong Then
-
-                ' Name is too long, but it didn't match the known patterns
-                ' Find the last occurrence of mFixedFastaOptions.LongProteinNameSplitChars (default is vertical bar)
-                '   and truncate the text following the match
-                ' Repeat the process until the protein name length >= mMaximumProteinNameLength
-
-                ' See if any of the characters in proteinNameSplitChars is present after
-                ' character 6 but less than character mMaximumProteinNameLength
-                minCharIndex = 6
-
-                Do
-                    charIndex = newProteinName.LastIndexOfAny(mFixedFastaOptions.LongProteinNameSplitChars)
-                    If charIndex >= minCharIndex Then
-                        If extraProteinNameText.Length > 0 Then
-                            extraProteinNameText = "|" & extraProteinNameText
-                        End If
-                        extraProteinNameText = newProteinName.Substring(charIndex + 1) & extraProteinNameText
-                        newProteinName = newProteinName.Substring(0, charIndex)
-                    Else
-                        charIndex = -1
-                    End If
-
-                Loop While charIndex > 0 And newProteinName.Length > mMaximumProteinNameLength
-
-            End If
-
-            If extraProteinNameText.Length > 0 Then
-                If proteinNameTooLong Then
-                    mFixedFastaStats.TruncatedProteinNameCount += 1
-                Else
-                    mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1
-                End If
-
-                proteinName = String.Copy(newProteinName)
-
-                PrependExtraTextToProteinDescription(extraProteinNameText, proteinDescription)
-            End If
-
-        End If
-
-        If mFixedFastaOptions.ProteinNameInvalidCharsToRemove.Length > 0 Then
-            newProteinName = String.Copy(proteinName)
-
-            ' First remove invalid characters from the beginning or end of the protein name
-            newProteinName = newProteinName.Trim(mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
-
-            If newProteinName.Length >= 1 Then
-                For Each invalidChar In mFixedFastaOptions.ProteinNameInvalidCharsToRemove
-                    ' Next, replace any remaining instances of the character with an underscore
-                    newProteinName = newProteinName.Replace(invalidChar, INVALID_PROTEIN_NAME_CHAR_REPLACEMENT)
-                Next
-
-                If proteinName <> newProteinName Then
-                    If newProteinName.Length >= 3 Then
-                        proteinName = String.Copy(newProteinName)
-                        mFixedFastaStats.ProteinNamesInvalidCharsReplaced += 1
-                    End If
-                End If
-            End If
-        End If
-
-        If mFixedFastaOptions.SplitOutMultipleRefsInProteinName AndAlso Not multipleRefsSplitOutFromKnownAccession Then
-            ' Look for multiple refs in the protein name, but only if we didn't already split out multiple refs above
-
-            reMatch = reProteinNameTruncation.reMatchDoubleBarOrColonAndBar.Match(proteinName)
-            If reMatch.Success Then
-                ' Protein name contains 2 or more vertical bars, or a colon and a bar
-                ' Split out the multiple refs and place them in the description
-                ' However, jgi names are supposed to have two vertical bars, so we need to treat that data differently
-
-                extraProteinNameText = String.Empty
-
-                reMatch = reProteinNameTruncation.reMatchJGIBaseAndID.Match(proteinName)
-                If reMatch.Success Then
-                    ' ProteinName is similar to jgi|Organism|00000
-                    ' Check whether there is any text following the match
-                    If reMatch.Length < proteinName.Length Then
-                        ' Extra text exists; populate extraProteinNameText
-                        extraProteinNameText = proteinName.Substring(reMatch.Length + 1)
-                        proteinName = reMatch.ToString
-                    End If
-                Else
-                    ' Find the first vertical bar or colon
-                    charIndex = proteinName.IndexOfAny(mProteinNameFirstRefSepChars)
-
-                    If charIndex > 0 Then
-                        ' Find the second vertical bar, colon, or semicolon
-                        charIndex = proteinName.IndexOfAny(mProteinNameSubsequentRefSepChars, charIndex + 1)
-
-                        If charIndex > 0 Then
-                            ' Split the protein name
-                            extraProteinNameText = proteinName.Substring(charIndex + 1)
-                            proteinName = proteinName.Substring(0, charIndex)
-                        End If
-                    End If
-
-                End If
-
-                If extraProteinNameText.Length > 0 Then
-                    PrependExtraTextToProteinDescription(extraProteinNameText, proteinDescription)
-                    mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1
-                End If
-
-            End If
-        End If
-
-        ' Make sure proteinDescription doesn't start with a | or space
-        If proteinDescription.Length > 0 Then
-            proteinDescription = proteinDescription.TrimStart(New Char() {"|"c, " "c})
-        End If
-
-        Return proteinName
-
-    End Function
-
-    Private Function BoolToStringInt(value As Boolean) As String
-        If value Then
-            Return "1"
-        Else
-            Return "0"
-        End If
-    End Function
-
-    Private Function CharArrayToString(charArray As IEnumerable(Of Char)) As String
-        Return String.Join("", charArray)
-    End Function
-
-
-    Private Sub ClearAllRules()
-        Me.ClearRules(RuleTypes.HeaderLine)
-        Me.ClearRules(RuleTypes.ProteinDescription)
-        Me.ClearRules(RuleTypes.ProteinName)
-        Me.ClearRules(RuleTypes.ProteinSequence)
-
-        mMasterCustomRuleID = CUSTOM_RULE_ID_START
-    End Sub
-
-    Private Sub ClearRules(ruleType As RuleTypes)
-        Select Case ruleType
-            Case RuleTypes.HeaderLine
-                Me.ClearRulesDataStructure(mHeaderLineRules)
-            Case RuleTypes.ProteinDescription
-                Me.ClearRulesDataStructure(mProteinDescriptionRules)
-            Case RuleTypes.ProteinName
-                Me.ClearRulesDataStructure(mProteinNameRules)
-            Case RuleTypes.ProteinSequence
-                Me.ClearRulesDataStructure(mProteinSequenceRules)
-        End Select
-    End Sub
-
-    Private Sub ClearRulesDataStructure(ByRef rules() As udtRuleDefinitionType)
-        ReDim rules(-1)
-    End Sub
-
-    Public Function ComputeProteinHash(sbResidues As StringBuilder, consolidateDupsIgnoreILDiff As Boolean) As String
-
-        If sbResidues.Length > 0 Then
-            ' Compute the hash value for sbCurrentResidues
-            If consolidateDupsIgnoreILDiff Then
-                Return HashUtilities.ComputeStringHashSha1(sbResidues.ToString().Replace("L"c, "I"c)).ToUpper()
-            Else
-                Return HashUtilities.ComputeStringHashSha1(sbResidues.ToString()).ToUpper()
-            End If
-        Else
-            Return String.Empty
-        End If
-
-    End Function
-
-    Private Function ComputeTotalSpecifiedCount(errorStats As udtItemSummaryIndexedType) As Integer
-        Dim total As Integer
-        Dim index As Integer
-
-        total = 0
-        For index = 0 To errorStats.ErrorStatsCount - 1
-            total += errorStats.ErrorStats(index).CountSpecified
-        Next index
-
-        Return total
-
-    End Function
-
-    Private Function ComputeTotalUnspecifiedCount(errorStats As udtItemSummaryIndexedType) As Integer
-        Dim total As Integer
-        Dim index As Integer
-
-        total = 0
-        For index = 0 To errorStats.ErrorStatsCount - 1
-            total += errorStats.ErrorStats(index).CountUnspecified
-        Next index
-
-        Return total
-
-    End Function
-
-    ''' <summary>
-    ''' Looks for duplicate proteins in the Fasta file
-    ''' Creates a new fasta file that has exact duplicates removed
-    ''' Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
-    ''' </summary>
-    ''' <param name="consolidateDuplicateProteinSeqsInFasta"></param>
-    ''' <param name="fixedFastaFilePath"></param>
-    ''' <param name="proteinSequenceHashCount"></param>
-    ''' <param name="proteinSeqHashInfo"></param>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Private Function CorrectForDuplicateProteinSeqsInFasta(
-      consolidateDuplicateProteinSeqsInFasta As Boolean,
-      consolidateDupsIgnoreILDiff As Boolean,
-      fixedFastaFilePath As String,
-      proteinSequenceHashCount As Integer,
-      proteinSeqHashInfo As IList(Of clsProteinHashInfo)) As Boolean
-
-        Dim fsInFile As Stream
-        Dim consolidatedFastaWriter As StreamWriter = Nothing
-
-        Dim bytesRead As Int64
-        Dim terminatorSize As Integer
-        Dim percentComplete As Single
-        Dim lineCountRead As Integer
-
-        Dim fixedFastaFilePathTemp As String = String.Empty
-        Dim lineIn As String
-
-        Dim cachedProteinName As String = String.Empty
-        Dim cachedProteinDescription As String = String.Empty
-        Dim sbCachedProteinResidueLines = New StringBuilder(250)
-        Dim sbCachedProteinResidues = New StringBuilder(250)
-
-        ' This list contains the protein names that we will keep; values are the index values pointing into proteinSeqHashInfo
-        ' If consolidateDuplicateProteinSeqsInFasta=False, this will contain all protein names
-        ' If consolidateDuplicateProteinSeqsInFasta=True, we only keep the first name found for a given sequence
-        Dim proteinNameFirst As clsNestedStringDictionary(Of Integer)
-
-        ' This list keeps track of the protein names that have been written out to the new fasta file
-        ' Keys are the protein names; values are the index of the entry in proteinSeqHashInfo()
-        Dim proteinsWritten As clsNestedStringDictionary(Of Integer)
-
-        ' This list contains the names of duplicate proteins; the hash values are the protein names of the master protein that has the same sequence
-        Dim duplicateProteinList As clsNestedStringDictionary(Of String)
-
-        Dim descriptionStartIndex As Integer
-
-        Dim success As Boolean
-
-        If proteinSequenceHashCount <= 0 Then
-            Return True
-        End If
-
-        ''''''''''''''''''''''
-        ' Processing Steps
-        ''''''''''''''''''''''
-        '
-        ' Open fixedFastaFilePath with the fasta file reader
-        ' Create a new fasta file with a writer
-
-        ' For each protein, check whether it has duplicates
-        ' If not, just write it out to the new fasta file
-
-        ' If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
-        '  and write out the name, new description, and sequence to the new fasta file
-
-        ' Otherwise, check if it is a duplicate of a master protein
-        ' If it is, then do not write the name, description, or sequence to the new fasta file
-
-        Try
-            fixedFastaFilePathTemp = fixedFastaFilePath & ".TempFixed"
-
-            If File.Exists(fixedFastaFilePathTemp) Then
-                File.Delete(fixedFastaFilePathTemp)
-            End If
-
-            File.Move(fixedFastaFilePath, fixedFastaFilePathTemp)
-        Catch ex As Exception
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error renaming " & fixedFastaFilePath & " to " & fixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error renaming fixed fasta to .tempfixed", ex)
-            Return False
-        End Try
-
-        Dim fastaReader As StreamReader
-
-        Try
-            ' Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
-            terminatorSize = DetermineLineTerminatorSize(fixedFastaFilePathTemp)
-
-            ' Open the Fixed fasta file
-            fsInFile = New FileStream(
-               fixedFastaFilePathTemp,
-               FileMode.Open,
-               FileAccess.Read,
-               FileShare.ReadWrite)
-
-            fastaReader = New StreamReader(fsInFile)
-
-        Catch ex As Exception
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error opening " & fixedFastaFilePathTemp & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error opening fixedFastaFilePathTemp", ex)
-            Return False
-        End Try
-
-        Try
-            ' Create the new fasta file
-            consolidatedFastaWriter = New StreamWriter(New FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-        Catch ex As Exception
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error creating consolidated fasta output file " & fixedFastaFilePath & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error creating consolidated fasta output file", ex)
-        End Try
-
-        Try
-            ' Populate proteinNameFirst with the protein names in proteinSeqHashInfo().ProteinNameFirst
-            proteinNameFirst = New clsNestedStringDictionary(Of Integer)(True, mProteinNameSpannerCharLength)
-
-            ' Populate htDuplicateProteinList with the protein names in proteinSeqHashInfo().AdditionalProteins
-            duplicateProteinList = New clsNestedStringDictionary(Of String)(True, mProteinNameSpannerCharLength)
-
-            For index = 0 To proteinSequenceHashCount - 1
-                With proteinSeqHashInfo(index)
-
-                    If Not proteinNameFirst.ContainsKey(.ProteinNameFirst) Then
-                        proteinNameFirst.Add(.ProteinNameFirst, index)
-                    Else
-                        ' .ProteinNameFirst is already present in proteinNameFirst
-                        ' The fixed fasta file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
-                        ' but we should increment the DuplicateNameSkipCount
-
-                    End If
-
-                    If .AdditionalProteins.Count > 0 Then
-                        For Each additionalProtein As String In .AdditionalProteins
-
-                            If consolidateDuplicateProteinSeqsInFasta Then
-                                ' Update the duplicate protein name list
-                                If Not duplicateProteinList.ContainsKey(additionalProtein) Then
-                                    duplicateProteinList.Add(additionalProtein, .ProteinNameFirst)
-                                End If
-
-                            Else
-                                ' We are not consolidating proteins with the same sequence but different protein names
-                                ' Append this entry to proteinNameFirst
-
-                                If Not proteinNameFirst.ContainsKey(additionalProtein) Then
-                                    proteinNameFirst.Add(additionalProtein, index)
-                                Else
-                                    ' .AdditionalProteins(dupIndex) is already present in proteinNameFirst
-                                    ' Increment the DuplicateNameSkipCount
-                                End If
-
-                            End If
-
-                        Next
-                    End If
-                End With
-            Next index
-
-            proteinsWritten = New clsNestedStringDictionary(Of Integer)(False, mProteinNameSpannerCharLength)
-
-            Dim lastMemoryUsageReport = DateTime.UtcNow
-
-            ' Parse each line in the file
-            lineCountRead = 0
-            bytesRead = 0
-            mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0
-
-            Do While Not fastaReader.EndOfStream
-                lineIn = fastaReader.ReadLine()
-                bytesRead += lineIn.Length + terminatorSize
-
-                If lineCountRead Mod 50 = 0 Then
-                    If MyBase.AbortProcessing Then Exit Do
-
-                    percentComplete = 75 + CType(bytesRead / CType(fastaReader.BaseStream.Length, Single) * 100.0, Single) / 4
-                    MyBase.UpdateProgress("Consolidating duplicate proteins to create a new FASTA File (" & Math.Round(percentComplete, 0) & "% Done)", percentComplete)
-
-                    If DateTime.UtcNow.Subtract(lastMemoryUsageReport).TotalMinutes >= 1 Then
-                        lastMemoryUsageReport = DateTime.UtcNow
-                        ReportMemoryUsage(proteinNameFirst, proteinsWritten, duplicateProteinList)
-                    End If
-                End If
-
-                lineCountRead += 1
-
-                If Not lineIn Is Nothing Then
-                    If lineIn.Trim.Length > 0 Then
-                        ' Note: Trim the start of the line (however, since this is a fixed fasta file it should not start with a space)
-                        lineIn = lineIn.TrimStart
-
-                        If lineIn.Chars(0) = mProteinLineStartChar Then
-                            ' Protein entry line
-
-                            If Not String.IsNullOrEmpty(cachedProteinName) Then
-                                ' Write out the cached protein and it's residues
-
-                                WriteCachedProtein(
-                                 cachedProteinName, cachedProteinDescription,
-                                 consolidatedFastaWriter, proteinSeqHashInfo,
-                                 sbCachedProteinResidueLines, sbCachedProteinResidues,
-                                 consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
-                                 proteinNameFirst, duplicateProteinList,
-                                 lineCountRead, proteinsWritten)
-
-                                cachedProteinName = String.Empty
-                                sbCachedProteinResidueLines.Length = 0
-                                sbCachedProteinResidues.Length = 0
-                            End If
-
-                            ' Extract the protein name and description
-                            SplitFastaProteinHeaderLine(lineIn, cachedProteinName, cachedProteinDescription, descriptionStartIndex)
-
-                        Else
-                            ' Protein residues
-                            sbCachedProteinResidueLines.AppendLine(lineIn)
-                            sbCachedProteinResidues.Append(lineIn.Trim())
-                        End If
-                    End If
-                End If
-
-            Loop
-
-            If Not String.IsNullOrEmpty(cachedProteinName) Then
-                ' Write out the cached protein and it's residues
-                WriteCachedProtein(
-                 cachedProteinName, cachedProteinDescription,
-                 consolidatedFastaWriter, proteinSeqHashInfo,
-                 sbCachedProteinResidueLines, sbCachedProteinResidues,
-                 consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
-                 proteinNameFirst, duplicateProteinList,
-                 lineCountRead, proteinsWritten)
-            End If
-
-            ReportMemoryUsage(proteinNameFirst, proteinsWritten, duplicateProteinList)
-
-            success = True
-
-        Catch ex As Exception
-            RecordFastaFileError(0, 0, String.Empty, eMessageCodeConstants.UnspecifiedError,
-             "Error writing to consolidated fasta file " & fixedFastaFilePath & ": " & ex.Message, String.Empty)
-            OnErrorEvent("Error writing to consolidated fasta file", ex)
-            Return False
-        Finally
-            Try
-                If Not fastaReader Is Nothing Then fastaReader.Close()
-                If Not consolidatedFastaWriter Is Nothing Then consolidatedFastaWriter.Close()
-
-                Threading.Thread.Sleep(100)
-
-                File.Delete(fixedFastaFilePathTemp)
-            Catch ex As Exception
-                ' Ignore errors here
-                OnWarningEvent("Error closing file handles in CorrectForDuplicateProteinSeqsInFasta: " & ex.Message)
-            End Try
-        End Try
-
-        Return success
-
-    End Function
-
-    Private Function ConstructFastaHeaderLine(ByRef proteinName As String, proteinDescription As String) As String
-
-        If proteinName Is Nothing Then proteinName = "????"
-
-        If String.IsNullOrWhiteSpace(proteinDescription) Then
-            Return mProteinLineStartChar & proteinName
-        Else
-            Return mProteinLineStartChar & proteinName & " " & proteinDescription
-        End If
-
-    End Function
-
-    Private Function ConstructStatsFilePath(outputFolderPath As String) As String
-
-        Dim outFilePath As String = String.Empty
-
-        Try
-            ' Record the current time in now
-            outFilePath = "FastaFileStats_" & DateTime.Now.ToString("yyyy-MM-dd") & ".txt"
-
-            If Not outputFolderPath Is Nothing AndAlso outputFolderPath.Length > 0 Then
-                outFilePath = Path.Combine(outputFolderPath, outFilePath)
-            End If
-        Catch ex As Exception
-            If String.IsNullOrWhiteSpace(outFilePath) Then
-                outFilePath = "FastaFileStats.txt"
-            End If
-        End Try
-
-        Return outFilePath
-
-    End Function
-
-    Private Sub DeleteTempFiles()
-        If Not mTempFilesToDelete Is Nothing AndAlso mTempFilesToDelete.Count > 0 Then
-            For Each filePath In mTempFilesToDelete
-                Try
-                    If File.Exists(filePath) Then
-                        File.Delete(filePath)
-                    End If
-                Catch ex As Exception
-                    ' Ignore errors
-                End Try
-            Next
-        End If
-    End Sub
-
-    Private Function DetermineLineTerminatorSize(inputFilePath As String) As Integer
-
-        Dim endCharType As eLineEndingCharacters = Me.DetermineLineTerminatorType(inputFilePath)
-
-        Select Case endCharType
-            Case eLineEndingCharacters.CR
-                Return 1
-            Case eLineEndingCharacters.LF
-                Return 1
-            Case eLineEndingCharacters.CRLF
-                Return 2
-            Case eLineEndingCharacters.LFCR
-                Return 2
-        End Select
-
-        Return 2
-
-    End Function
-
-    Private Function DetermineLineTerminatorType(inputFilePath As String) As eLineEndingCharacters
-        Dim oneByte As Integer
-
-        Dim endCharacterType As eLineEndingCharacters
-
-        Try
-            ' Open the input file and look for the first carriage return or line feed
-            Using fsInFile = New FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-
-                Do While fsInFile.Position < fsInFile.Length AndAlso fsInFile.Position < 100000
-
-                    oneByte = fsInFile.ReadByte()
-
-                    If oneByte = 10 Then
-                        ' Found linefeed
-                        If fsInFile.Position < fsInFile.Length Then
-                            oneByte = fsInFile.ReadByte()
-                            If oneByte = 13 Then
-                                ' LfCr
-                                endCharacterType = eLineEndingCharacters.LFCR
-                            Else
-                                ' Lf only
-                                endCharacterType = eLineEndingCharacters.LF
-                            End If
-                        Else
-                            endCharacterType = eLineEndingCharacters.LF
-                        End If
-                        Exit Do
-                    ElseIf oneByte = 13 Then
-                        ' Found carriage return
-                        If fsInFile.Position < fsInFile.Length Then
-                            oneByte = fsInFile.ReadByte()
-                            If oneByte = 10 Then
-                                ' CrLf
-                                endCharacterType = eLineEndingCharacters.CRLF
-                            Else
-                                ' Cr only
-                                endCharacterType = eLineEndingCharacters.CR
-                            End If
-                        Else
-                            endCharacterType = eLineEndingCharacters.CR
-                        End If
-                        Exit Do
-                    End If
-
-                Loop
-
-            End Using
-
-        Catch ex As Exception
-            SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
-        End Try
-
-        Return endCharacterType
-
-    End Function
-
-    ' Unused function
-    ''Private Function ExtractListItem(list As String, item As Integer) As String
-    ''    Dim items() As String
-    ''    Dim item As String
-
-    ''    item = String.Empty
-    ''    If item >= 1 And Not list Is Nothing Then
-    ''        items = list.Split(","c)
-    ''        If items.Length >= item Then
-    ''            item = items(item - 1)
-    ''        End If
-    ''    End If
-
-    ''    Return item
-
-    ''End Function
-
-    Private Function NormalizeFileLineEndings(
-      pathOfFileToFix As String,
-      newFileName As String,
-      desiredLineEndCharacterType As eLineEndingCharacters) As String
-
-        Dim newEndChar As String = ControlChars.CrLf
-
-        Dim endCharType As eLineEndingCharacters = Me.DetermineLineTerminatorType(pathOfFileToFix)
-
-        Dim origEndCharCount As Integer
-
-        If endCharType <> desiredLineEndCharacterType Then
-            Select Case desiredLineEndCharacterType
-                Case eLineEndingCharacters.CRLF
-                    newEndChar = ControlChars.CrLf
-                Case eLineEndingCharacters.CR
-                    newEndChar = ControlChars.Cr
-                Case eLineEndingCharacters.LF
-                    newEndChar = ControlChars.Lf
-                Case eLineEndingCharacters.LFCR
-                    newEndChar = ControlChars.CrLf
-            End Select
-
-            Select Case endCharType
-                Case eLineEndingCharacters.CR
-                    origEndCharCount = 2
-                Case eLineEndingCharacters.CRLF
-                    origEndCharCount = 1
-                Case eLineEndingCharacters.LF
-                    origEndCharCount = 1
-                Case eLineEndingCharacters.LFCR
-                    origEndCharCount = 2
-            End Select
-
-            If Not Path.IsPathRooted(newFileName) Then
-                newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix), Path.GetFileName(newFileName))
-            End If
-
-            Dim targetFile = New FileInfo(pathOfFileToFix)
-            Dim fileSizeBytes = targetFile.Length
-
-            Dim reader = targetFile.OpenText()
-
-            Using writer = New StreamWriter(New FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                Me.OnProgressUpdate("Normalizing Line Endings...", 0.0)
-
-                Dim dataLine = reader.ReadLine
-                Dim linesRead As Long = 0
-                Do While Not dataLine Is Nothing
-                    writer.Write(dataLine)
-                    writer.Write(newEndChar)
-
-                    Dim currentFilePos = dataLine.Length + origEndCharCount
-                    linesRead += 1
-
-                    If linesRead Mod 1000 = 0 Then
-                        Me.OnProgressUpdate("Normalizing Line Endings (" &
-                         Math.Round(CDbl(currentFilePos / fileSizeBytes * 100), 1).ToString &
-                         " % complete", CSng(currentFilePos / fileSizeBytes * 100))
-                    End If
-
-                    dataLine = reader.ReadLine()
-                Loop
-                reader.Close()
-            End Using
-
-            Return newFileName
-        Else
-            Return pathOfFileToFix
-        End If
-    End Function
-
-    Private Sub EvaluateRules(
-      ruleDetails As IList(Of udtRuleDefinitionExtendedType),
-      proteinName As String,
-      textToTest As String,
-      testTextOffsetInLine As Integer,
-      entireLine As String,
-      contextLength As Integer)
-
-        Dim index As Integer
-        Dim reMatch As Match
-        Dim extraInfo As String
-        Dim charIndexOfMatch As Integer
-
-        For index = 0 To ruleDetails.Count - 1
-            With ruleDetails(index)
-
-                reMatch = .reRule.Match(textToTest)
-
-                If (.RuleDefinition.MatchIndicatesProblem And reMatch.Success) OrElse
-                 Not (.RuleDefinition.MatchIndicatesProblem And Not reMatch.Success) Then
-
-                    If .RuleDefinition.DisplayMatchAsExtraInfo Then
-                        extraInfo = reMatch.ToString
-                    Else
-                        extraInfo = String.Empty
-                    End If
-
-                    charIndexOfMatch = testTextOffsetInLine + reMatch.Index
-                    If .RuleDefinition.Severity >= 5 Then
-                        RecordFastaFileError(mLineCount, charIndexOfMatch, proteinName,
-                         .RuleDefinition.CustomRuleID, extraInfo,
-                         ExtractContext(entireLine, charIndexOfMatch, contextLength))
-                    Else
-                        RecordFastaFileWarning(mLineCount, charIndexOfMatch, proteinName,
-                         .RuleDefinition.CustomRuleID, extraInfo,
-                         ExtractContext(entireLine, charIndexOfMatch, contextLength))
-                    End If
-
-                End If
-
-            End With
-        Next index
-
-    End Sub
-
-    Private Function ExamineProteinName(
-      ByRef proteinName As String,
-      proteinNames As ISet(Of String),
-      <Out> ByRef skipDuplicateProtein As Boolean,
-      ByRef processingDuplicateOrInvalidProtein As Boolean) As String
-
-        Dim duplicateName = proteinNames.Contains(proteinName)
-        skipDuplicateProtein = False
-
-        If duplicateName AndAlso mGenerateFixedFastaFile Then
-            If mFixedFastaOptions.RenameProteinsWithDuplicateNames Then
-
-                Dim letterToAppend = "b"c
-                Dim numberToAppend = 0
-                Dim newProteinName As String
-
-                Do
-                    newProteinName = proteinName & "-"c & letterToAppend
-                    If numberToAppend > 0 Then
-                        newProteinName &= numberToAppend.ToString
-                    End If
-
-                    duplicateName = proteinNames.Contains(newProteinName)
-
-                    If duplicateName Then
-                        ' Increment letterToAppend to the next letter and then try again to rename the protein
-                        If letterToAppend = "z"c Then
-                            ' We've reached "z"
-                            ' Change back to "a" but increment numberToAppend
-                            letterToAppend = "a"c
-                            numberToAppend += 1
-                        Else
-                            ' letterToAppend = Chr(Asc(letterToAppend) + 1)
-                            letterToAppend = Convert.ToChar(Convert.ToInt32(letterToAppend) + 1)
-                        End If
-                    End If
-                Loop While duplicateName
-
-                RecordFastaFileWarning(mLineCount, 1, proteinName, eMessageCodeConstants.RenamedProtein, "--> " & newProteinName, String.Empty)
-
-                proteinName = String.Copy(newProteinName)
-                mFixedFastaStats.DuplicateNameProteinsRenamed += 1
-                skipDuplicateProtein = False
-
-            ElseIf mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence Then
-                skipDuplicateProtein = False
-            Else
-                skipDuplicateProtein = True
-            End If
-
-        End If
-
-        If duplicateName Then
-            If skipDuplicateProtein Or Not mGenerateFixedFastaFile Then
-                RecordFastaFileError(mLineCount, 1, proteinName, eMessageCodeConstants.DuplicateProteinName)
-                If mSaveBasicProteinHashInfoFile Then
-                    processingDuplicateOrInvalidProtein = False
-                Else
-                    processingDuplicateOrInvalidProtein = True
-                    mFixedFastaStats.DuplicateNameProteinsSkipped += 1
-                End If
-            Else
-                RecordFastaFileWarning(mLineCount, 1, proteinName, eMessageCodeConstants.DuplicateProteinName)
-                processingDuplicateOrInvalidProtein = False
-            End If
-        Else
-            processingDuplicateOrInvalidProtein = False
-        End If
-
-        If Not proteinNames.Contains(proteinName) Then
-            proteinNames.Add(proteinName)
-        End If
-
-        Return proteinName
-
-    End Function
-
-    Private Function ExtractContext(text As String, startIndex As Integer) As String
-        Return ExtractContext(text, startIndex, DEFAULT_CONTEXT_LENGTH)
-    End Function
-
-    Private Function ExtractContext(text As String, startIndex As Integer, contextLength As Integer) As String
-        ' Note that contextLength should be an odd number; if it isn't, we'll add 1 to it
-
-        Dim contextStartIndex As Integer
-        Dim contextEndIndex As Integer
-
-        If contextLength Mod 2 = 0 Then
-            contextLength += 1
-        ElseIf contextLength < 1 Then
-            contextLength = 1
-        End If
-
-        If text Is Nothing Then
-            Return String.Empty
-        ElseIf text.Length <= 1 Then
-            Return text
-        Else
-            ' Define the start index for extracting the context from text
-            contextStartIndex = startIndex - CInt((contextLength - 1) / 2)
-            If contextStartIndex < 0 Then contextStartIndex = 0
-
-            ' Define the end index for extracting the context from text
-            contextEndIndex = Math.Max(startIndex + CInt((contextLength - 1) / 2), contextStartIndex + contextLength - 1)
-            If contextEndIndex >= text.Length Then
-                contextEndIndex = text.Length - 1
-            End If
-
-            ' Return the context portion of text
-            Return text.Substring(contextStartIndex, contextEndIndex - contextStartIndex + 1)
-        End If
-
-    End Function
-
-    Private Function FlattenArray(items As IEnumerable(Of String), sepChar As Char) As String
-        If items Is Nothing Then
-            Return String.Empty
-        Else
-            Return FlattenArray(items, items.Count, sepChar)
-        End If
-    End Function
-
-    Private Function FlattenArray(items As IEnumerable(Of String), dataCount As Integer, sepChar As Char) As String
-        Dim index As Integer
-        Dim result As String
-
-        If items Is Nothing Then
-            Return String.Empty
-        ElseIf items.Count = 0 OrElse dataCount <= 0 Then
-            Return String.Empty
-        Else
-            If dataCount > items.Count Then
-                dataCount = items.Count
-            End If
-
-            result = items(0)
-            If result Is Nothing Then result = String.Empty
-
-            For index = 1 To dataCount - 1
-                If items(index) Is Nothing Then
-                    result &= sepChar
-                Else
-                    result &= sepChar & items(index)
-                End If
-            Next index
-            Return result
-        End If
-
-    End Function
-
-    ''' <summary>
-    ''' Convert a list of strings to a tab-delimited string
-    ''' </summary>
-    ''' <param name="dataValues"></param>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Private Function FlattenList(dataValues As IEnumerable(Of String)) As String
-        Return FlattenArray(dataValues, ControlChars.Tab)
-    End Function
-
-    ''' <summary>
-    ''' Find the first space (or first tab) in the protein header line
-    ''' </summary>
-    ''' <param name="headerLine"></param>
-    ''' <returns></returns>
-    ''' <remarks>Used for determining protein name</remarks>
-    Private Function GetBestSpaceIndex(headerLine As String) As Integer
-
-        Dim spaceIndex = headerLine.IndexOf(" "c)
-        Dim tabIndex = headerLine.IndexOf(ControlChars.Tab)
-
-        If spaceIndex = 1 Then
-            ' Space found directly after the > symbol
-        ElseIf tabIndex > 0 Then
-            If tabIndex = 1 Then
-                ' Tab character found directly after the > symbol
-                spaceIndex = tabIndex
-            Else
-                ' Tab character found; does it separate the protein name and description?
-                If spaceIndex <= 0 OrElse (spaceIndex > 0 AndAlso tabIndex < spaceIndex) Then
-                    spaceIndex = tabIndex
-                End If
-            End If
-        End If
-
-        Return spaceIndex
-
-    End Function
-
-    Public Overrides Function GetDefaultExtensionsToParse() As IList(Of String)
-        Dim extensionsToParse = New List(Of String) From {
-            ".fasta"
-        }
-
-        Return extensionsToParse
-
-    End Function
-
-    Public Overrides Function GetErrorMessage() As String
-        ' Returns "" if no error
-
-        Dim errorMessage As String
-
-        If MyBase.ErrorCode = ProcessFilesErrorCodes.LocalizedError Or
-           MyBase.ErrorCode = ProcessFilesErrorCodes.NoError Then
-            Select Case mLocalErrorCode
-                Case eValidateFastaFileErrorCodes.NoError
-                    errorMessage = ""
-                Case eValidateFastaFileErrorCodes.OptionsSectionNotFound
-                    errorMessage = "The section " & XML_SECTION_OPTIONS & " was not found in the parameter file"
-                Case eValidateFastaFileErrorCodes.ErrorReadingInputFile
-                    errorMessage = "Error reading input file"
-                Case eValidateFastaFileErrorCodes.ErrorCreatingStatsFile
-                    errorMessage = "Error creating stats output file"
-                Case eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF
-                    errorMessage = "Error verifying linefeed at end of file"
-                Case eValidateFastaFileErrorCodes.UnspecifiedError
-                    errorMessage = "Unspecified localized error"
-                Case Else
-                    ' This shouldn't happen
-                    errorMessage = "Unknown error state"
-            End Select
-        Else
-            errorMessage = MyBase.GetBaseClassErrorMessage()
-        End If
-
-        Return errorMessage
-
-    End Function
-
-    Private Function GetFileErrorTextByIndex(fileErrorIndex As Integer, sepChar As String) As String
-
-        Dim proteinName As String
-
-        If mFileErrorCount <= 0 Or fileErrorIndex < 0 Or fileErrorIndex >= mFileErrorCount Then
-            Return String.Empty
-        Else
-            With mFileErrors(fileErrorIndex)
-                If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                    proteinName = "N/A"
-                Else
-                    proteinName = String.Copy(.ProteinName)
-                End If
-
-                Return LookupMessageType(eMsgTypeConstants.ErrorMsg) & sepChar &
-                 "Line " & .LineNumber.ToString & sepChar &
-                 "Col " & .ColNumber.ToString & sepChar &
-                 proteinName & sepChar &
-                 LookupMessageDescription(.MessageCode, .ExtraInfo) & sepChar & .Context
-
-            End With
-        End If
-
-    End Function
-
-    Private Function GetFileErrorByIndex(fileErrorIndex As Integer) As udtMsgInfoType
-
-        If mFileErrorCount <= 0 Or fileErrorIndex < 0 Or fileErrorIndex >= mFileErrorCount Then
-            Return New udtMsgInfoType
-        Else
-            Return mFileErrors(fileErrorIndex)
-        End If
-
-    End Function
-
-    ''' <summary>
-    ''' Retrieve the errors reported by the validator
-    ''' </summary>
-    ''' <returns></returns>
-    ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileErrors() As List(Of udtMsgInfoType)
-
-        Dim fileErrors = New List(Of udtMsgInfoType)
-
-        For i = 0 To mFileErrorCount - 1
-            fileErrors.Add(mFileErrors(i))
-        Next
-
-        Return fileErrors
-
-    End Function
-
-
-    Private Function GetFileWarningTextByIndex(fileWarningIndex As Integer, sepChar As String) As String
-        Dim proteinName As String
-
-        If mFileWarningCount <= 0 Or fileWarningIndex < 0 Or fileWarningIndex >= mFileWarningCount Then
-            Return String.Empty
-        Else
-            With mFileWarnings(fileWarningIndex)
-                If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                    proteinName = "N/A"
-                Else
-                    proteinName = String.Copy(.ProteinName)
-                End If
-
-                Return LookupMessageType(eMsgTypeConstants.WarningMsg) & sepChar &
-                 "Line " & .LineNumber.ToString & sepChar &
-                 "Col " & .ColNumber.ToString & sepChar &
-                 proteinName & sepChar &
-                 LookupMessageDescription(.MessageCode, .ExtraInfo) &
-                 sepChar & .Context
-
-            End With
-        End If
-
-    End Function
-
-    Private Function GetFileWarningByIndex(fileWarningIndex As Integer) As udtMsgInfoType
-
-        If mFileWarningCount <= 0 Or fileWarningIndex < 0 Or fileWarningIndex >= mFileWarningCount Then
-            Return New udtMsgInfoType
-        Else
-            Return mFileWarnings(fileWarningIndex)
-        End If
-
-    End Function
-
-    ''' <summary>
-    ''' Retrieve the warnings reported by the validator
-    ''' </summary>
-    ''' <returns></returns>
-    ''' <remarks>Used by clsCustomValidateFastaFiles</remarks>
-    Protected Function GetFileWarnings() As List(Of udtMsgInfoType)
-
-        Dim fileWarnings = New List(Of udtMsgInfoType)
-
-        For i = 0 To mFileWarningCount - 1
-            fileWarnings.Add(mFileWarnings(i))
-        Next
-
-        Return fileWarnings
-
-    End Function
-
-    Private Function GetProcessMemoryUsageWithTimestamp() As String
-        Return GetTimeStamp() & ControlChars.Tab & clsMemoryUsageLogger.GetProcessMemoryUsageMB.ToString("0.0") & " MB in use"
-    End Function
-
-    Private Function GetTimeStamp() As String
-        ' Record the current time
-        Return DateTime.Now.ToShortDateString & " " & DateTime.Now.ToLongTimeString
-    End Function
-
-    Private Sub InitializeLocalVariables()
-
-        mLocalErrorCode = eValidateFastaFileErrorCodes.NoError
-
-        Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF) = False
-
-        Me.MaximumFileErrorsToTrack = 5
-
-        Me.MinimumProteinNameLength = DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH
-        Me.MaximumProteinNameLength = DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH
-        Me.MaximumResiduesPerLine = DEFAULT_MAXIMUM_RESIDUES_PER_LINE
-        Me.ProteinLineStartChar = DEFAULT_PROTEIN_LINE_START_CHAR
-
-        Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues) = False
-        Me.OptionSwitch(SwitchOptions.AllowDashInResidues) = False
-        Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins) = False
-        Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace) = True
-
-        Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames) = True
-        Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences) = True
-
-        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) = False
-
-        Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) = True
-        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) = False
-
-        Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins) = False
-        Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins) = False
-
-        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) = False
-        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) = False
-
-        Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames) = True
-        Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines) = True
-        Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues) = False
-
-        Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles) = False
-
-        Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile) = False
-
-
-        mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray
-        mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray
-
-        mFixedFastaOptions.LongProteinNameSplitChars = New Char() {DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR}
-        mFixedFastaOptions.ProteinNameInvalidCharsToRemove = New Char() {}          ' Default to an empty character array
-
-        SetDefaultRules()
-
-        ResetStructures()
-        mFastaFilePath = String.Empty
-
-        mMemoryUsageLogger = New clsMemoryUsageLogger(String.Empty)
-        mProcessMemoryUsageMBAtStart = clsMemoryUsageLogger.GetProcessMemoryUsageMB()
-
-        ' ReSharper disable once VbUnreachableCode
-        If REPORT_DETAILED_MEMORY_USAGE Then
-            ' mMemoryUsageMBAtStart = mMemoryUsageLogger.GetFreeMemoryMB()
-            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageHeader())
-            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageSummary())
-        End If
-
-        mTempFilesToDelete = New List(Of String)
-
-    End Sub
-
-    Private Sub InitializeRuleDetails(
-      ByRef ruleDefinitions() As udtRuleDefinitionType,
-      ByRef ruleDetails() As udtRuleDefinitionExtendedType)
-        Dim index As Integer
-
-        If ruleDefinitions Is Nothing OrElse ruleDefinitions.Length = 0 Then
-            ReDim ruleDetails(-1)
-        Else
-            ReDim ruleDetails(ruleDefinitions.Length - 1)
-
-            For index = 0 To ruleDefinitions.Length - 1
-                Try
-                    With ruleDetails(index)
-                        .RuleDefinition = ruleDefinitions(index)
-                        .reRule = New Regex(
-                         .RuleDefinition.MatchRegEx,
-                         RegexOptions.Singleline Or
-                         RegexOptions.Compiled)
-                        .Valid = True
-                    End With
-                Catch ex As Exception
-                    ' Ignore the error, but mark .Valid = false
-                    ruleDetails(index).Valid = False
-                End Try
-            Next index
-        End If
-
-    End Sub
-
-    Private Function LoadExistingProteinHashFile(
-      proteinHashFilePath As String,
-      <Out> ByRef preloadedProteinNamesToKeep As clsNestedStringIntList) As Boolean
-
-        ' List of protein names to keep
-        ' Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
-        preloadedProteinNamesToKeep = Nothing
-
-        Try
-
-            Dim proteinHashFile = New FileInfo(proteinHashFilePath)
-
-            If Not proteinHashFile.Exists Then
-                ShowErrorMessage("Protein hash file not found: " & proteinHashFilePath)
-                Return False
-            End If
-
-            ' Sort the protein has file on the Sequence_Hash column
-            ' First cache the column names from the header line
-
-            Dim headerInfo = New Dictionary(Of String, Integer)(StringComparer.InvariantCultureIgnoreCase)
-            Dim proteinHashFileLines As Long = 0
-            Dim cachedHeaderLine As String = String.Empty
-
-            ShowMessage("Examining pre-existing protein hash file to count the number of entries: " & Path.GetFileName(proteinHashFilePath))
-            Dim lastStatus = DateTime.UtcNow
-            Dim progressDotShown = False
-
-            Using hashFileReader = New StreamReader(New FileStream(proteinHashFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                If Not hashFileReader.EndOfStream Then
-                    cachedHeaderLine = hashFileReader.ReadLine()
-
-                    Dim headerNames = cachedHeaderLine.Split(ControlChars.Tab)
-
-                    For colIndex = 0 To headerNames.Count - 1
-                        headerInfo.Add(headerNames(colIndex), colIndex)
-                    Next
-                    proteinHashFileLines = 1
-                End If
-
-                While Not hashFileReader.EndOfStream
-                    hashFileReader.ReadLine()
-                    proteinHashFileLines += 1
-
-                    If proteinHashFileLines Mod 10000 = 0 Then
-                        If DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10 Then
-                            Console.Write(".")
-                            progressDotShown = True
-                            lastStatus = DateTime.UtcNow
-                        End If
-                    End If
-                End While
-            End Using
-
-            If progressDotShown Then Console.WriteLine()
-
-            If headerInfo.Count = 0 Then
-                ShowErrorMessage("Protein hash file is empty: " + proteinHashFilePath)
-                Return False
-            End If
-
-            Dim sequenceHashColumnIndex As Integer
-            If Not headerInfo.TryGetValue(SEQUENCE_HASH_COLUMN, sequenceHashColumnIndex) Then
-                ShowErrorMessage("Protein hash file is missing the " & SEQUENCE_HASH_COLUMN & " column: " & proteinHashFilePath)
-                Return False
-            End If
-
-            Dim proteinNameColumnIndex As Integer
-            If Not headerInfo.TryGetValue(PROTEIN_NAME_COLUMN, proteinNameColumnIndex) Then
-                ShowErrorMessage("Protein hash file is missing the " & PROTEIN_NAME_COLUMN & " column: " & proteinHashFilePath)
-                Return False
-            End If
-
-            Dim sequenceLengthColumnIndex As Integer
-            If Not headerInfo.TryGetValue(SEQUENCE_LENGTH_COLUMN, sequenceLengthColumnIndex) Then
-                ShowErrorMessage("Protein hash file is missing the " & SEQUENCE_LENGTH_COLUMN & " column: " & proteinHashFilePath)
-                Return False
-            End If
-
-            Dim baseHashFileName = Path.GetFileNameWithoutExtension(proteinHashFile.Name)
-            Dim sortedProteinHashSuffix As String
-            Dim proteinHashFilenameSuffixNoExtension = Path.GetFileNameWithoutExtension(PROTEIN_HASHES_FILENAME_SUFFIX)
-
-            If baseHashFileName.EndsWith(proteinHashFilenameSuffixNoExtension) Then
-                baseHashFileName = baseHashFileName.Substring(0, baseHashFileName.Length - proteinHashFilenameSuffixNoExtension.Length)
-                sortedProteinHashSuffix = proteinHashFilenameSuffixNoExtension
-            Else
-                sortedProteinHashSuffix = String.Empty
-            End If
-
-            Dim baseDataFileName = Path.Combine(proteinHashFile.Directory.FullName, baseHashFileName)
-
-            ' Note: do not add sortedProteinHashFilePath to mTempFilesToDelete
-            Dim sortedProteinHashFilePath = baseDataFileName & sortedProteinHashSuffix & "_Sorted.tmp"
-
-            Dim sortedProteinHashFile = New FileInfo(sortedProteinHashFilePath)
-            Dim sortedHashFileLines As Long = 0
-            Dim sortRequired = True
-
-            If sortedProteinHashFile.Exists Then
-                lastStatus = DateTime.UtcNow
-                progressDotShown = False
-                ShowMessage("Validating existing sorted protein hash file: " + sortedProteinHashFile.Name)
-
-                ' The sorted file exists; if it has the same number of lines as the sort file, assume that it is complete
-                Using sortedHashFileReader = New StreamReader(New FileStream(sortedProteinHashFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    If Not sortedHashFileReader.EndOfStream Then
-                        Dim headerLine = sortedHashFileReader.ReadLine()
-                        If Not String.Equals(headerLine, cachedHeaderLine) Then
-                            sortedHashFileLines = -1
-                        Else
-                            sortedHashFileLines = 1
-                        End If
-
-                    End If
-
-                    If sortedHashFileLines > 0 Then
-                        While Not sortedHashFileReader.EndOfStream
-                            sortedHashFileReader.ReadLine()
-                            sortedHashFileLines += 1
-
-                            If sortedHashFileLines Mod 10000 = 0 Then
-                                If DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10 Then
-                                    Console.Write((sortedHashFileLines / proteinHashFileLines * 100.0).ToString("0") & "% ")
-                                    progressDotShown = True
-                                    lastStatus = DateTime.UtcNow
-                                End If
-                            End If
-                        End While
-                    End If
-
-                End Using
-
-                If progressDotShown Then Console.WriteLine()
-
-                If sortedHashFileLines = proteinHashFileLines Then
-                    sortRequired = False
-                Else
-                    If sortedHashFileLines < 0 Then
-                        ShowMessage("Existing sorted hash file has an incorrect header; re-creating it")
-                    Else
-                        ShowMessage(String.Format("Existing sorted hash file has fewer lines ({0}) than the original ({1}); re-creating it",
-                                                  sortedHashFileLines, proteinHashFileLines))
-                    End If
-
-                    sortedProteinHashFile.Delete()
-                    Threading.Thread.Sleep(50)
-                End If
-            End If
-
-            ' Create the sorted protein sequence hash file if necessary
-            If sortRequired Then
-                Console.WriteLine()
-                ShowMessage("Sorting the existing protein hash file to create " + Path.GetFileName(sortedProteinHashFilePath))
-                Dim sortHashSuccess = SortFile(proteinHashFile, sequenceHashColumnIndex, sortedProteinHashFilePath)
-                If Not sortHashSuccess Then
-                    Return False
-                End If
-            End If
-
-            ShowMessage("Determining the best spanner length for protein names")
-
-            ' Examine the protein names in the sequence hash file to determine the appropriate spanner length for the names
-            Dim spannerCharLength = clsNestedStringIntList.AutoDetermineSpannerCharLength(proteinHashFile, proteinNameColumnIndex, True)
-            Const RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED = True
-
-            ' List of protein names to keep
-            preloadedProteinNamesToKeep = New clsNestedStringIntList(spannerCharLength, RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED)
-
-            lastStatus = DateTime.UtcNow
-            progressDotShown = False
-            Console.WriteLine()
-            ShowMessage("Finding the name of the first protein for each protein hash")
-
-            Dim currentHash = String.Empty
-            Dim currentHashSeqLength = String.Empty
-            Dim proteinNamesCurrentHash = New SortedSet(Of String)
-
-            Dim linesRead = 0
-            Dim proteinNamesUnsortedCount = 0
-
-            Dim proteinNamesUnsortedFilePath = baseDataFileName & "_ProteinNamesUnsorted.tmp"
-            Dim proteinNamesToKeepFilePath = baseDataFileName & "_ProteinNamesToKeep.tmp"
-            Dim uniqueProteinSeqsFilePath = baseDataFileName & "_UniqueProteinSeqs.txt"
-            Dim uniqueProteinSeqDuplicateFilePath = baseDataFileName & "_UniqueProteinSeqDuplicates.txt"
-
-            mTempFilesToDelete.Add(proteinNamesUnsortedFilePath)
-            mTempFilesToDelete.Add(proteinNamesToKeepFilePath)
-
-            ' Write the first protein name for each sequence hash to a new file
-            ' Also create the _UniqueProteinSeqs.txt and _UniqueProteinSeqDuplicates.txt files
-
-            Using sortedHashFileReader = New StreamReader(New FileStream(sortedProteinHashFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)),
-                proteinNamesUnsortedWriter = New StreamWriter(New FileStream(proteinNamesUnsortedFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)),
-                proteinNamesToKeepWriter = New StreamWriter(New FileStream(proteinNamesToKeepFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)),
-                uniqueProteinSeqsWriter = New StreamWriter(New FileStream(uniqueProteinSeqsFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)),
-                uniqueProteinSeqDuplicateWriter = New StreamWriter(New FileStream(uniqueProteinSeqDuplicateFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                proteinNamesUnsortedWriter.WriteLine(FlattenList(New List(Of String) From {PROTEIN_NAME_COLUMN, SEQUENCE_HASH_COLUMN}))
-
-                proteinNamesToKeepWriter.WriteLine(PROTEIN_NAME_COLUMN)
-
-                Dim headerColumnsProteinSeqs = New List(Of String) From {
-                    "Sequence_Index",
-                    "Protein_Name_First",
-                    SEQUENCE_LENGTH_COLUMN,
-                    "Sequence_Hash",
-                    "Protein_Count",
-                    "Duplicate_Proteins"}
-
-                uniqueProteinSeqsWriter.WriteLine(FlattenList(headerColumnsProteinSeqs))
-
-                Dim headerColumnsSeqDups = New List(Of String) From {
-                    "Sequence_Index",
-                    "Protein_Name_First",
-                    SEQUENCE_LENGTH_COLUMN,
-                    "Duplicate_Protein"}
-
-                uniqueProteinSeqDuplicateWriter.WriteLine(FlattenList(headerColumnsSeqDups))
-
-                If Not sortedHashFileReader.EndOfStream Then
-                    ' Read the header line
-                    sortedHashFileReader.ReadLine()
-                End If
-
-                Dim currentSequenceIndex = 0
-
-                While Not sortedHashFileReader.EndOfStream
-                    Dim dataLine = sortedHashFileReader.ReadLine()
-                    linesRead += 1
-
-                    Dim dataValues = dataLine.Split(ControlChars.Tab)
-
-                    Dim proteinName = dataValues(proteinNameColumnIndex)
-                    Dim proteinHash = dataValues(sequenceHashColumnIndex)
-
-                    proteinNamesUnsortedWriter.WriteLine(FlattenList(New List(Of String) From {proteinName, proteinHash}))
-                    proteinNamesUnsortedCount += 1
-
-                    If String.Equals(currentHash, proteinHash) Then
-                        ' Existing sequence hash
-                        If Not proteinNamesCurrentHash.Contains(proteinName) Then
-                            proteinNamesCurrentHash.Add(proteinName)
-                        End If
-                    Else
-                        ' New sequence hash found
-
-                        ' First write out the data for the last hash
-                        If Not String.IsNullOrEmpty(currentHash) Then
-                            WriteCachedProteinHashMetadata(
-                                proteinNamesToKeepWriter,
-                                uniqueProteinSeqsWriter,
-                                uniqueProteinSeqDuplicateWriter,
-                                currentSequenceIndex,
-                                currentHash,
-                                currentHashSeqLength,
-                                proteinNamesCurrentHash)
-                        End If
-
-                        ' Update the currentHash values
-                        currentSequenceIndex += 1
-                        currentHash = String.Copy(proteinHash)
-                        currentHashSeqLength = dataValues(sequenceLengthColumnIndex)
-
-                        proteinNamesCurrentHash.Clear()
-                        proteinNamesCurrentHash.Add(proteinName)
-
-                    End If
-
-                    If linesRead Mod 10000 = 0 Then
-                        If DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10 Then
-                            Console.Write((linesRead / proteinHashFileLines * 100.0).ToString("0") & "% ")
-                            progressDotShown = True
-                            lastStatus = DateTime.UtcNow
-                        End If
-                    End If
-
-                End While
-
-                ' Write out the data for the last hash
-                If Not String.IsNullOrEmpty(currentHash) Then
-                    WriteCachedProteinHashMetadata(
-                        proteinNamesToKeepWriter,
-                        uniqueProteinSeqsWriter,
-                        uniqueProteinSeqDuplicateWriter,
-                        currentSequenceIndex,
-                        currentHash,
-                        currentHashSeqLength,
-                        proteinNamesCurrentHash)
-                End If
-
-            End Using
-
-            If progressDotShown Then Console.WriteLine()
-            Console.WriteLine()
-
-            ' Sort the protein names to keep file
-            Dim sortedProteinNamesToKeepFilePath = baseDataFileName & "_ProteinsToKeepSorted.tmp"
-            mTempFilesToDelete.Add(sortedProteinNamesToKeepFilePath)
-
-            ShowMessage("Sorting the protein names to keep file to create " + Path.GetFileName(sortedProteinNamesToKeepFilePath))
-            Dim sortProteinNamesToKeepSuccess = SortFile(New FileInfo(proteinNamesToKeepFilePath), 0, sortedProteinNamesToKeepFilePath)
-
-            If Not sortProteinNamesToKeepSuccess Then
-                Return False
-            End If
-
-            Dim lastProteinAdded = String.Empty
-
-            ' Read the sorted protein names to keep file and cache the protein names in memory
-            Using sortedNamesFileReader = New StreamReader(New FileStream(sortedProteinNamesToKeepFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                ' Skip the header line
-                sortedNamesFileReader.ReadLine()
-
-                While Not sortedNamesFileReader.EndOfStream
-                    Dim proteinName = sortedNamesFileReader.ReadLine()
-
-                    If String.Equals(lastProteinAdded, proteinName) Then
-                        Continue While
-                    End If
-
-                    ' Store the protein name, plus a 0
-                    ' The stored value will be incremented when this protein name is encountered by the validator
-                    preloadedProteinNamesToKeep.Add(proteinName, 0)
-
-                    lastProteinAdded = String.Copy(proteinName)
-                End While
-            End Using
-
-            ' Confirm that the data is sorted
-            preloadedProteinNamesToKeep.Sort()
-
-            ShowMessage("Cached " & preloadedProteinNamesToKeep.Count.ToString("#,##0") & " protein names into memory")
-            ShowMessage("The fixed FASTA file will only contain entries for these proteins")
-
-            ' Sort the protein names file so that we can check for duplicate protein names
-            Dim sortedProteinNamesFilePath = baseDataFileName & "_ProteinNamesSorted.tmp"
-            mTempFilesToDelete.Add(sortedProteinNamesFilePath)
-
-            Console.WriteLine()
-            ShowMessage("Sorting the protein names file to create " + Path.GetFileName(sortedProteinNamesFilePath))
-            Dim sortProteinNamesSuccess = SortFile(New FileInfo(proteinNamesUnsortedFilePath), 0, sortedProteinNamesFilePath)
-
-            If Not sortProteinNamesSuccess Then
-                Return False
-            End If
-
-            Dim proteinNameSummaryFilePath = baseDataFileName & "_ProteinNameSummary.txt"
-
-            ' We can now safely delete some files to free up disk space
-            Try
-                Threading.Thread.Sleep(100)
-                File.Delete(proteinNamesUnsortedFilePath)
-            Catch ex As Exception
-                ' Ignore errors here
-            End Try
-
-            ' Look for duplicate protein names
-            ' In addition, create a new file with all protein names plus also two new columns: First_Protein_For_Hash and Duplicate_Name
-
-            Using sortedProteinNamesReader = New StreamReader(New FileStream(sortedProteinNamesFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)),
-                  proteinNameSummaryWriter = New StreamWriter(New FileStream(proteinNameSummaryFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                ' Skip the header line
-                sortedProteinNamesReader.ReadLine()
-
-                Dim proteinNameHeaderColumns = New List(Of String) From {
-                    PROTEIN_NAME_COLUMN,
-                    SEQUENCE_HASH_COLUMN,
-                    "First_Protein_For_Hash",
-                    "Duplicate_Name"}
-
-                proteinNameSummaryWriter.WriteLine(FlattenList(proteinNameHeaderColumns))
-
-                Dim lastProtein = String.Empty
-                Dim warningShown = False
-                Dim duplicateCount = 0
-
-                linesRead = 0
-                lastStatus = DateTime.UtcNow
-                progressDotShown = False
-
-                While Not sortedProteinNamesReader.EndOfStream
-                    Dim dataLine = sortedProteinNamesReader.ReadLine()
-                    Dim dataValues = dataLine.Split(ControlChars.Tab)
-
-                    Dim currentProtein As String = dataValues(0)
-                    Dim sequenceHash As String = dataValues(1)
-
-                    Dim firstProteinForHash = preloadedProteinNamesToKeep.Contains(currentProtein)
-                    Dim duplicateProtein = False
-
-                    If String.Equals(lastProtein, currentProtein) Then
-                        duplicateProtein = True
-
-                        If Not warningShown Then
-                            ShowMessage("WARNING: the protein hash file has duplicate protein names: " & Path.GetFileName(proteinHashFilePath))
-                            warningShown = True
-                        End If
-                        duplicateCount += 1
-
-                        If duplicateCount < 10 Then
-                            ShowMessage("  ... duplicate protein name: " + currentProtein)
-                        ElseIf duplicateCount = 10 Then
-                            ShowMessage("  ... additional duplicates will not be shown ...")
-                        End If
-                    End If
-
-                    lastProtein = String.Copy(currentProtein)
-
-                    Dim dataToWrite = New List(Of String) From {
-                        currentProtein,
-                        sequenceHash,
-                        BoolToStringInt(firstProteinForHash),
-                        BoolToStringInt(duplicateProtein)}
-
-                    proteinNameSummaryWriter.WriteLine(FlattenList(dataToWrite))
-
-                    If linesRead Mod 10000 = 0 Then
-                        If DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10 Then
-                            Console.Write((linesRead / proteinNamesUnsortedCount * 100.0).ToString("0") & "% ")
-                            progressDotShown = True
-                            lastStatus = DateTime.UtcNow
-                        End If
-                    End If
-
-                End While
-
-                If duplicateCount > 0 Then
-                    ShowMessage("WARNING: Found " & duplicateCount.ToString("#,##0") & " duplicate protein names in the protein hash file")
-                End If
-            End Using
-
-            If progressDotShown Then
-                Console.WriteLine()
-            End If
-
-            Console.WriteLine()
-
-            Return True
-        Catch ex As Exception
-            OnErrorEvent("Error in LoadExistingProteinHashFile", ex)
-            Return False
-
-        End Try
-
-    End Function
-
-    Public Function LoadParameterFileSettings(parameterFilePath As String) As Boolean
-
-        Dim settingsFile As New XmlSettingsFileAccessor
-
-        Dim customRulesLoaded As Boolean
-        Dim success As Boolean
-
-        Dim characterList As String
-
-        Try
-
-            If parameterFilePath Is Nothing OrElse parameterFilePath.Length = 0 Then
-                ' No parameter file specified; nothing to load
-                Return True
-            End If
-
-            If Not File.Exists(parameterFilePath) Then
-                ' See if parameterFilePath points to a file in the same directory as the application
-                parameterFilePath = Path.Combine(
-                 Path.GetDirectoryName(Reflection.Assembly.GetExecutingAssembly().Location),
-                  Path.GetFileName(parameterFilePath))
-                If Not File.Exists(parameterFilePath) Then
-                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.ParameterFileNotFound)
-                    Return False
-                End If
-            End If
-
-            If settingsFile.LoadSettings(parameterFilePath) Then
-                If Not settingsFile.SectionPresent(XML_SECTION_OPTIONS) Then
-                    OnWarningEvent("The node '<section name=""" & XML_SECTION_OPTIONS & """> was not found in the parameter file: " & parameterFilePath)
-                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile)
-                    Return False
-                Else
-                    ' Read customized settings
-
-                    Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
-                     Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF))
-                    Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
-                     Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues))
-                    Me.OptionSwitch(SwitchOptions.AllowDashInResidues) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
-                     Me.OptionSwitch(SwitchOptions.AllowDashInResidues))
-                    Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
-                     Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames))
-                    Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
-                     Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences))
-
-                    Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
-                     Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles))
-
-                    Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
-                     Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile))
-
-                    Me.MaximumFileErrorsToTrack = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                     "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
-                    Me.MinimumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                     "MinimumProteinNameLength", Me.MinimumProteinNameLength)
-                    Me.MaximumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                     "MaximumProteinNameLength", Me.MaximumProteinNameLength)
-                    Me.MaximumResiduesPerLine = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                     "MaximumResiduesPerLine", Me.MaximumResiduesPerLine)
-
-                    Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
-                     Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins))
-                    Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
-                     Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace))
-
-                    Me.OptionSwitch(SwitchOptions.OutputToStatsFile) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
-                     Me.OptionSwitch(SwitchOptions.OutputToStatsFile))
-
-                    Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters) =
-                     settingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
-                     Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters))
-
-
-                    If Not settingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS) Then
-                        ' "ValidateFastaFixedFASTAFileOptions" section not present
-                        ' Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
-
-                        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) =
-                         settingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
-                         Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
-
-                        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) =
-                         settingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                         Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
-
-                    Else
-                        ' "ValidateFastaFixedFASTAFileOptions" section is present
-
-                        Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
-                         Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
-
-                        Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
-                         Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines))
-
-                        Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues) =
-                         settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
-                         Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues))
-
-                        ' Look for the special character lists
-                        ' If defined, then update the default values
-                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", String.Empty)
-                        If Not characterList Is Nothing AndAlso characterList.Length > 0 Then
-                            ' Update mFixedFastaOptions.LongProteinNameSplitChars with characterList
-                            Me.LongProteinNameSplitChars = characterList
-                        End If
-
-                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", String.Empty)
-                        If Not characterList Is Nothing AndAlso characterList.Length > 0 Then
-                            ' Update mFixedFastaOptions.ProteinNameInvalidCharsToRemove with characterList
-                            Me.ProteinNameInvalidCharsToRemove = characterList
-                        End If
-
-                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", String.Empty)
-                        If Not characterList Is Nothing AndAlso characterList.Length > 0 Then
-                            ' Update mProteinNameFirstRefSepChars
-                            Me.ProteinNameFirstRefSepChars = characterList.ToCharArray
-                        End If
-
-                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", String.Empty)
-                        If Not characterList Is Nothing AndAlso characterList.Length > 0 Then
-                            ' Update mProteinNameSubsequentRefSepChars
-                            Me.ProteinNameSubsequentRefSepChars = characterList.ToCharArray
-                        End If
-                    End If
-
-                    ' Read the custom rules
-                    ' If all of the sections are missing, then use the default rules
-                    customRulesLoaded = False
-
-                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules)
-                    customRulesLoaded = customRulesLoaded Or success
-
-                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules)
-                    customRulesLoaded = customRulesLoaded Or success
-
-                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules)
-                    customRulesLoaded = customRulesLoaded Or success
-
-                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules)
-                    customRulesLoaded = customRulesLoaded Or success
-                End If
-            End If
-        Catch ex As Exception
-            OnErrorEvent("Error in LoadParameterFileSettings", ex)
-            Return False
-        End Try
-
-        If Not customRulesLoaded Then
-            SetDefaultRules()
-        End If
-
-        Return True
-
-    End Function
-
-    Public Function LookupMessageDescription(errorMessageCode As Integer) As String
-        Return Me.LookupMessageDescription(errorMessageCode, Nothing)
-    End Function
-
-    Public Function LookupMessageDescription(errorMessageCode As Integer, extraInfo As String) As String
-
-
-        Dim message As String
-        Dim matchFound As Boolean
-
-        Select Case errorMessageCode
-            ' Error messages
-            Case eMessageCodeConstants.ProteinNameIsTooLong
-                message = "Protein name is longer than the maximum allowed length of " & mMaximumProteinNameLength.ToString & " characters"
-                'Case eMessageCodeConstants.ProteinNameContainsInvalidCharacters
-                '    message = "Protein name contains invalid characters"
-                '    If Not specifiedInvalidProteinNameChars Then
-                '        message &= " (should contain letters, numbers, period, dash, underscore, colon, comma, or vertical bar)"
-                '        specifiedInvalidProteinNameChars = True
-                '    End If
-            Case eMessageCodeConstants.LineStartsWithSpace
-                message = "Found a line starting with a space"
-                'Case eMessageCodeConstants.RightArrowFollowedBySpace
-                '    message = "Space found directly after the > symbol"
-                'Case eMessageCodeConstants.RightArrowFollowedByTab
-                '    message = "Tab character found directly after the > symbol"
-                'Case eMessageCodeConstants.RightArrowButNoProteinName
-                '    message = "Line starts with > but does not contain a protein name"
-            Case eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues
-                message = "A blank line was found between the protein name and its residues"
-            Case eMessageCodeConstants.BlankLineInMiddleOfResidues
-                message = "A blank line was found in the middle of the residue block for the protein"
-            Case eMessageCodeConstants.ResiduesFoundWithoutProteinHeader
-                message = "Residues were found, but a protein header didn't precede them"
-                'Case eMessageCodeConstants.ResiduesWithAsterisk
-                '    message = "An asterisk was found in the residues"
-                'Case eMessageCodeConstants.ResiduesWithSpace
-                '    message = "A space was found in the residues"
-                'Case eMessageCodeConstants.ResiduesWithTab
-                '    message = "A tab character was found in the residues"
-                'Case eMessageCodeConstants.ResiduesWithInvalidCharacters
-                '    message = "Invalid residues found"
-                '    If Not specifiedResidueChars Then
-                '        If mAllowAsteriskInResidues Then
-                '            message &= " (should be any capital letter except J, plus *)"
-                '        Else
-                '            message &= " (should be any capital letter except J)"
-                '        End If
-                '        specifiedResidueChars = True
-                '    End If
-            Case eMessageCodeConstants.ProteinEntriesNotFound
-                message = "File does not contain any protein entries"
-            Case eMessageCodeConstants.FinalProteinEntryMissingResidues
-                message = "The last entry in the file is a protein header line, but there is no protein sequence line after it"
-            Case eMessageCodeConstants.FileDoesNotEndWithLinefeed
-                message = "File does not end in a blank line; this is a problem for Sequest"
-            Case eMessageCodeConstants.DuplicateProteinName
-                message = "Duplicate protein name found"
-
-                ' Warning messages
-            Case eMessageCodeConstants.ProteinNameIsTooShort
-                message = "Protein name is shorter than the minimum suggested length of " & mMinimumProteinNameLength.ToString & " characters"
-                'Case eMessageCodeConstants.ProteinNameContainsComma
-                '    message = "Protein name contains a comma"
-                'Case eMessageCodeConstants.ProteinNameContainsVerticalBars
-                '    message = "Protein name contains two or more vertical bars"
-                'Case eMessageCodeConstants.ProteinNameContainsWarningCharacters
-                '    message = "Protein name contains undesirable characters"
-                'Case eMessageCodeConstants.ProteinNameWithoutDescription
-                '    message = "Line contains a protein name, but not a description"
-            Case eMessageCodeConstants.BlankLineBeforeProteinName
-                message = "Blank line found before the protein name; this is acceptable, but not preferred"
-                'Case eMessageCodeConstants.ProteinNameAndDescriptionSeparatedByTab
-                '    message = "Protein name is separated from the protein description by a tab"
-            Case eMessageCodeConstants.ResiduesLineTooLong
-                message = "Residues line is longer than the suggested maximum length of " & mMaximumResiduesPerLine.ToString & " characters"
-                'Case eMessageCodeConstants.ProteinDescriptionWithTab
-                '    message = "Protein description contains a tab character"
-                'Case eMessageCodeConstants.ProteinDescriptionWithQuotationMark
-                '    message = "Protein description contains a quotation mark"
-                'Case eMessageCodeConstants.ProteinDescriptionWithEscapedSlash
-                '    message = "Protein description contains escaped slash: \/"
-                'Case eMessageCodeConstants.ProteinDescriptionWithUndesirableCharacter
-                '    message = "Protein description contains undesirable characters"
-                'Case eMessageCodeConstants.ResiduesLineTooLong
-                '    message = "Residues line is longer than the suggested maximum length of " & mMaximumResiduesPerLine.ToString & " characters"
-                'Case eMessageCodeConstants.ResiduesLineContainsU
-                '    message = "Residues line contains U (selenocysteine); this residue is unsupported by Sequest"
-
-            Case eMessageCodeConstants.DuplicateProteinSequence
-                message = "Duplicate protein sequences found"
-
-            Case eMessageCodeConstants.RenamedProtein
-                message = "Renamed protein because duplicate name"
-
-            Case eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence
-                message = "Removed protein since duplicate sequence"
-
-            Case eMessageCodeConstants.DuplicateProteinNameRetained
-                message = "Duplicate protein retained in fixed file"
-
-            Case eMessageCodeConstants.UnspecifiedError
-                message = "Unspecified error"
-            Case Else
-                message = "Unspecified error"
-
-                ' Search the custom rules for the given code
-                matchFound = SearchRulesForID(mHeaderLineRules, errorMessageCode, message)
-
-                If Not matchFound Then
-                    matchFound = SearchRulesForID(mProteinNameRules, errorMessageCode, message)
-                End If
-
-                If Not matchFound Then
-                    matchFound = SearchRulesForID(mProteinDescriptionRules, errorMessageCode, message)
-                End If
-
-                If Not matchFound Then
-                    SearchRulesForID(mProteinSequenceRules, errorMessageCode, message)
-                End If
-
-        End Select
-
-        If Not String.IsNullOrWhiteSpace(extraInfo) Then
-            message &= " (" & extraInfo & ")"
-        End If
-
-        Return message
-
-    End Function
-
-    Private Function LookupMessageType(EntryType As eMsgTypeConstants) As String
-
-        Select Case EntryType
-            Case eMsgTypeConstants.ErrorMsg
-                Return "Error"
-            Case eMsgTypeConstants.WarningMsg
-                Return "Warning"
-            Case Else
-                Return "Status"
-        End Select
-    End Function
-
-    ''' <summary>
-    ''' Validate a single fasta file
-    ''' </summary>
-    ''' <returns>True if success; false if a fatal error</returns>
-    ''' <remarks>
-    ''' Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
-    ''' Used by clsCustomValidateFastaFiles
-    ''' </remarks>
-    Protected Function SimpleProcessFile(inputFilePath As String) As Boolean
-        Return Me.ProcessFile(inputFilePath, Nothing, Nothing, False)
-    End Function
-
-    ''' <summary>
-    ''' Main processing function
-    ''' </summary>
-    ''' <param name="inputFilePath"></param>
-    ''' <param name="outputFolderPath"></param>
-    ''' <param name="parameterFilePath"></param>
-    ''' <param name="resetErrorCode"></param>
-    ''' <returns>True if success, False if failure</returns>
-    Public Overloads Overrides Function ProcessFile(
-      inputFilePath As String,
-      outputFolderPath As String,
-      parameterFilePath As String,
-      resetErrorCode As Boolean) As Boolean
-
-        Dim ioFile As FileInfo
-        Dim swStatsOutFile As StreamWriter
-
-        Dim inputFilePathFull As String
-        Dim statusMessage As String
-
-        If resetErrorCode Then
-            SetLocalErrorCode(eValidateFastaFileErrorCodes.NoError)
-        End If
-
-        If Not LoadParameterFileSettings(parameterFilePath) Then
-            statusMessage = "Parameter file load error: " & parameterFilePath
-            OnWarningEvent(statusMessage)
-            If MyBase.ErrorCode = ProcessFilesErrorCodes.NoError Then
-                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile)
-            End If
-            Return False
-        End If
-
-        Try
-            If inputFilePath Is Nothing OrElse inputFilePath.Length = 0 Then
-                ShowWarning("Input file name is empty")
-                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidInputFilePath)
-                Return False
-            Else
-
-                Console.WriteLine()
-                ShowMessage("Parsing " & Path.GetFileName(inputFilePath))
-
-                If Not CleanupFilePaths(inputFilePath, outputFolderPath) Then
-                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError)
-                    Return False
-                Else
-                    ' List of protein names to keep
-                    ' Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
-                    Dim preloadedProteinNamesToKeep As clsNestedStringIntList = Nothing
-
-                    If Not String.IsNullOrEmpty(ExistingProteinHashFile) Then
-                        Dim loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, preloadedProteinNamesToKeep)
-                        If Not loadSuccess Then
-                            Return False
-                        End If
-                    End If
-
-                    Try
-
-                        ' Obtain the full path to the input file
-                        ioFile = New FileInfo(inputFilePath)
-                        inputFilePathFull = ioFile.FullName
-
-                        Dim success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep)
-
-                        If success Then
-                            ReportResults(outputFolderPath, mOutputToStatsFile)
-                            DeleteTempFiles()
-                            Return True
-                        Else
-                            If mOutputToStatsFile Then
-                                mStatsFilePath = ConstructStatsFilePath(outputFolderPath)
-                                swStatsOutFile = New StreamWriter(mStatsFilePath, True)
-                                swStatsOutFile.WriteLine(GetTimeStamp() & ControlChars.Tab &
-                                                         "Error parsing " &
-                                                         Path.GetFileName(inputFilePath) & ": " & Me.GetErrorMessage())
-                                swStatsOutFile.Close()
-                            Else
-                                ShowMessage("Error parsing " &
-                                  Path.GetFileName(inputFilePath) &
-                                  ": " & Me.GetErrorMessage())
-                            End If
-                            Return False
-                        End If
-
-                    Catch ex As Exception
-                        OnErrorEvent("Error calling AnalyzeFastaFile", ex)
-                        Return False
-                    End Try
-                End If
-            End If
-        Catch ex As Exception
-            OnErrorEvent("Error in ProcessFile", ex)
-            Return False
-        End Try
-
-    End Function
-
-    Private Sub PrependExtraTextToProteinDescription(extraProteinNameText As String, ByRef proteinDescription As String)
-        Static extraCharsToTrim As Char() = New Char() {"|"c, " "c}
-
-        If Not extraProteinNameText Is Nothing AndAlso extraProteinNameText.Length > 0 Then
-            ' If extraProteinNameText ends in a vertical bar and/or space, them remove them
-            extraProteinNameText = extraProteinNameText.TrimEnd(extraCharsToTrim)
-
-            If Not proteinDescription Is Nothing AndAlso proteinDescription.Length > 0 Then
-                If proteinDescription.Chars(0) = " "c OrElse proteinDescription.Chars(0) = "|"c Then
-                    proteinDescription = extraProteinNameText & proteinDescription
-                Else
-                    proteinDescription = extraProteinNameText & " " & proteinDescription
-                End If
-            Else
-                proteinDescription = String.Copy(extraProteinNameText)
-            End If
-        End If
-
-
-    End Sub
-
-    Private Sub ProcessResiduesForPreviousProtein(
-      proteinName As String,
-      sbCurrentResidues As StringBuilder,
-      proteinSequenceHashes As clsNestedStringDictionary(Of Integer),
-      ByRef proteinSequenceHashCount As Integer,
-      ByRef proteinSeqHashInfo() As clsProteinHashInfo,
-      consolidateDupsIgnoreILDiff As Boolean,
-      fixedFastaWriter As TextWriter,
-      currentValidResidueLineLengthMax As Integer,
-      sequenceHashWriter As TextWriter)
-
-        Dim wrapLength As Integer
-
-        Dim index As Integer
-        Dim length As Integer
-
-        ' Check for and remove any asterisks at the end of the residues
-        While sbCurrentResidues.Length > 0 AndAlso sbCurrentResidues.Chars(sbCurrentResidues.Length - 1) = "*"
-            sbCurrentResidues.Remove(sbCurrentResidues.Length - 1, 1)
-        End While
-
-        If sbCurrentResidues.Length > 0 Then
-
-            ' Remove any spaces from the residues
-
-            If mCheckForDuplicateProteinSequences OrElse mSaveBasicProteinHashInfoFile Then
-                ' Process the previous protein entry to store a hash of the protein sequence
-                ProcessSequenceHashInfo(
-                    proteinName, sbCurrentResidues,
-                    proteinSequenceHashes,
-                    proteinSequenceHashCount, proteinSeqHashInfo,
-                    consolidateDupsIgnoreILDiff, sequenceHashWriter)
-            End If
-
-            If mGenerateFixedFastaFile AndAlso mFixedFastaOptions.WrapLongResidueLines Then
-                ' Write out the residues
-                ' Wrap the lines at currentValidResidueLineLengthMax characters (but do not allow to be longer than mMaximumResiduesPerLine residues)
-
-                wrapLength = currentValidResidueLineLengthMax
-                If wrapLength <= 0 OrElse wrapLength > mMaximumResiduesPerLine Then
-                    wrapLength = mMaximumResiduesPerLine
-                End If
-
-                If wrapLength < 10 Then
-                    ' Do not allow wrapLength to be less than 10
-                    wrapLength = 10
-                End If
-
-                index = 0
-                Dim proteinResidueCount = sbCurrentResidues.Length
-                Do While index < sbCurrentResidues.Length
-                    length = Math.Min(wrapLength, proteinResidueCount - index)
-                    fixedFastaWriter.WriteLine(sbCurrentResidues.ToString(index, length))
-                    index += wrapLength
-                Loop
-
-            End If
-
-            sbCurrentResidues.Length = 0
-
-        End If
-
-    End Sub
-
-    Private Sub ProcessSequenceHashInfo(
-      proteinName As String,
-      sbCurrentResidues As StringBuilder,
-      proteinSequenceHashes As clsNestedStringDictionary(Of Integer),
-      ByRef proteinSequenceHashCount As Integer,
-      ByRef proteinSeqHashInfo() As clsProteinHashInfo,
-      consolidateDupsIgnoreILDiff As Boolean,
-      sequenceHashWriter As TextWriter)
-
-        Dim computedHash As String
-
-        Try
-            If sbCurrentResidues.Length > 0 Then
-
-                ' Compute the hash value for sbCurrentResidues
-                computedHash = ComputeProteinHash(sbCurrentResidues, consolidateDupsIgnoreILDiff)
-
-                If Not sequenceHashWriter Is Nothing Then
-
-                    Dim dataValues = New List(Of String) From {
-                        mProteinCount.ToString,
-                        proteinName,
-                        sbCurrentResidues.Length.ToString,
-                        computedHash}
-
-                    sequenceHashWriter.WriteLine(FlattenList(dataValues))
-                End If
-
-                If mCheckForDuplicateProteinSequences AndAlso Not proteinSequenceHashes Is Nothing Then
-
-                    ' See if proteinSequenceHashes contains hash
-                    Dim seqHashLookupPointer As Integer
-                    If proteinSequenceHashes.TryGetValue(computedHash, seqHashLookupPointer) Then
-
-                        ' Value exists; update the entry in proteinSeqHashInfo
-                        CachedSequenceHashInfoUpdate(proteinSeqHashInfo(seqHashLookupPointer), proteinName)
-
-                    Else
-                        ' Value not yet present; add it
-                        CachedSequenceHashInfoUpdateAppend(
-                            proteinSequenceHashCount, proteinSeqHashInfo,
-                            computedHash, sbCurrentResidues, proteinName)
-
-                        proteinSequenceHashes.Add(computedHash, proteinSequenceHashCount)
-                        proteinSequenceHashCount += 1
-
-                    End If
-
-                End If
-            End If
-
-        Catch ex As Exception
-            ' Error caught; pass it up to the calling function
-            ShowMessage(ex.Message)
-            Throw
-        End Try
-
-
-    End Sub
-
-    Private Sub CachedSequenceHashInfoUpdate(proteinSeqHashInfo As clsProteinHashInfo, proteinName As String)
-
-        If proteinSeqHashInfo.ProteinNameFirst = proteinName Then
-            proteinSeqHashInfo.DuplicateProteinNameCount += 1
-        Else
-            proteinSeqHashInfo.AddAdditionalProtein(proteinName)
-        End If
-    End Sub
-
-    Private Sub CachedSequenceHashInfoUpdateAppend(
-      ByRef proteinSequenceHashCount As Integer,
-      ByRef proteinSeqHashInfo() As clsProteinHashInfo,
-      computedHash As String,
-      sbCurrentResidues As StringBuilder,
-      proteinName As String)
-
-        If proteinSequenceHashCount >= proteinSeqHashInfo.Length Then
-            ' Need to reserve more space in proteinSeqHashInfo
-            If proteinSeqHashInfo.Length < 1000000 Then
-                ReDim Preserve proteinSeqHashInfo(proteinSeqHashInfo.Length * 2 - 1)
-            Else
-                ReDim Preserve proteinSeqHashInfo(CInt(proteinSeqHashInfo.Length * 1.2) - 1)
-            End If
-
-        End If
-
-        Dim newProteinHashInfo = New clsProteinHashInfo(computedHash, sbCurrentResidues, proteinName)
-        proteinSeqHashInfo(proteinSequenceHashCount) = newProteinHashInfo
-
-    End Sub
-
-    Private Function ReadRulesFromParameterFile(
-      settingsFile As XmlSettingsFileAccessor,
-      sectionName As String,
-      ByRef rules() As udtRuleDefinitionType) As Boolean
-        ' Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
-        ' Note: even if RuleCount = 0, this function will return True
-
-        Dim success = False
-        Dim ruleCount As Integer
-        Dim ruleNumber As Integer
-
-        Dim ruleBase As String
-
-        Dim newRule As udtRuleDefinitionType
-
-        ruleCount = settingsFile.GetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, -1)
-
-        If ruleCount >= 0 Then
-            ClearRulesDataStructure(rules)
-
-            For ruleNumber = 1 To ruleCount
-                ruleBase = "Rule" & ruleNumber.ToString
-
-                newRule.MatchRegEx = settingsFile.GetParam(sectionName, ruleBase & "MatchRegEx", String.Empty)
-
-                If newRule.MatchRegEx.Length > 0 Then
-                    ' Only read the rule settings if MatchRegEx contains 1 or more characters
-
-                    With newRule
-                        .MatchIndicatesProblem = settingsFile.GetParam(sectionName, ruleBase & "MatchIndicatesProblem", True)
-                        .MessageWhenProblem = settingsFile.GetParam(sectionName, ruleBase & "MessageWhenProblem", "Error found with RegEx " & .MatchRegEx)
-                        .Severity = settingsFile.GetParam(sectionName, ruleBase & "Severity", 3S)
-                        .DisplayMatchAsExtraInfo = settingsFile.GetParam(sectionName, ruleBase & "DisplayMatchAsExtraInfo", False)
-
-                        SetRule(rules, .MatchRegEx, .MatchIndicatesProblem, .MessageWhenProblem, .Severity, .DisplayMatchAsExtraInfo)
-
-                    End With
-
-                End If
-
-            Next ruleNumber
-
-            success = True
-        End If
-
-        Return success
-
-    End Function
-
-    Private Sub RecordFastaFileError(
-      lineNumber As Integer,
-      charIndex As Integer,
-      proteinName As String,
-      errorMessageCode As Integer)
-
-        RecordFastaFileError(lineNumber, charIndex, proteinName,
-         errorMessageCode, String.Empty, String.Empty)
-    End Sub
-
-    Private Sub RecordFastaFileError(
-      lineNumber As Integer,
-      charIndex As Integer,
-      proteinName As String,
-      errorMessageCode As Integer,
-      extraInfo As String,
-      context As String)
-        RecordFastaFileProblemWork(
-         mFileErrorStats,
-         mFileErrorCount,
-         mFileErrors,
-         lineNumber,
-         charIndex,
-         proteinName,
-         errorMessageCode,
-         extraInfo, context)
-    End Sub
-
-    Private Sub RecordFastaFileWarning(
-      lineNumber As Integer,
-      charIndex As Integer,
-      proteinName As String,
-      warningMessageCode As Integer)
-        RecordFastaFileWarning(
-         lineNumber,
-         charIndex,
-         proteinName,
-         warningMessageCode,
-         String.Empty, String.Empty)
-    End Sub
-
-    Private Sub RecordFastaFileWarning(
-      lineNumber As Integer,
-      charIndex As Integer,
-      proteinName As String,
-      warningMessageCode As Integer,
-      extraInfo As String, context As String)
-
-        RecordFastaFileProblemWork(mFileWarningStats, mFileWarningCount,
-         mFileWarnings, lineNumber, charIndex, proteinName,
-         warningMessageCode, extraInfo, context)
-    End Sub
-
-    Private Sub RecordFastaFileProblemWork(
-      ByRef itemSummaryIndexed As udtItemSummaryIndexedType,
-      ByRef itemCountSpecified As Integer,
-      ByRef items() As udtMsgInfoType,
-      lineNumber As Integer,
-      charIndex As Integer,
-      proteinName As String,
-      messageCode As Integer,
-      extraInfo As String,
-      context As String)
-
-        ' Note that charIndex is the index in the source string at which the error occurred
-        ' When storing in .ColNumber, we add 1 to charIndex
-
-        ' Lookup the index of the entry with messageCode in itemSummaryIndexed.ErrorStats
-        ' Add it if not present
-
-        Try
-            Dim itemIndex As Integer
-
-            With itemSummaryIndexed
-                If Not .MessageCodeToArrayIndex.TryGetValue(messageCode, itemIndex) Then
-                    If .ErrorStats.Length <= 0 Then
-                        ReDim .ErrorStats(1)
-                    ElseIf .ErrorStatsCount = .ErrorStats.Length Then
-                        ReDim Preserve .ErrorStats(.ErrorStats.Length * 2 - 1)
-                    End If
-                    itemIndex = .ErrorStatsCount
-                    .ErrorStats(itemIndex).MessageCode = messageCode
-                    .MessageCodeToArrayIndex.Add(messageCode, itemIndex)
-                    .ErrorStatsCount += 1
-                End If
-
-            End With
-
-            With itemSummaryIndexed.ErrorStats(itemIndex)
-                If .CountSpecified >= mMaximumFileErrorsToTrack Then
-                    .CountUnspecified += 1
-                Else
-                    If items.Length <= 0 Then
-                        ' Initially reserve space for 10 errors
-                        ReDim items(10)
-                    ElseIf itemCountSpecified >= items.Length Then
-                        ' Double the amount of space reserved for errors
-                        ReDim Preserve items(items.Length * 2 - 1)
-                    End If
-
-                    With items(itemCountSpecified)
-                        .LineNumber = lineNumber
-                        .ColNumber = charIndex + 1
-                        If proteinName Is Nothing Then
-                            .ProteinName = String.Empty
-                        Else
-                            .ProteinName = proteinName
-                        End If
-
-                        .MessageCode = messageCode
-                        If extraInfo Is Nothing Then
-                            .ExtraInfo = String.Empty
-                        Else
-                            .ExtraInfo = extraInfo
-                        End If
-
-                        If extraInfo Is Nothing Then
-                            .Context = String.Empty
-                        Else
-                            .Context = context
-                        End If
-
-                    End With
-                    itemCountSpecified += 1
-
-                    .CountSpecified += 1
-                End If
-
-            End With
-
-        Catch ex As Exception
-            ' Ignore any errors that occur, but output the error to the console
-            OnWarningEvent("Error in RecordFastaFileProblemWork: " & ex.Message)
-        End Try
-
-    End Sub
-
-    Private Sub ReplaceXMLCodesWithText(parameterFilePath As String)
-
-        Dim outputFilePath As String
-        Dim timeStamp As String
-        Dim lineIn As String
-
-        Try
-            ' Define the output file path
-            timeStamp = GetTimeStamp().Replace(" ", "_").Replace(":", "_").Replace("/", "_")
-
-            outputFilePath = parameterFilePath & "_" & timeStamp & ".fixed"
-
-            ' Open the input file and output file
-            Using srInFile = New StreamReader(parameterFilePath),
-                swOutFile = New StreamWriter(New FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-
-                ' Parse each line in the file
-                Do While Not srInFile.EndOfStream
-                    lineIn = srInFile.ReadLine()
-
-                    If Not lineIn Is Nothing Then
-                        lineIn = lineIn.Replace("&gt;", ">").Replace("&lt;", "<")
-                        swOutFile.WriteLine(lineIn)
-                    End If
-                Loop
-
-                ' Close the input and output files
-            End Using
-
-            ' Wait 100 msec
-            Threading.Thread.Sleep(100)
-
-            ' Delete the input file
-            File.Delete(parameterFilePath)
-
-            ' Wait 250 msec
-            Threading.Thread.Sleep(250)
-
-            ' Rename the output file to the input file
-            File.Move(outputFilePath, parameterFilePath)
-
-        Catch ex As Exception
-            OnErrorEvent("Error in ReplaceXMLCodesWithText", ex)
-        End Try
-
-    End Sub
-
-    Private Sub ReportMemoryUsage()
-
-        ' ReSharper disable once VbUnreachableCode
-        If REPORT_DETAILED_MEMORY_USAGE Then
-            Console.WriteLine(MEM_USAGE_PREFIX & mMemoryUsageLogger.GetMemoryUsageSummary())
-        Else
-            Console.WriteLine(MEM_USAGE_PREFIX & GetProcessMemoryUsageWithTimestamp())
-        End If
-
-    End Sub
-
-    Private Sub ReportMemoryUsage(
-      preloadedProteinNamesToKeep As clsNestedStringIntList,
-      proteinSequenceHashes As clsNestedStringDictionary(Of Integer),
-      proteinNames As ICollection,
-      proteinSeqHashInfo As IEnumerable(Of clsProteinHashInfo))
-
-        Console.WriteLine()
-        ReportMemoryUsage()
-
-        If Not preloadedProteinNamesToKeep Is Nothing AndAlso preloadedProteinNamesToKeep.Count > 0 Then
-            Console.WriteLine(" PreloadedProteinNamesToKeep: {0,12:#,##0} records", preloadedProteinNamesToKeep.Count)
-        End If
-
-        If proteinSequenceHashes.Count > 0 Then
-            Console.WriteLine(" ProteinSequenceHashes:  {0,12:#,##0} records", proteinSequenceHashes.Count)
-            Console.WriteLine("   {0}", proteinSequenceHashes.GetSizeSummary())
-        End If
-
-        Console.WriteLine(" ProteinNames:           {0,12:#,##0} records", proteinNames.Count)
-        Console.WriteLine(" ProteinSeqHashInfo:       {0,12:#,##0} records", proteinSeqHashInfo.Count)
-
-    End Sub
-
-    Private Sub ReportMemoryUsage(
-      proteinNameFirst As clsNestedStringDictionary(Of Integer),
-      proteinsWritten As clsNestedStringDictionary(Of Integer),
-      duplicateProteinList As clsNestedStringDictionary(Of String))
-
-        Console.WriteLine()
-        ReportMemoryUsage()
-        Console.WriteLine(" ProteinNameFirst:      {0,12:#,##0} records", proteinNameFirst.Count)
-        Console.WriteLine("   {0}", proteinNameFirst.GetSizeSummary())
-        Console.WriteLine(" ProteinsWritten:       {0,12:#,##0} records", proteinsWritten.Count)
-        Console.WriteLine("   {0}", proteinsWritten.GetSizeSummary())
-        Console.WriteLine(" DuplicateProteinList:  {0,12:#,##0} records", duplicateProteinList.Count)
-        Console.WriteLine("   {0}", duplicateProteinList.GetSizeSummary())
-
-    End Sub
-
-    Private Sub ReportResults(
-      outputFolderPath As String,
-      outputToStatsFile As Boolean)
-
-        Dim iErrorInfoComparerClass As ErrorInfoComparerClass
-
-        Dim proteinName As String
-
-        Dim index As Integer
-        Dim retryCount As Integer
-
-        Dim success As Boolean
-        Dim fileAlreadyExists As Boolean
-
-        Try
-            Dim outputOptions = New udtOutputOptionsType With {
-                .OutputToStatsFile = outputToStatsFile,
-                .SepChar = ControlChars.Tab
+                                "Duplicate_Protein"
+                            };
+
+                            swDuplicateProteinMapping.WriteLine(FlattenList(proteinHeaderColumns));
+                        }
+
+                        foreach (string additionalProtein in proteinHashInfo.AdditionalProteins)
+                        {
+                            if (proteinHashInfo.AdditionalProteins.ElementAtOrDefault(duplicateIndex) != null)
+                            {
+                                if (additionalProtein.Trim().Length > 0)
+                                {
+                                    var proteinDataValues = new List<string>()
+                                    {
+                                        (index + 1).ToString(),
+                                        proteinHashInfo.ProteinNameFirst,
+                                        proteinHashInfo.SequenceLength.ToString(),
+                                        additionalProtein
+                                    };
+
+                                    swDuplicateProteinMapping.WriteLine(FlattenList(proteinDataValues));
+                                }
+                            }
+                        }
+                    }
+                    else if (proteinHashInfo.DuplicateProteinNameCount > 0)
+                    {
+                        duplicateProteinSeqsFound = true;
+                    }
+                }
+
+                swUniqueProteinSeqsOut.Close();
+                if (swDuplicateProteinMapping != null)
+                    swDuplicateProteinMapping.Close();
+
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                // Error writing results
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error writing results to " + uniqueProteinSeqsFileOut + " or " + duplicateProteinMappingFileOut + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error writing results to " + uniqueProteinSeqsFileOut + " or " + duplicateProteinMappingFileOut, ex);
+                success = false;
             }
 
-            Try
-                outputOptions.SourceFile = Path.GetFileName(mFastaFilePath)
-            Catch ex As Exception
-                outputOptions.SourceFile = "Unknown_filename_due_to_error.fasta"
-            End Try
+            if (success && proteinSequenceHashCount > 0 && duplicateProteinSeqsFound)
+            {
+                if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
+                {
+                    success = CorrectForDuplicateProteinSeqsInFasta(consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff, fastaFilePathOut, proteinSequenceHashCount, proteinSeqHashInfo);
+                }
+            }
 
-            If outputToStatsFile Then
-                mStatsFilePath = ConstructStatsFilePath(outputFolderPath)
-                fileAlreadyExists = File.Exists(mStatsFilePath)
+            return success;
+        }
 
-                success = False
-                retryCount = 0
+        /// <summary>
+        /// Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+        /// </summary>
+        /// <param name="fastaFilePathToTest">Fasta file to examine</param>
+        /// <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
+        /// <remarks>
+        /// Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
+        /// Keeps track of the portion of protein names in common between adjacent proteins
+        /// Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
+        /// </remarks>
+        private void AutoDetermineFastaProteinNameSpannerCharLength(string fastaFilePathToTest, int terminatorSize)
+        {
+            const int PARTS_TO_SAMPLE = 10;
+            const int KILOBYTES_PER_SAMPLE = 51200;
 
-                Do While Not success And retryCount < 5
-                    Dim outStream As FileStream = Nothing
-                    Try
-                        outStream = New FileStream(mStatsFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
-                        Dim outFileWriter = New StreamWriter(outStream)
+            var proteinStartLetters = new Dictionary<string, int>();
+            var startTime = DateTime.UtcNow;
+            bool showStats = false;
 
-                        outputOptions.OutFile = outFileWriter
+            var fastaFile = new FileInfo(fastaFilePathToTest);
+            if (!fastaFile.Exists)
+                return;
+            long fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE;
+            var linesReadTotal = default(long);
 
-                        success = True
-                    Catch ex As Exception
-                        ' Failed to open file, wait 1 second, then try again
-                        If Not outStream Is Nothing Then
-                            outStream.Close()
-                        End If
+            if (fastaFile.Length < fullScanLengthBytes)
+            {
+                fullScanLengthBytes = fastaFile.Length;
+                linesReadTotal = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, 0, fastaFile.Length);
+            }
+            else
+            {
+                long stepSizeBytes = (long) Math.Round(fastaFile.Length / (double)PARTS_TO_SAMPLE, 0);
 
-                        retryCount += 1
-                        Threading.Thread.Sleep(1000)
-                    End Try
-                Loop
+                for (long byteOffsetStart = 0; byteOffsetStart <= fastaFile.Length; byteOffsetStart += stepSizeBytes)
+                {
+                    long linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024);
 
-                If success Then
-                    outputOptions.SepChar = ControlChars.Tab
-                    If Not fileAlreadyExists Then
-                        ' Write the header line
-                        Dim headers = New List(Of String) From {
+                    if (linesRead < 0)
+                    {
+                        // This indicates an error, probably from a corrupt file; do not read further
+                        break;
+                    }
+
+                    linesReadTotal += linesRead;
+
+                    if (!showStats && DateTime.UtcNow.Subtract(startTime).TotalMilliseconds > 500)
+                    {
+                        showStats = true;
+                        ShowMessage("Pre-scanning the file to look for common base protein names");
+                    }
+                }
+            }
+
+            if (proteinStartLetters.Count == 0)
+            {
+                mProteinNameSpannerCharLength = 1;
+            }
+            else
+            {
+                int preScanProteinCount = (from item in proteinStartLetters select item.Value).Sum();
+
+                if (showStats)
+                {
+                    double percentFileProcessed = fullScanLengthBytes / (double)fastaFile.Length * 100;
+
+                    ShowMessage(string.Format(
+                        "  parsed {0:0}% of the file, reading {1:#,##0} lines and finding {2:#,##0} proteins",
+                        percentFileProcessed, linesReadTotal, preScanProteinCount));
+                }
+
+                // Determine the appropriate spanner length given the observation counts of the base names
+                mProteinNameSpannerCharLength = clsNestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(proteinStartLetters);
+            }
+
+            ShowMessage("Using ProteinNameSpannerCharLength = " + mProteinNameSpannerCharLength);
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
+        /// </summary>
+        /// <param name="fastaFile"></param>
+        /// <param name="terminatorSize"></param>
+        /// <param name="proteinStartLetters"></param>
+        /// <param name="startOffset"></param>
+        /// <param name="bytesToRead"></param>
+        /// <returns>The number of lines read</returns>
+        /// <remarks></remarks>
+        private long AutoDetermineFastaProteinNameSpannerCharLength(
+            FileInfo fastaFile,
+            int terminatorSize,
+            IDictionary<string, int> proteinStartLetters,
+            long startOffset,
+            long bytesToRead)
+        {
+            long linesRead = 0L;
+
+            try
+            {
+                int previousProteinLength = 0;
+                string previousProteinName = string.Empty;
+
+                if (startOffset >= fastaFile.Length)
+                {
+                    ShowMessage("Ignoring byte offset of " + startOffset +
+                        " in AutoDetermineProteinNameSpannerCharLength since past the end of the file " +
+                        "(" + fastaFile.Length + " bytes");
+                    return 0;
+                }
+
+                long bytesRead = 0;
+
+                var firstLineDiscarded = default(bool);
+                if (startOffset == 0)
+                {
+                    firstLineDiscarded = true;
+                }
+
+                using (var inStream = new FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    inStream.Position = startOffset;
+
+                    using (var reader = new StreamReader(inStream))
+                    {
+                        while (!reader.EndOfStream)
+                        {
+                            string lineIn = reader.ReadLine();
+                            bytesRead += terminatorSize;
+                            linesRead += 1;
+
+                            if (string.IsNullOrEmpty(lineIn))
+                            {
+                                continue;
+                            }
+
+                            bytesRead += lineIn.Length;
+                            if (!firstLineDiscarded)
+                            {
+                                // We can't trust that this was a full line of text; skip it
+                                firstLineDiscarded = true;
+                                continue;
+                            }
+
+                            if (bytesRead > bytesToRead)
+                            {
+                                break;
+                            }
+
+                            if (!(lineIn[0] == mProteinLineStartChar))
+                            {
+                                continue;
+                            }
+
+                            // Make sure the protein name and description are valid
+                            // Find the first space and/or tab
+                            int spaceIndex = GetBestSpaceIndex(lineIn);
+                            string proteinName;
+
+                            if (spaceIndex > 1)
+                            {
+                                proteinName = lineIn.Substring(1, spaceIndex - 1);
+                            }
+                            else if (spaceIndex <= 0)
+                            {
+                                // Line does not contain a description
+                                if (lineIn.Trim().Length <= 1)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    // The line contains a protein name, but not a description
+                                    proteinName = lineIn.Substring(1);
+                                }
+                            }
+                            else
+                            {
+                                // Space or tab found directly after the > symbol
+                                continue;
+                            }
+
+                            if (previousProteinLength == 0)
+                            {
+                                previousProteinName = string.Copy(proteinName);
+                                previousProteinLength = previousProteinName.Length;
+                                continue;
+                            }
+
+                            int currentNameLength = proteinName.Length;
+                            int charIndex = 0;
+
+                            while (charIndex < previousProteinLength)
+                            {
+                                if (charIndex >= currentNameLength)
+                                {
+                                    break;
+                                }
+
+                                if (previousProteinName[charIndex] != proteinName[charIndex])
+                                {
+                                    // Difference found; add/update the dictionary
+                                    break;
+                                }
+
+                                charIndex += 1;
+                            }
+
+                            int charsInCommon = charIndex;
+                            if (charsInCommon > 0)
+                            {
+                                string baseName = previousProteinName.Substring(0, charsInCommon);
+                                int matchCount = 0;
+
+                                if (proteinStartLetters.TryGetValue(baseName, out matchCount))
+                                {
+                                    proteinStartLetters[baseName] = matchCount + 1;
+                                }
+                                else
+                                {
+                                    proteinStartLetters.Add(baseName, 1);
+                                }
+                            }
+
+                            previousProteinName = string.Copy(proteinName);
+                            previousProteinLength = previousProteinName.Length;
+                        }
+                    }
+                }
+            }
+            catch (OutOfMemoryException ex)
+            {
+                OnErrorEvent("Out of memory exception in AutoDetermineProteinNameSpannerCharLength", ex);
+
+                // Example message: Insufficient memory to continue the execution of the program
+                // This can happen with a corrupt .fasta file with a line that has millions of characters
+                return -1;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in AutoDetermineProteinNameSpannerCharLength", ex);
+            }
+
+            return linesRead;
+        }
+
+        private string AutoFixProteinNameAndDescription(
+            ref string proteinName,
+            ref string proteinDescription,
+            udtProteinNameTruncationRegex reProteinNameTruncation)
+        {
+            bool proteinNameTooLong;
+            Match reMatch;
+            string newProteinName;
+            int charIndex;
+            int minCharIndex;
+            string extraProteinNameText;
+
+            bool multipleRefsSplitOutFromKnownAccession = false;
+
+            // Auto-fix potential errors in the protein name
+
+            // Possibly truncate to mMaximumProteinNameLength characters
+            if (proteinName.Length > mMaximumProteinNameLength)
+            {
+                proteinNameTooLong = true;
+            }
+            else
+            {
+                proteinNameTooLong = false;
+            }
+
+            if (mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession ||
+                mFixedFastaOptions.TruncateLongProteinNames && proteinNameTooLong)
+            {
+
+                // First see if the name fits the pattern IPI:IPI00048500.11|
+                // Next see if the name fits the pattern gi|7110699|
+                // Next see if the name fits the pattern jgi
+                // Next see if the name fits the generic pattern defined by reProteinNameTruncation.reMatchGeneric
+                // Otherwise, use mFixedFastaOptions.LongProteinNameSplitChars to define where to truncate
+
+                newProteinName = string.Copy(proteinName);
+                extraProteinNameText = string.Empty;
+
+                reMatch = reProteinNameTruncation.reMatchIPI.Match(proteinName);
+                if (reMatch.Success)
+                {
+                    multipleRefsSplitOutFromKnownAccession = true;
+                }
+                else
+                {
+                    // IPI didn't match; try gi
+                    reMatch = reProteinNameTruncation.reMatchGI.Match(proteinName);
+                }
+
+                if (reMatch.Success)
+                {
+                    multipleRefsSplitOutFromKnownAccession = true;
+                }
+                else
+                {
+                    // GI didn't match; try jgi
+                    reMatch = reProteinNameTruncation.reMatchJGI.Match(proteinName);
+                }
+
+                if (reMatch.Success)
+                {
+                    multipleRefsSplitOutFromKnownAccession = true;
+                }
+                // jgi didn't match; try generic (text separated by a series of colons or bars),
+                // but only if the name is too long
+                else if (mFixedFastaOptions.TruncateLongProteinNames && proteinNameTooLong)
+                {
+                    reMatch = reProteinNameTruncation.reMatchGeneric.Match(proteinName);
+                }
+
+                if (reMatch.Success)
+                {
+                    // Truncate the protein name, but move the truncated portion into the next group
+                    newProteinName = reMatch.Groups[1].Value;
+                    extraProteinNameText = reMatch.Groups[2].Value;
+                }
+                else if (mFixedFastaOptions.TruncateLongProteinNames && proteinNameTooLong)
+                {
+                    // Name is too long, but it didn't match the known patterns
+                    // Find the last occurrence of mFixedFastaOptions.LongProteinNameSplitChars (default is vertical bar)
+                    // and truncate the text following the match
+                    // Repeat the process until the protein name length >= mMaximumProteinNameLength
+
+                    // See if any of the characters in proteinNameSplitChars is present after
+                    // character 6 but less than character mMaximumProteinNameLength
+                    minCharIndex = 6;
+
+                    do
+                    {
+                        charIndex = newProteinName.LastIndexOfAny(mFixedFastaOptions.LongProteinNameSplitChars);
+                        if (charIndex >= minCharIndex)
+                        {
+                            if (extraProteinNameText.Length > 0)
+                            {
+                                extraProteinNameText = "|" + extraProteinNameText;
+                            }
+
+                            extraProteinNameText = newProteinName.Substring(charIndex + 1) + extraProteinNameText;
+                            newProteinName = newProteinName.Substring(0, charIndex);
+                        }
+                        else
+                        {
+                            charIndex = -1;
+                        }
+                    }
+                    while (charIndex > 0 && newProteinName.Length > mMaximumProteinNameLength);
+                }
+
+                if (extraProteinNameText.Length > 0)
+                {
+                    if (proteinNameTooLong)
+                    {
+                        mFixedFastaStats.TruncatedProteinNameCount += 1;
+                    }
+                    else
+                    {
+                        mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1;
+                    }
+
+                    proteinName = string.Copy(newProteinName);
+
+                    PrependExtraTextToProteinDescription(extraProteinNameText, ref proteinDescription);
+                }
+            }
+
+            if (mFixedFastaOptions.ProteinNameInvalidCharsToRemove.Length > 0)
+            {
+                newProteinName = string.Copy(proteinName);
+
+                // First remove invalid characters from the beginning or end of the protein name
+                newProteinName = newProteinName.Trim(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
+
+                if (newProteinName.Length >= 1)
+                {
+                    foreach (var invalidChar in mFixedFastaOptions.ProteinNameInvalidCharsToRemove)
+                        // Next, replace any remaining instances of the character with an underscore
+                        newProteinName = newProteinName.Replace(invalidChar, INVALID_PROTEIN_NAME_CHAR_REPLACEMENT);
+
+                    if ((proteinName ?? "") != (newProteinName ?? ""))
+                    {
+                        if (newProteinName.Length >= 3)
+                        {
+                            proteinName = string.Copy(newProteinName);
+                            mFixedFastaStats.ProteinNamesInvalidCharsReplaced += 1;
+                        }
+                    }
+                }
+            }
+
+            if (mFixedFastaOptions.SplitOutMultipleRefsInProteinName && !multipleRefsSplitOutFromKnownAccession)
+            {
+                // Look for multiple refs in the protein name, but only if we didn't already split out multiple refs above
+
+                reMatch = reProteinNameTruncation.reMatchDoubleBarOrColonAndBar.Match(proteinName);
+                if (reMatch.Success)
+                {
+                    // Protein name contains 2 or more vertical bars, or a colon and a bar
+                    // Split out the multiple refs and place them in the description
+                    // However, jgi names are supposed to have two vertical bars, so we need to treat that data differently
+
+                    extraProteinNameText = string.Empty;
+
+                    reMatch = reProteinNameTruncation.reMatchJGIBaseAndID.Match(proteinName);
+                    if (reMatch.Success)
+                    {
+                        // ProteinName is similar to jgi|Organism|00000
+                        // Check whether there is any text following the match
+                        if (reMatch.Length < proteinName.Length)
+                        {
+                            // Extra text exists; populate extraProteinNameText
+                            extraProteinNameText = proteinName.Substring(reMatch.Length + 1);
+                            proteinName = reMatch.ToString();
+                        }
+                    }
+                    else
+                    {
+                        // Find the first vertical bar or colon
+                        charIndex = proteinName.IndexOfAny(mProteinNameFirstRefSepChars);
+
+                        if (charIndex > 0)
+                        {
+                            // Find the second vertical bar, colon, or semicolon
+                            charIndex = proteinName.IndexOfAny(mProteinNameSubsequentRefSepChars, charIndex + 1);
+
+                            if (charIndex > 0)
+                            {
+                                // Split the protein name
+                                extraProteinNameText = proteinName.Substring(charIndex + 1);
+                                proteinName = proteinName.Substring(0, charIndex);
+                            }
+                        }
+                    }
+
+                    if (extraProteinNameText.Length > 0)
+                    {
+                        PrependExtraTextToProteinDescription(extraProteinNameText, ref proteinDescription);
+                        mFixedFastaStats.ProteinNamesMultipleRefsRemoved += 1;
+                    }
+                }
+            }
+
+            // Make sure proteinDescription doesn't start with a | or space
+            if (proteinDescription.Length > 0)
+            {
+                proteinDescription = proteinDescription.TrimStart(new char[] { '|', ' ' });
+            }
+
+            return proteinName;
+        }
+
+        private string BoolToStringInt(bool value)
+        {
+            if (value)
+            {
+                return "1";
+            }
+            else
+            {
+                return "0";
+            }
+        }
+
+        private string CharArrayToString(IEnumerable<char> charArray)
+        {
+            return string.Join("", charArray);
+        }
+
+        private void ClearAllRules()
+        {
+            ClearRules(RuleTypes.HeaderLine);
+            ClearRules(RuleTypes.ProteinDescription);
+            ClearRules(RuleTypes.ProteinName);
+            ClearRules(RuleTypes.ProteinSequence);
+
+            mMasterCustomRuleID = CUSTOM_RULE_ID_START;
+        }
+
+        private void ClearRules(RuleTypes ruleType)
+        {
+            switch (ruleType)
+            {
+                case RuleTypes.HeaderLine:
+                    ClearRulesDataStructure(ref mHeaderLineRules);
+                    break;
+                case RuleTypes.ProteinDescription:
+                    ClearRulesDataStructure(ref mProteinDescriptionRules);
+                    break;
+                case RuleTypes.ProteinName:
+                    ClearRulesDataStructure(ref mProteinNameRules);
+                    break;
+                case RuleTypes.ProteinSequence:
+                    ClearRulesDataStructure(ref mProteinSequenceRules);
+                    break;
+            }
+        }
+
+        private void ClearRulesDataStructure(ref udtRuleDefinitionType[] rules)
+        {
+            rules = new udtRuleDefinitionType[0];
+        }
+
+        public string ComputeProteinHash(StringBuilder sbResidues, bool consolidateDupsIgnoreILDiff)
+        {
+            if (sbResidues.Length > 0)
+            {
+                // Compute the hash value for sbCurrentResidues
+                if (consolidateDupsIgnoreILDiff)
+                {
+                    return HashUtilities.ComputeStringHashSha1(sbResidues.ToString().Replace('L', 'I')).ToUpper();
+                }
+                else
+                {
+                    return HashUtilities.ComputeStringHashSha1(sbResidues.ToString()).ToUpper();
+                }
+            }
+            else
+            {
+                return string.Empty;
+            }
+        }
+
+        private int ComputeTotalSpecifiedCount(udtItemSummaryIndexedType errorStats)
+        {
+            int total;
+            int index;
+
+            total = 0;
+            for (index = 0; index <= errorStats.ErrorStatsCount - 1; index++)
+                total += errorStats.ErrorStats[index].CountSpecified;
+
+            return total;
+        }
+
+        private int ComputeTotalUnspecifiedCount(udtItemSummaryIndexedType errorStats)
+        {
+            int total;
+            int index;
+
+            total = 0;
+            for (index = 0; index <= errorStats.ErrorStatsCount - 1; index++)
+                total += errorStats.ErrorStats[index].CountUnspecified;
+
+            return total;
+        }
+
+        /// <summary>
+        /// Looks for duplicate proteins in the Fasta file
+        /// Creates a new fasta file that has exact duplicates removed
+        /// Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
+        /// </summary>
+        /// <param name="consolidateDuplicateProteinSeqsInFasta"></param>
+        /// <param name="fixedFastaFilePath"></param>
+        /// <param name="proteinSequenceHashCount"></param>
+        /// <param name="proteinSeqHashInfo"></param>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        private bool CorrectForDuplicateProteinSeqsInFasta(
+            bool consolidateDuplicateProteinSeqsInFasta,
+            bool consolidateDupsIgnoreILDiff,
+            string fixedFastaFilePath,
+            int proteinSequenceHashCount,
+            IList<clsProteinHashInfo> proteinSeqHashInfo)
+        {
+            Stream fsInFile;
+            StreamWriter consolidatedFastaWriter = null;
+            long bytesRead;
+
+            int terminatorSize;
+            float percentComplete;
+            int lineCountRead;
+
+            string fixedFastaFilePathTemp = string.Empty;
+            string lineIn;
+
+            string cachedProteinName = string.Empty;
+            string cachedProteinDescription = string.Empty;
+            var sbCachedProteinResidueLines = new StringBuilder(250);
+            var sbCachedProteinResidues = new StringBuilder(250);
+
+            // This list contains the protein names that we will keep; values are the index values pointing into proteinSeqHashInfo
+            // If consolidateDuplicateProteinSeqsInFasta=False, this will contain all protein names
+            // If consolidateDuplicateProteinSeqsInFasta=True, we only keep the first name found for a given sequence
+            clsNestedStringDictionary<int> proteinNameFirst;
+
+            // This list keeps track of the protein names that have been written out to the new fasta file
+            // Keys are the protein names; values are the index of the entry in proteinSeqHashInfo()
+            clsNestedStringDictionary<int> proteinsWritten;
+
+            // This list contains the names of duplicate proteins; the hash values are the protein names of the master protein that has the same sequence
+            clsNestedStringDictionary<string> duplicateProteinList;
+
+            int descriptionStartIndex;
+
+            bool success;
+
+            if (proteinSequenceHashCount <= 0)
+            {
+                return true;
+            }
+
+            // '''''''''''''''''''''
+            // Processing Steps
+            // '''''''''''''''''''''
+            //
+            // Open fixedFastaFilePath with the fasta file reader
+            // Create a new fasta file with a writer
+
+            // For each protein, check whether it has duplicates
+            // If not, just write it out to the new fasta file
+
+            // If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
+            // and write out the name, new description, and sequence to the new fasta file
+
+            // Otherwise, check if it is a duplicate of a master protein
+            // If it is, then do not write the name, description, or sequence to the new fasta file
+
+            try
+            {
+                fixedFastaFilePathTemp = fixedFastaFilePath + ".TempFixed";
+
+                if (File.Exists(fixedFastaFilePathTemp))
+                {
+                    File.Delete(fixedFastaFilePathTemp);
+                }
+
+                File.Move(fixedFastaFilePath, fixedFastaFilePathTemp);
+            }
+            catch (Exception ex)
+            {
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error renaming " + fixedFastaFilePath + " to " + fixedFastaFilePathTemp + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error renaming fixed fasta to .tempfixed", ex);
+                return false;
+            }
+
+            StreamReader fastaReader;
+
+            try
+            {
+                // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
+                terminatorSize = DetermineLineTerminatorSize(fixedFastaFilePathTemp);
+
+                // Open the Fixed fasta file
+                fsInFile = new FileStream(
+                    fixedFastaFilePathTemp,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite);
+
+                fastaReader = new StreamReader(fsInFile);
+            }
+            catch (Exception ex)
+            {
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error opening " + fixedFastaFilePathTemp + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error opening fixedFastaFilePathTemp", ex);
+                return false;
+            }
+
+            try
+            {
+                // Create the new fasta file
+                consolidatedFastaWriter = new StreamWriter(new FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+            }
+            catch (Exception ex)
+            {
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error creating consolidated fasta output file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error creating consolidated fasta output file", ex);
+            }
+
+            try
+            {
+                // Populate proteinNameFirst with the protein names in proteinSeqHashInfo().ProteinNameFirst
+                proteinNameFirst = new clsNestedStringDictionary<int>(true, mProteinNameSpannerCharLength);
+
+                // Populate htDuplicateProteinList with the protein names in proteinSeqHashInfo().AdditionalProteins
+                duplicateProteinList = new clsNestedStringDictionary<string>(true, mProteinNameSpannerCharLength);
+
+                for (int index = 0; index <= proteinSequenceHashCount - 1; index++)
+                {
+                    var proteinHashInfo = proteinSeqHashInfo[index];
+
+                    if (!proteinNameFirst.ContainsKey(proteinHashInfo.ProteinNameFirst))
+                    {
+                        proteinNameFirst.Add(proteinHashInfo.ProteinNameFirst, index);
+                    }
+                    else
+                    {
+                        // .ProteinNameFirst is already present in proteinNameFirst
+                        // The fixed fasta file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
+                        // but we should increment the DuplicateNameSkipCount
+
+                    }
+
+                    if (proteinHashInfo.AdditionalProteins.Count() > 0)
+                    {
+                        foreach (string additionalProtein in proteinHashInfo.AdditionalProteins)
+                        {
+                            if (consolidateDuplicateProteinSeqsInFasta)
+                            {
+                                // Update the duplicate protein name list
+                                if (!duplicateProteinList.ContainsKey(additionalProtein))
+                                {
+                                    duplicateProteinList.Add(additionalProtein, proteinHashInfo.ProteinNameFirst);
+                                }
+                            }
+                            // We are not consolidating proteins with the same sequence but different protein names
+                            // Append this entry to proteinNameFirst
+
+                            else if (!proteinNameFirst.ContainsKey(additionalProtein))
+                            {
+                                proteinNameFirst.Add(additionalProtein, index);
+                            }
+                            else
+                            {
+                                // .AdditionalProteins(dupIndex) is already present in proteinNameFirst
+                                // Increment the DuplicateNameSkipCount
+                            }
+                        }
+                    }
+                }
+
+                proteinsWritten = new clsNestedStringDictionary<int>(false, mProteinNameSpannerCharLength);
+
+                var lastMemoryUsageReport = DateTime.UtcNow;
+
+                // Parse each line in the file
+                lineCountRead = 0;
+                bytesRead = 0;
+                mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0;
+
+                while (!fastaReader.EndOfStream)
+                {
+                    lineIn = fastaReader.ReadLine();
+                    bytesRead += lineIn.Length + terminatorSize;
+
+                    if (lineCountRead % 50 == 0)
+                    {
+                        if (AbortProcessing)
+                            break;
+                        percentComplete = 75 + (float)(bytesRead / (double)fastaReader.BaseStream.Length * 100.0) / 4;
+                        UpdateProgress("Consolidating duplicate proteins to create a new FASTA File (" + Math.Round(percentComplete, 0) + "% Done)", percentComplete);
+
+                        if (DateTime.UtcNow.Subtract(lastMemoryUsageReport).TotalMinutes >= 1)
+                        {
+                            lastMemoryUsageReport = DateTime.UtcNow;
+                            ReportMemoryUsage(proteinNameFirst, proteinsWritten, duplicateProteinList);
+                        }
+                    }
+
+                    lineCountRead += 1;
+
+                    if (lineIn != null)
+                    {
+                        if (lineIn.Trim().Length > 0)
+                        {
+                            // Note: Trim the start of the line (however, since this is a fixed fasta file it should not start with a space)
+                            lineIn = lineIn.TrimStart();
+
+                            if (lineIn[0] == mProteinLineStartChar)
+                            {
+                                // Protein entry line
+
+                                if (!string.IsNullOrEmpty(cachedProteinName))
+                                {
+                                    // Write out the cached protein and it's residues
+
+                                    WriteCachedProtein(
+                                        cachedProteinName, cachedProteinDescription,
+                                        consolidatedFastaWriter, proteinSeqHashInfo,
+                                        sbCachedProteinResidueLines, sbCachedProteinResidues,
+                                        consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
+                                        proteinNameFirst, duplicateProteinList,
+                                        lineCountRead, proteinsWritten);
+
+                                    cachedProteinName = string.Empty;
+                                    sbCachedProteinResidueLines.Length = 0;
+                                    sbCachedProteinResidues.Length = 0;
+                                }
+
+                                // Extract the protein name and description
+                                SplitFastaProteinHeaderLine(lineIn, out cachedProteinName, out cachedProteinDescription, out descriptionStartIndex);
+                            }
+                            else
+                            {
+                                // Protein residues
+                                sbCachedProteinResidueLines.AppendLine(lineIn);
+                                sbCachedProteinResidues.Append(lineIn.Trim());
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(cachedProteinName))
+                {
+                    // Write out the cached protein and it's residues
+                    WriteCachedProtein(
+                        cachedProteinName, cachedProteinDescription,
+                        consolidatedFastaWriter, proteinSeqHashInfo,
+                        sbCachedProteinResidueLines, sbCachedProteinResidues,
+                        consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
+                        proteinNameFirst, duplicateProteinList,
+                        lineCountRead, proteinsWritten);
+                }
+
+                ReportMemoryUsage(proteinNameFirst, proteinsWritten, duplicateProteinList);
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                RecordFastaFileError(0, 0, string.Empty, (int)eMessageCodeConstants.UnspecifiedError,
+                    "Error writing to consolidated fasta file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error writing to consolidated fasta file", ex);
+                return false;
+            }
+            finally
+            {
+                try
+                {
+                    if (fastaReader != null)
+                        fastaReader.Close();
+                    if (consolidatedFastaWriter != null)
+                        consolidatedFastaWriter.Close();
+
+                    System.Threading.Thread.Sleep(100);
+
+                    File.Delete(fixedFastaFilePathTemp);
+                }
+                catch (Exception ex)
+                {
+                    // Ignore errors here
+                    OnWarningEvent("Error closing file handles in CorrectForDuplicateProteinSeqsInFasta: " + ex.Message);
+                }
+            }
+
+            return success;
+        }
+
+        private string ConstructFastaHeaderLine(string proteinName, string proteinDescription)
+        {
+            if (proteinName == null)
+                proteinName = "????";
+
+            if (string.IsNullOrWhiteSpace(proteinDescription))
+            {
+                return mProteinLineStartChar + proteinName;
+            }
+            else
+            {
+                return mProteinLineStartChar + proteinName + " " + proteinDescription;
+            }
+        }
+
+        private string ConstructStatsFilePath(string outputFolderPath)
+        {
+            string outFilePath = string.Empty;
+
+            try
+            {
+                // Record the current time in now
+                outFilePath = "FastaFileStats_" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt";
+
+                if (outputFolderPath != null && outputFolderPath.Length > 0)
+                {
+                    outFilePath = Path.Combine(outputFolderPath, outFilePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (string.IsNullOrWhiteSpace(outFilePath))
+                {
+                    outFilePath = "FastaFileStats.txt";
+                }
+            }
+
+            return outFilePath;
+        }
+
+        private void DeleteTempFiles()
+        {
+            if (mTempFilesToDelete != null && mTempFilesToDelete.Count > 0)
+            {
+                foreach (var filePath in mTempFilesToDelete)
+                {
+                    try
+                    {
+                        if (File.Exists(filePath))
+                        {
+                            File.Delete(filePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Ignore errors
+                    }
+                }
+            }
+        }
+
+        private int DetermineLineTerminatorSize(string inputFilePath)
+        {
+            var endCharType = DetermineLineTerminatorType(inputFilePath);
+
+            switch (endCharType)
+            {
+                case eLineEndingCharacters.CR:
+                    return 1;
+                case eLineEndingCharacters.LF:
+                    return 1;
+                case eLineEndingCharacters.CRLF:
+                    return 2;
+                case eLineEndingCharacters.LFCR:
+                    return 2;
+            }
+
+            return 2;
+        }
+
+        private eLineEndingCharacters DetermineLineTerminatorType(string inputFilePath)
+        {
+            int oneByte;
+
+            var endCharacterType = default(eLineEndingCharacters);
+
+            try
+            {
+                // Open the input file and look for the first carriage return or line feed
+                using (var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    while (fsInFile.Position < fsInFile.Length && fsInFile.Position < 100000)
+                    {
+                        oneByte = fsInFile.ReadByte();
+
+                        if (oneByte == 10)
+                        {
+                            // Found linefeed
+                            if (fsInFile.Position < fsInFile.Length)
+                            {
+                                oneByte = fsInFile.ReadByte();
+                                if (oneByte == 13)
+                                {
+                                    // LfCr
+                                    endCharacterType = eLineEndingCharacters.LFCR;
+                                }
+                                else
+                                {
+                                    // Lf only
+                                    endCharacterType = eLineEndingCharacters.LF;
+                                }
+                            }
+                            else
+                            {
+                                endCharacterType = eLineEndingCharacters.LF;
+                            }
+
+                            break;
+                        }
+                        else if (oneByte == 13)
+                        {
+                            // Found carriage return
+                            if (fsInFile.Position < fsInFile.Length)
+                            {
+                                oneByte = fsInFile.ReadByte();
+                                if (oneByte == 10)
+                                {
+                                    // CrLf
+                                    endCharacterType = eLineEndingCharacters.CRLF;
+                                }
+                                else
+                                {
+                                    // Cr only
+                                    endCharacterType = eLineEndingCharacters.CR;
+                                }
+                            }
+                            else
+                            {
+                                endCharacterType = eLineEndingCharacters.CR;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
+            }
+
+            return endCharacterType;
+        }
+
+        // Unused function
+        //private string ExtractListItem(string list, int item)
+        //{
+        //    string itemStr = string.Empty;
+        //
+        //    if (item >= 1 && list != null)
+        //    {
+        //        var items = list.Split(',');
+        //        if (items.Length >= item)
+        //        {
+        //            itemStr = items[item - 1];
+        //        }
+        //    }
+        //
+        //    return itemStr;
+        //}
+
+        private string NormalizeFileLineEndings(
+            string pathOfFileToFix,
+            string newFileName,
+            eLineEndingCharacters desiredLineEndCharacterType)
+        {
+            string newEndChar = "\r\n";
+
+            var endCharType = DetermineLineTerminatorType(pathOfFileToFix);
+
+            var origEndCharCount = default(int);
+
+            if (endCharType != desiredLineEndCharacterType)
+            {
+                switch (desiredLineEndCharacterType)
+                {
+                    case eLineEndingCharacters.CRLF:
+                        newEndChar = "\r\n";
+                        break;
+                    case eLineEndingCharacters.CR:
+                        newEndChar = "\r";
+                        break;
+                    case eLineEndingCharacters.LF:
+                        newEndChar = "\n";
+                        break;
+                    case eLineEndingCharacters.LFCR:
+                        newEndChar = "\r\n";
+                        break;
+                }
+
+                switch (endCharType)
+                {
+                    case eLineEndingCharacters.CR:
+                        origEndCharCount = 2;
+                        break;
+                    case eLineEndingCharacters.CRLF:
+                        origEndCharCount = 1;
+                        break;
+                    case eLineEndingCharacters.LF:
+                        origEndCharCount = 1;
+                        break;
+                    case eLineEndingCharacters.LFCR:
+                        origEndCharCount = 2;
+                        break;
+                }
+
+                if (!Path.IsPathRooted(newFileName))
+                {
+                    newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix), Path.GetFileName(newFileName));
+                }
+
+                var targetFile = new FileInfo(pathOfFileToFix);
+                long fileSizeBytes = targetFile.Length;
+
+                var reader = targetFile.OpenText();
+
+                using (var writer = new StreamWriter(new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                {
+                    this.OnProgressUpdate("Normalizing Line Endings...", 0.0F);
+
+                    string dataLine = reader.ReadLine();
+                    long linesRead = 0;
+                    while (dataLine != null)
+                    {
+                        writer.Write(dataLine);
+                        writer.Write(newEndChar);
+
+                        int currentFilePos = dataLine.Length + origEndCharCount;
+                        linesRead += 1;
+
+                        if (linesRead % 1000 == 0)
+                        {
+                            OnProgressUpdate("Normalizing Line Endings (" +
+                                Math.Round(currentFilePos / (double)fileSizeBytes * 100.0, 1).ToString() +
+                                " % complete", (float)(currentFilePos / (double)fileSizeBytes * 100));
+                        }
+
+                        dataLine = reader.ReadLine();
+                    }
+
+                    reader.Close();
+                }
+
+                return newFileName;
+            }
+            else
+            {
+                return pathOfFileToFix;
+            }
+        }
+
+        private void EvaluateRules(
+            IList<udtRuleDefinitionExtendedType> ruleDetails,
+            string proteinName,
+            string textToTest,
+            int testTextOffsetInLine,
+            string entireLine,
+            int contextLength)
+        {
+            int index;
+            Match reMatch;
+            string extraInfo;
+            int charIndexOfMatch;
+
+            for (index = 0; index <= ruleDetails.Count - 1; index++)
+            {
+                var ruleDetail = ruleDetails[index];
+
+                reMatch = ruleDetail.reRule.Match(textToTest);
+
+                if (ruleDetail.RuleDefinition.MatchIndicatesProblem && reMatch.Success ||
+                    !(ruleDetail.RuleDefinition.MatchIndicatesProblem && !reMatch.Success))
+                {
+                    if (ruleDetail.RuleDefinition.DisplayMatchAsExtraInfo)
+                    {
+                        extraInfo = reMatch.ToString();
+                    }
+                    else
+                    {
+                        extraInfo = string.Empty;
+                    }
+
+                    charIndexOfMatch = testTextOffsetInLine + reMatch.Index;
+                    if (ruleDetail.RuleDefinition.Severity >= 5)
+                    {
+                        RecordFastaFileError(mLineCount, charIndexOfMatch, proteinName,
+                            ruleDetail.RuleDefinition.CustomRuleID, extraInfo,
+                            ExtractContext(entireLine, charIndexOfMatch, contextLength));
+                    }
+                    else
+                    {
+                        RecordFastaFileWarning(mLineCount, charIndexOfMatch, proteinName,
+                            ruleDetail.RuleDefinition.CustomRuleID, extraInfo,
+                            ExtractContext(entireLine, charIndexOfMatch, contextLength));
+                    }
+                }
+            }
+        }
+
+        private string ExamineProteinName(
+            ref string proteinName,
+            ISet<string> proteinNames,
+            out bool skipDuplicateProtein,
+            ref bool processingDuplicateOrInvalidProtein)
+        {
+            bool duplicateName = proteinNames.Contains(proteinName);
+            skipDuplicateProtein = false;
+
+            if (duplicateName && mGenerateFixedFastaFile)
+            {
+                if (mFixedFastaOptions.RenameProteinsWithDuplicateNames)
+                {
+                    char letterToAppend = 'b';
+                    int numberToAppend = 0;
+                    string newProteinName;
+
+                    do
+                    {
+                        newProteinName = proteinName + '-' + letterToAppend;
+                        if (numberToAppend > 0)
+                        {
+                            newProteinName += numberToAppend.ToString();
+                        }
+
+                        duplicateName = proteinNames.Contains(newProteinName);
+
+                        if (duplicateName)
+                        {
+                            // Increment letterToAppend to the next letter and then try again to rename the protein
+                            if (letterToAppend == 'z')
+                            {
+                                // We've reached "z"
+                                // Change back to "a" but increment numberToAppend
+                                letterToAppend = 'a';
+                                numberToAppend += 1;
+                            }
+                            else
+                            {
+                                // letterToAppend = Chr(Asc(letterToAppend) + 1)
+                                letterToAppend = (char)(letterToAppend + 1);
+                            }
+                        }
+                    }
+                    while (duplicateName);
+
+                    RecordFastaFileWarning(mLineCount, 1, proteinName, (int)eMessageCodeConstants.RenamedProtein, "--> " + newProteinName, string.Empty);
+
+                    proteinName = string.Copy(newProteinName);
+                    mFixedFastaStats.DuplicateNameProteinsRenamed += 1;
+                    skipDuplicateProtein = false;
+                }
+                else if (mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence)
+                {
+                    skipDuplicateProtein = false;
+                }
+                else
+                {
+                    skipDuplicateProtein = true;
+                }
+            }
+
+            if (duplicateName)
+            {
+                if (skipDuplicateProtein || !mGenerateFixedFastaFile)
+                {
+                    RecordFastaFileError(mLineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
+                    if (mSaveBasicProteinHashInfoFile)
+                    {
+                        processingDuplicateOrInvalidProtein = false;
+                    }
+                    else
+                    {
+                        processingDuplicateOrInvalidProtein = true;
+                        mFixedFastaStats.DuplicateNameProteinsSkipped += 1;
+                    }
+                }
+                else
+                {
+                    RecordFastaFileWarning(mLineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
+                    processingDuplicateOrInvalidProtein = false;
+                }
+            }
+            else
+            {
+                processingDuplicateOrInvalidProtein = false;
+            }
+
+            if (!proteinNames.Contains(proteinName))
+            {
+                proteinNames.Add(proteinName);
+            }
+
+            return proteinName;
+        }
+
+        private string ExtractContext(string text, int startIndex)
+        {
+            return ExtractContext(text, startIndex, DEFAULT_CONTEXT_LENGTH);
+        }
+
+        private string ExtractContext(string text, int startIndex, int contextLength)
+        {
+            // Note that contextLength should be an odd number; if it isn't, we'll add 1 to it
+
+            int contextStartIndex;
+            int contextEndIndex;
+
+            if (contextLength % 2 == 0)
+            {
+                contextLength += 1;
+            }
+            else if (contextLength < 1)
+            {
+                contextLength = 1;
+            }
+
+            if (text == null)
+            {
+                return string.Empty;
+            }
+            else if (text.Length <= 1)
+            {
+                return text;
+            }
+            else
+            {
+                // Define the start index for extracting the context from text
+                contextStartIndex = startIndex - (int)Math.Round((contextLength - 1) / (double)2);
+                if (contextStartIndex < 0)
+                    contextStartIndex = 0;
+
+                // Define the end index for extracting the context from text
+                contextEndIndex = Math.Max(startIndex + (int)Math.Round((contextLength - 1) / (double)2), contextStartIndex + contextLength - 1);
+                if (contextEndIndex >= text.Length)
+                {
+                    contextEndIndex = text.Length - 1;
+                }
+
+                // Return the context portion of text
+                return text.Substring(contextStartIndex, contextEndIndex - contextStartIndex + 1);
+            }
+        }
+
+        private string FlattenArray(IEnumerable<string> items, char sepChar)
+        {
+            if (items == null)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return FlattenArray(items, items.Count(), sepChar);
+            }
+        }
+
+        private string FlattenArray(IEnumerable<string> items, int dataCount, char sepChar)
+        {
+            int index;
+            string result;
+
+            if (items == null)
+            {
+                return string.Empty;
+            }
+            else if (items.Count() == 0 || dataCount <= 0)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                if (dataCount > items.Count())
+                {
+                    dataCount = items.Count();
+                }
+
+                result = items.ElementAtOrDefault(0);
+                if (result == null)
+                    result = string.Empty;
+
+                for (index = 1; index <= dataCount - 1; index++)
+                {
+                    if (items.ElementAtOrDefault(index) == null)
+                    {
+                        result += sepChar.ToString();
+                    }
+                    else
+                    {
+                        result += sepChar + items.ElementAtOrDefault(index);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Convert a list of strings to a tab-delimited string
+        /// </summary>
+        /// <param name="dataValues"></param>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        private string FlattenList(IEnumerable<string> dataValues)
+        {
+            return FlattenArray(dataValues, '\t');
+        }
+
+        /// <summary>
+        /// Find the first space (or first tab) in the protein header line
+        /// </summary>
+        /// <param name="headerLine"></param>
+        /// <returns></returns>
+        /// <remarks>Used for determining protein name</remarks>
+        private int GetBestSpaceIndex(string headerLine)
+        {
+            int spaceIndex = headerLine.IndexOf(' ');
+            int tabIndex = headerLine.IndexOf('\t');
+
+            if (spaceIndex == 1)
+            {
+                // Space found directly after the > symbol
+            }
+            else if (tabIndex > 0)
+            {
+                if (tabIndex == 1)
+                {
+                    // Tab character found directly after the > symbol
+                    spaceIndex = tabIndex;
+                }
+                else if (spaceIndex <= 0 || spaceIndex > 0 && tabIndex < spaceIndex)
+                {
+                    // Tab character found; does it separate the protein name and description?
+                    spaceIndex = tabIndex;
+                }
+            }
+
+            return spaceIndex;
+        }
+
+        public override IList<string> GetDefaultExtensionsToParse()
+        {
+            var extensionsToParse = new List<string>() { ".fasta" };
+
+            return extensionsToParse;
+        }
+
+        public override string GetErrorMessage()
+        {
+            // Returns "" if no error
+
+            string errorMessage;
+
+            if (ErrorCode == ProcessFilesErrorCodes.LocalizedError ||
+                ErrorCode == ProcessFilesErrorCodes.NoError)
+            {
+                switch (mLocalErrorCode)
+                {
+                    case eValidateFastaFileErrorCodes.NoError:
+                        errorMessage = "";
+                        break;
+                    case eValidateFastaFileErrorCodes.OptionsSectionNotFound:
+                        errorMessage = "The section " + XML_SECTION_OPTIONS + " was not found in the parameter file";
+                        break;
+                    case eValidateFastaFileErrorCodes.ErrorReadingInputFile:
+                        errorMessage = "Error reading input file";
+                        break;
+                    case eValidateFastaFileErrorCodes.ErrorCreatingStatsFile:
+                        errorMessage = "Error creating stats output file";
+                        break;
+                    case eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF:
+                        errorMessage = "Error verifying linefeed at end of file";
+                        break;
+                    case eValidateFastaFileErrorCodes.UnspecifiedError:
+                        errorMessage = "Unspecified localized error";
+                        break;
+                    default:
+                        // This shouldn't happen
+                        errorMessage = "Unknown error state";
+                        break;
+                }
+            }
+            else
+            {
+                errorMessage = GetBaseClassErrorMessage();
+            }
+
+            return errorMessage;
+        }
+
+        private string GetFileErrorTextByIndex(int fileErrorIndex, string sepChar)
+        {
+            string proteinName;
+
+            if (mFileErrorCount <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrorCount)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                var fileError = mFileErrors[fileErrorIndex];
+                if (fileError.ProteinName == null || fileError.ProteinName.Length == 0)
+                {
+                    proteinName = "N/A";
+                }
+                else
+                {
+                    proteinName = string.Copy(fileError.ProteinName);
+                }
+
+                return LookupMessageType(eMsgTypeConstants.ErrorMsg) + sepChar +
+                    "Line " + fileError.LineNumber.ToString() + sepChar +
+                    "Col " + fileError.ColNumber.ToString() + sepChar +
+                    proteinName + sepChar +
+                    LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo) + sepChar + fileError.Context;
+            }
+        }
+
+        private udtMsgInfoType GetFileErrorByIndex(int fileErrorIndex)
+        {
+            if (mFileErrorCount <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrorCount)
+            {
+                return new udtMsgInfoType();
+            }
+            else
+            {
+                return mFileErrors[fileErrorIndex];
+            }
+        }
+
+        /// <summary>
+        /// Retrieve the errors reported by the validator
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
+        protected List<udtMsgInfoType> GetFileErrors()
+        {
+            var fileErrors = new List<udtMsgInfoType>();
+
+            for (int i = 0; i <= mFileErrorCount - 1; i++)
+                fileErrors.Add(mFileErrors[i]);
+            return fileErrors;
+        }
+
+        private string GetFileWarningTextByIndex(int fileWarningIndex, string sepChar)
+        {
+            string proteinName;
+
+            if (mFileWarningCount <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarningCount)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                var fileWarning = mFileWarnings[fileWarningIndex];
+                if (fileWarning.ProteinName == null || fileWarning.ProteinName.Length == 0)
+                {
+                    proteinName = "N/A";
+                }
+                else
+                {
+                    proteinName = string.Copy(fileWarning.ProteinName);
+                }
+
+                return LookupMessageType(eMsgTypeConstants.WarningMsg) + sepChar +
+                    "Line " + fileWarning.LineNumber.ToString() + sepChar +
+                    "Col " + fileWarning.ColNumber.ToString() + sepChar +
+                    proteinName + sepChar +
+                    LookupMessageDescription(fileWarning.MessageCode, fileWarning.ExtraInfo) +
+                    sepChar + fileWarning.Context;
+            }
+        }
+
+        private udtMsgInfoType GetFileWarningByIndex(int fileWarningIndex)
+        {
+            if (mFileWarningCount <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarningCount)
+            {
+                return new udtMsgInfoType();
+            }
+            else
+            {
+                return mFileWarnings[fileWarningIndex];
+            }
+        }
+
+        /// <summary>
+        /// Retrieve the warnings reported by the validator
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
+        protected List<udtMsgInfoType> GetFileWarnings()
+        {
+            var fileWarnings = new List<udtMsgInfoType>();
+
+            for (int i = 0; i <= mFileWarningCount - 1; i++)
+                fileWarnings.Add(mFileWarnings[i]);
+
+            return fileWarnings;
+        }
+
+        private string GetProcessMemoryUsageWithTimestamp()
+        {
+            return GetTimeStamp() + "\t" + clsMemoryUsageLogger.GetProcessMemoryUsageMB().ToString("0.0") + " MB in use";
+        }
+
+        private string GetTimeStamp()
+        {
+            // Record the current time
+            return DateTime.Now.ToShortDateString() + " " + DateTime.Now.ToLongTimeString();
+        }
+
+        private void InitializeLocalVariables()
+        {
+            mLocalErrorCode = eValidateFastaFileErrorCodes.NoError;
+
+            set_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF, false);
+
+            MaximumFileErrorsToTrack = 5;
+
+            MinimumProteinNameLength = DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH;
+            MaximumProteinNameLength = DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH;
+            MaximumResiduesPerLine = DEFAULT_MAXIMUM_RESIDUES_PER_LINE;
+            ProteinLineStartChar = DEFAULT_PROTEIN_LINE_START_CHAR;
+
+            set_OptionSwitch(SwitchOptions.AllowAsteriskInResidues, false);
+            set_OptionSwitch(SwitchOptions.AllowDashInResidues, false);
+            set_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins, false);
+            set_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace, true);
+
+            set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames, true);
+            set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences, true);
+
+            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile, false);
+
+            set_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession, true);
+            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName, false);
+
+            set_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins, false);
+            set_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins, false);
+
+            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, false);
+            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, false);
+
+            set_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames, true);
+            set_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines, true);
+            set_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues, false);
+
+            set_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles, false);
+
+            set_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile, false);
+
+            mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray();
+            mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray();
+
+            mFixedFastaOptions.LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
+            mFixedFastaOptions.ProteinNameInvalidCharsToRemove = new char[] { };          // Default to an empty character array
+
+            SetDefaultRules();
+
+            ResetStructures();
+            mFastaFilePath = string.Empty;
+
+            mMemoryUsageLogger = new clsMemoryUsageLogger(string.Empty);
+            mProcessMemoryUsageMBAtStart = clsMemoryUsageLogger.GetProcessMemoryUsageMB();
+
+            // ReSharper disable once VbUnreachableCode
+            if (REPORT_DETAILED_MEMORY_USAGE)
+            {
+                // mMemoryUsageMBAtStart = mMemoryUsageLogger.GetFreeMemoryMB()
+                Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageHeader());
+                Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageSummary());
+            }
+
+            mTempFilesToDelete = new List<string>();
+        }
+
+        private void InitializeRuleDetails(
+            ref udtRuleDefinitionType[] ruleDefinitions,
+            ref udtRuleDefinitionExtendedType[] ruleDetails)
+        {
+            int index;
+
+            if (ruleDefinitions == null || ruleDefinitions.Length == 0)
+            {
+                ruleDetails = new udtRuleDefinitionExtendedType[0];
+            }
+            else
+            {
+                ruleDetails = new udtRuleDefinitionExtendedType[ruleDefinitions.Length];
+
+                for (index = 0; index <= ruleDefinitions.Length - 1; index++)
+                {
+                    try
+                    {
+                        ruleDetails[index].RuleDefinition = ruleDefinitions[index];
+                        ruleDetails[index].reRule = new Regex(
+                            ruleDetails[index].RuleDefinition.MatchRegEx,
+                            RegexOptions.Singleline |
+                            RegexOptions.Compiled);
+                        ruleDetails[index].Valid = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Ignore the error, but mark .Valid = false
+                        ruleDetails[index].Valid = false;
+                    }
+                }
+            }
+        }
+
+        private bool LoadExistingProteinHashFile(
+            string proteinHashFilePath,
+            out clsNestedStringIntList preloadedProteinNamesToKeep)
+        {
+            // List of protein names to keep
+            // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+            preloadedProteinNamesToKeep = null;
+
+            try
+            {
+                var proteinHashFile = new FileInfo(proteinHashFilePath);
+
+                if (!proteinHashFile.Exists)
+                {
+                    ShowErrorMessage("Protein hash file not found: " + proteinHashFilePath);
+                    return false;
+                }
+
+                // Sort the protein has file on the Sequence_Hash column
+                // First cache the column names from the header line
+
+                var headerInfo = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
+                long proteinHashFileLines = 0;
+                string cachedHeaderLine = string.Empty;
+
+                ShowMessage("Examining pre-existing protein hash file to count the number of entries: " + Path.GetFileName(proteinHashFilePath));
+                var lastStatus = DateTime.UtcNow;
+                bool progressDotShown = false;
+
+                using (var hashFileReader = new StreamReader(new FileStream(proteinHashFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    if (!hashFileReader.EndOfStream)
+                    {
+                        cachedHeaderLine = hashFileReader.ReadLine();
+
+                        var headerNames = cachedHeaderLine.Split('\t');
+
+                        for (int colIndex = 0; colIndex <= headerNames.Count() - 1; colIndex++)
+                            headerInfo.Add(headerNames[colIndex], colIndex);
+
+                        proteinHashFileLines = 1;
+                    }
+
+                    while (!hashFileReader.EndOfStream)
+                    {
+                        hashFileReader.ReadLine();
+                        proteinHashFileLines += 1;
+
+                        if (proteinHashFileLines % 10000 == 0)
+                        {
+                            if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10)
+                            {
+                                Console.Write(".");
+                                progressDotShown = true;
+                                lastStatus = DateTime.UtcNow;
+                            }
+                        }
+                    }
+                }
+
+                if (progressDotShown)
+                    Console.WriteLine();
+
+                if (headerInfo.Count == 0)
+                {
+                    ShowErrorMessage("Protein hash file is empty: " + proteinHashFilePath);
+                    return false;
+                }
+
+                int sequenceHashColumnIndex;
+                if (!headerInfo.TryGetValue(SEQUENCE_HASH_COLUMN, out sequenceHashColumnIndex))
+                {
+                    ShowErrorMessage("Protein hash file is missing the " + SEQUENCE_HASH_COLUMN + " column: " + proteinHashFilePath);
+                    return false;
+                }
+
+                int proteinNameColumnIndex;
+                if (!headerInfo.TryGetValue(PROTEIN_NAME_COLUMN, out proteinNameColumnIndex))
+                {
+                    ShowErrorMessage("Protein hash file is missing the " + PROTEIN_NAME_COLUMN + " column: " + proteinHashFilePath);
+                    return false;
+                }
+
+                int sequenceLengthColumnIndex;
+                if (!headerInfo.TryGetValue(SEQUENCE_LENGTH_COLUMN, out sequenceLengthColumnIndex))
+                {
+                    ShowErrorMessage("Protein hash file is missing the " + SEQUENCE_LENGTH_COLUMN + " column: " + proteinHashFilePath);
+                    return false;
+                }
+
+                string baseHashFileName = Path.GetFileNameWithoutExtension(proteinHashFile.Name);
+                string sortedProteinHashSuffix;
+                string proteinHashFilenameSuffixNoExtension = Path.GetFileNameWithoutExtension(PROTEIN_HASHES_FILENAME_SUFFIX);
+
+                if (baseHashFileName.EndsWith(proteinHashFilenameSuffixNoExtension))
+                {
+                    baseHashFileName = baseHashFileName.Substring(0, baseHashFileName.Length - proteinHashFilenameSuffixNoExtension.Length);
+                    sortedProteinHashSuffix = proteinHashFilenameSuffixNoExtension;
+                }
+                else
+                {
+                    sortedProteinHashSuffix = string.Empty;
+                }
+
+                string baseDataFileName = Path.Combine(proteinHashFile.Directory.FullName, baseHashFileName);
+
+                // Note: do not add sortedProteinHashFilePath to mTempFilesToDelete
+                string sortedProteinHashFilePath = baseDataFileName + sortedProteinHashSuffix + "_Sorted.tmp";
+
+                var sortedProteinHashFile = new FileInfo(sortedProteinHashFilePath);
+                long sortedHashFileLines = 0;
+                bool sortRequired = true;
+
+                if (sortedProteinHashFile.Exists)
+                {
+                    lastStatus = DateTime.UtcNow;
+                    progressDotShown = false;
+                    ShowMessage("Validating existing sorted protein hash file: " + sortedProteinHashFile.Name);
+
+                    // The sorted file exists; if it has the same number of lines as the sort file, assume that it is complete
+                    using (var sortedHashFileReader = new StreamReader(new FileStream(sortedProteinHashFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                    {
+                        if (!sortedHashFileReader.EndOfStream)
+                        {
+                            string headerLine = sortedHashFileReader.ReadLine();
+                            if (!string.Equals(headerLine, cachedHeaderLine))
+                            {
+                                sortedHashFileLines = -1;
+                            }
+                            else
+                            {
+                                sortedHashFileLines = 1;
+                            }
+                        }
+
+                        if (sortedHashFileLines > 0)
+                        {
+                            while (!sortedHashFileReader.EndOfStream)
+                            {
+                                sortedHashFileReader.ReadLine();
+                                sortedHashFileLines += 1;
+
+                                if (sortedHashFileLines % 10000 == 0)
+                                {
+                                    if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10)
+                                    {
+                                        Console.Write((sortedHashFileLines / (double)proteinHashFileLines * 100.0).ToString("0") + "% ");
+                                        progressDotShown = true;
+                                        lastStatus = DateTime.UtcNow;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (progressDotShown)
+                        Console.WriteLine();
+
+                    if (sortedHashFileLines == proteinHashFileLines)
+                    {
+                        sortRequired = false;
+                    }
+                    else
+                    {
+                        if (sortedHashFileLines < 0)
+                        {
+                            ShowMessage("Existing sorted hash file has an incorrect header; re-creating it");
+                        }
+                        else
+                        {
+                            ShowMessage(string.Format("Existing sorted hash file has fewer lines ({0}) than the original ({1}); re-creating it",
+                                                      sortedHashFileLines, proteinHashFileLines));
+                        }
+
+                        sortedProteinHashFile.Delete();
+                        System.Threading.Thread.Sleep(50);
+                    }
+                }
+
+                // Create the sorted protein sequence hash file if necessary
+                if (sortRequired)
+                {
+                    Console.WriteLine();
+                    ShowMessage("Sorting the existing protein hash file to create " + Path.GetFileName(sortedProteinHashFilePath));
+                    bool sortHashSuccess = SortFile(proteinHashFile, sequenceHashColumnIndex, sortedProteinHashFilePath);
+                    if (!sortHashSuccess)
+                    {
+                        return false;
+                    }
+                }
+
+                ShowMessage("Determining the best spanner length for protein names");
+
+                // Examine the protein names in the sequence hash file to determine the appropriate spanner length for the names
+                byte spannerCharLength = clsNestedStringIntList.AutoDetermineSpannerCharLength(proteinHashFile, proteinNameColumnIndex, true);
+                const bool RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED = true;
+
+                // List of protein names to keep
+                preloadedProteinNamesToKeep = new clsNestedStringIntList(spannerCharLength, RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED);
+
+                lastStatus = DateTime.UtcNow;
+                progressDotShown = false;
+                Console.WriteLine();
+                ShowMessage("Finding the name of the first protein for each protein hash");
+
+                string currentHash = string.Empty;
+                string currentHashSeqLength = string.Empty;
+                var proteinNamesCurrentHash = new SortedSet<string>();
+
+                int linesRead = 0;
+                int proteinNamesUnsortedCount = 0;
+
+                string proteinNamesUnsortedFilePath = baseDataFileName + "_ProteinNamesUnsorted.tmp";
+                string proteinNamesToKeepFilePath = baseDataFileName + "_ProteinNamesToKeep.tmp";
+                string uniqueProteinSeqsFilePath = baseDataFileName + "_UniqueProteinSeqs.txt";
+                string uniqueProteinSeqDuplicateFilePath = baseDataFileName + "_UniqueProteinSeqDuplicates.txt";
+
+                mTempFilesToDelete.Add(proteinNamesUnsortedFilePath);
+                mTempFilesToDelete.Add(proteinNamesToKeepFilePath);
+
+                // Write the first protein name for each sequence hash to a new file
+                // Also create the _UniqueProteinSeqs.txt and _UniqueProteinSeqDuplicates.txt files
+
+                using (var sortedHashFileReader = new StreamReader(new FileStream(sortedProteinHashFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                using (var proteinNamesUnsortedWriter = new StreamWriter(new FileStream(proteinNamesUnsortedFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                using (var proteinNamesToKeepWriter = new StreamWriter(new FileStream(proteinNamesToKeepFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                using (var uniqueProteinSeqsWriter = new StreamWriter(new FileStream(uniqueProteinSeqsFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                using (var uniqueProteinSeqDuplicateWriter = new StreamWriter(new FileStream(uniqueProteinSeqDuplicateFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                {
+                    proteinNamesUnsortedWriter.WriteLine(FlattenList(new List<string>() { PROTEIN_NAME_COLUMN, SEQUENCE_HASH_COLUMN }));
+
+                    proteinNamesToKeepWriter.WriteLine(PROTEIN_NAME_COLUMN);
+
+                    var headerColumnsProteinSeqs = new List<string>()
+                    {
+                        "Sequence_Index",
+                        "Protein_Name_First",
+                        SEQUENCE_LENGTH_COLUMN,
+                        "Sequence_Hash",
+                        "Protein_Count",
+                        "Duplicate_Proteins"
+                    };
+
+                    uniqueProteinSeqsWriter.WriteLine(FlattenList(headerColumnsProteinSeqs));
+
+                    var headerColumnsSeqDups = new List<string>()
+                    {
+                        "Sequence_Index",
+                        "Protein_Name_First",
+                        SEQUENCE_LENGTH_COLUMN,
+                        "Duplicate_Protein"
+                    };
+
+                    uniqueProteinSeqDuplicateWriter.WriteLine(FlattenList(headerColumnsSeqDups));
+
+                    if (!sortedHashFileReader.EndOfStream)
+                    {
+                        // Read the header line
+                        sortedHashFileReader.ReadLine();
+                    }
+
+                    int currentSequenceIndex = 0;
+
+                    while (!sortedHashFileReader.EndOfStream)
+                    {
+                        string dataLine = sortedHashFileReader.ReadLine();
+                        linesRead += 1;
+
+                        var dataValues = dataLine.Split('\t');
+
+                        string proteinName = dataValues[proteinNameColumnIndex];
+                        string proteinHash = dataValues[sequenceHashColumnIndex];
+
+                        proteinNamesUnsortedWriter.WriteLine(FlattenList(new List<string>() { proteinName, proteinHash }));
+                        proteinNamesUnsortedCount += 1;
+
+                        if (string.Equals(currentHash, proteinHash))
+                        {
+                            // Existing sequence hash
+                            if (!proteinNamesCurrentHash.Contains(proteinName))
+                            {
+                                proteinNamesCurrentHash.Add(proteinName);
+                            }
+                        }
+                        else
+                        {
+                            // New sequence hash found
+
+                            // First write out the data for the last hash
+                            if (!string.IsNullOrEmpty(currentHash))
+                            {
+                                WriteCachedProteinHashMetadata(
+                                    proteinNamesToKeepWriter,
+                                    uniqueProteinSeqsWriter,
+                                    uniqueProteinSeqDuplicateWriter,
+                                    currentSequenceIndex,
+                                    currentHash,
+                                    currentHashSeqLength,
+                                    proteinNamesCurrentHash);
+                            }
+
+                            // Update the currentHash values
+                            currentSequenceIndex += 1;
+                            currentHash = string.Copy(proteinHash);
+                            currentHashSeqLength = dataValues[sequenceLengthColumnIndex];
+
+                            proteinNamesCurrentHash.Clear();
+                            proteinNamesCurrentHash.Add(proteinName);
+                        }
+
+                        if (linesRead % 10000 == 0)
+                        {
+                            if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10)
+                            {
+                                Console.Write((linesRead / (double)proteinHashFileLines * 100.0).ToString("0") + "% ");
+                                progressDotShown = true;
+                                lastStatus = DateTime.UtcNow;
+                            }
+                        }
+                    }
+
+                    // Write out the data for the last hash
+                    if (!string.IsNullOrEmpty(currentHash))
+                    {
+                        WriteCachedProteinHashMetadata(
+                            proteinNamesToKeepWriter,
+                            uniqueProteinSeqsWriter,
+                            uniqueProteinSeqDuplicateWriter,
+                            currentSequenceIndex,
+                            currentHash,
+                            currentHashSeqLength,
+                            proteinNamesCurrentHash);
+                    }
+                }
+
+                if (progressDotShown)
+                    Console.WriteLine();
+                Console.WriteLine();
+
+                // Sort the protein names to keep file
+                string sortedProteinNamesToKeepFilePath = baseDataFileName + "_ProteinsToKeepSorted.tmp";
+                mTempFilesToDelete.Add(sortedProteinNamesToKeepFilePath);
+
+                ShowMessage("Sorting the protein names to keep file to create " + Path.GetFileName(sortedProteinNamesToKeepFilePath));
+                bool sortProteinNamesToKeepSuccess = SortFile(new FileInfo(proteinNamesToKeepFilePath), 0, sortedProteinNamesToKeepFilePath);
+
+                if (!sortProteinNamesToKeepSuccess)
+                {
+                    return false;
+                }
+
+                string lastProteinAdded = string.Empty;
+
+                // Read the sorted protein names to keep file and cache the protein names in memory
+                using (var sortedNamesFileReader = new StreamReader(new FileStream(sortedProteinNamesToKeepFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    // Skip the header line
+                    sortedNamesFileReader.ReadLine();
+
+                    while (!sortedNamesFileReader.EndOfStream)
+                    {
+                        string proteinName = sortedNamesFileReader.ReadLine();
+
+                        if (string.Equals(lastProteinAdded, proteinName))
+                        {
+                            continue;
+                        }
+
+                        // Store the protein name, plus a 0
+                        // The stored value will be incremented when this protein name is encountered by the validator
+                        preloadedProteinNamesToKeep.Add(proteinName, 0);
+
+                        lastProteinAdded = string.Copy(proteinName);
+                    }
+                }
+
+                // Confirm that the data is sorted
+                preloadedProteinNamesToKeep.Sort();
+
+                ShowMessage("Cached " + preloadedProteinNamesToKeep.Count.ToString("#,##0") + " protein names into memory");
+                ShowMessage("The fixed FASTA file will only contain entries for these proteins");
+
+                // Sort the protein names file so that we can check for duplicate protein names
+                string sortedProteinNamesFilePath = baseDataFileName + "_ProteinNamesSorted.tmp";
+                mTempFilesToDelete.Add(sortedProteinNamesFilePath);
+
+                Console.WriteLine();
+                ShowMessage("Sorting the protein names file to create " + Path.GetFileName(sortedProteinNamesFilePath));
+                bool sortProteinNamesSuccess = SortFile(new FileInfo(proteinNamesUnsortedFilePath), 0, sortedProteinNamesFilePath);
+
+                if (!sortProteinNamesSuccess)
+                {
+                    return false;
+                }
+
+                string proteinNameSummaryFilePath = baseDataFileName + "_ProteinNameSummary.txt";
+
+                // We can now safely delete some files to free up disk space
+                try
+                {
+                    System.Threading.Thread.Sleep(100);
+                    File.Delete(proteinNamesUnsortedFilePath);
+                }
+                catch (Exception ex)
+                {
+                    // Ignore errors here
+                }
+
+                // Look for duplicate protein names
+                // In addition, create a new file with all protein names plus also two new columns: First_Protein_For_Hash and Duplicate_Name
+
+                using (var sortedProteinNamesReader = new StreamReader(new FileStream(sortedProteinNamesFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                using (var proteinNameSummaryWriter = new StreamWriter(new FileStream(proteinNameSummaryFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                {
+                    // Skip the header line
+                    sortedProteinNamesReader.ReadLine();
+
+                    var proteinNameHeaderColumns = new List<string>()
+                    {
+                        PROTEIN_NAME_COLUMN,
+                        SEQUENCE_HASH_COLUMN,
+                        "First_Protein_For_Hash",
+                        "Duplicate_Name"
+                    };
+
+                    proteinNameSummaryWriter.WriteLine(FlattenList(proteinNameHeaderColumns));
+
+                    string lastProtein = string.Empty;
+                    bool warningShown = false;
+                    int duplicateCount = 0;
+
+                    linesRead = 0;
+                    lastStatus = DateTime.UtcNow;
+                    progressDotShown = false;
+
+                    while (!sortedProteinNamesReader.EndOfStream)
+                    {
+                        string dataLine = sortedProteinNamesReader.ReadLine();
+                        var dataValues = dataLine.Split('\t');
+
+                        string currentProtein = dataValues[0];
+                        string sequenceHash = dataValues[1];
+
+                        bool firstProteinForHash = preloadedProteinNamesToKeep.Contains(currentProtein);
+                        bool duplicateProtein = false;
+
+                        if (string.Equals(lastProtein, currentProtein))
+                        {
+                            duplicateProtein = true;
+
+                            if (!warningShown)
+                            {
+                                ShowMessage("WARNING: the protein hash file has duplicate protein names: " + Path.GetFileName(proteinHashFilePath));
+                                warningShown = true;
+                            }
+
+                            duplicateCount += 1;
+
+                            if (duplicateCount < 10)
+                            {
+                                ShowMessage("  ... duplicate protein name: " + currentProtein);
+                            }
+                            else if (duplicateCount == 10)
+                            {
+                                ShowMessage("  ... additional duplicates will not be shown ...");
+                            }
+                        }
+
+                        lastProtein = string.Copy(currentProtein);
+
+                        var dataToWrite = new List<string>()
+                        {
+                            currentProtein,
+                            sequenceHash,
+                            BoolToStringInt(firstProteinForHash),
+                            BoolToStringInt(duplicateProtein)
+                        };
+
+                        proteinNameSummaryWriter.WriteLine(FlattenList(dataToWrite));
+
+                        if (linesRead % 10000 == 0)
+                        {
+                            if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10)
+                            {
+                                Console.Write((linesRead / (double)proteinNamesUnsortedCount * 100.0).ToString("0") + "% ");
+                                progressDotShown = true;
+                                lastStatus = DateTime.UtcNow;
+                            }
+                        }
+                    }
+
+                    if (duplicateCount > 0)
+                    {
+                        ShowMessage("WARNING: Found " + duplicateCount.ToString("#,##0") + " duplicate protein names in the protein hash file");
+                    }
+                }
+
+                if (progressDotShown)
+                {
+                    Console.WriteLine();
+                }
+
+                Console.WriteLine();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in LoadExistingProteinHashFile", ex);
+                return false;
+            }
+        }
+
+        public bool LoadParameterFileSettings(string parameterFilePath)
+        {
+            var settingsFile = new XmlSettingsFileAccessor();
+
+            var customRulesLoaded = default(bool);
+            bool success;
+
+            string characterList;
+
+            try
+            {
+                if (parameterFilePath == null || parameterFilePath.Length == 0)
+                {
+                    // No parameter file specified; nothing to load
+                    return true;
+                }
+
+                if (!File.Exists(parameterFilePath))
+                {
+                    // See if parameterFilePath points to a file in the same directory as the application
+                    parameterFilePath = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
+                        Path.GetFileName(parameterFilePath));
+
+                    if (!File.Exists(parameterFilePath))
+                    {
+                        SetBaseClassErrorCode(ProcessFilesErrorCodes.ParameterFileNotFound);
+                        return false;
+                    }
+                }
+
+                if (settingsFile.LoadSettings(parameterFilePath))
+                {
+                    if (!settingsFile.SectionPresent(XML_SECTION_OPTIONS))
+                    {
+                        OnWarningEvent("The node '<section name=\"" + XML_SECTION_OPTIONS + "\"> was not found in the parameter file: " + parameterFilePath);
+                        SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile);
+                        return false;
+                    }
+                    else
+                    {
+                        // Read customized settings
+
+                        set_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
+                            get_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF)));
+                        set_OptionSwitch(SwitchOptions.AllowAsteriskInResidues,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
+                            get_OptionSwitch(SwitchOptions.AllowAsteriskInResidues)));
+                        set_OptionSwitch(SwitchOptions.AllowDashInResidues,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
+                            get_OptionSwitch(SwitchOptions.AllowDashInResidues)));
+                        set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
+                            get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames)));
+                        set_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
+                            get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences)));
+
+                        set_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
+                            get_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles)));
+
+                        set_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
+                            get_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile)));
+
+                        MaximumFileErrorsToTrack = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                            "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
+                        MinimumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                            "MinimumProteinNameLength", MinimumProteinNameLength);
+                        MaximumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                            "MaximumProteinNameLength", MaximumProteinNameLength);
+                        MaximumResiduesPerLine = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                            "MaximumResiduesPerLine", MaximumResiduesPerLine);
+
+                        set_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
+                            get_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins)));
+                        set_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
+                            get_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace)));
+
+                        set_OptionSwitch(SwitchOptions.OutputToStatsFile,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
+                            get_OptionSwitch(SwitchOptions.OutputToStatsFile)));
+
+                        set_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
+                            get_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters)));
+
+                        if (!settingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS))
+                        {
+                            // "ValidateFastaFixedFASTAFileOptions" section not present
+                            // Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
+
+                            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                                settingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
+                                get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile)));
+
+                            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                                settingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
+                                get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName)));
+                        }
+                        else
+                        {
+                            // "ValidateFastaFixedFASTAFileOptions" section is present
+
+                            set_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
+                                get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile)));
+
+                            set_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
+                                get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
+                                get_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
+                                get_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
+                                get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
+                                get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
+                                get_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
+                                get_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
+                                get_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines)));
+
+                            set_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues,
+                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
+                                get_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues)));
+
+                            // Look for the special character lists
+                            // If defined, then update the default values
+                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", string.Empty);
+                            if (characterList != null && characterList.Length > 0)
+                            {
+                                // Update mFixedFastaOptions.LongProteinNameSplitChars with characterList
+                                LongProteinNameSplitChars = characterList;
+                            }
+
+                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", string.Empty);
+                            if (characterList != null && characterList.Length > 0)
+                            {
+                                // Update mFixedFastaOptions.ProteinNameInvalidCharsToRemove with characterList
+                                ProteinNameInvalidCharsToRemove = characterList;
+                            }
+
+                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", string.Empty);
+                            if (characterList != null && characterList.Length > 0)
+                            {
+                                // Update mProteinNameFirstRefSepChars
+                                ProteinNameFirstRefSepChars = characterList;
+                            }
+
+                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", string.Empty);
+                            if (characterList != null && characterList.Length > 0)
+                            {
+                                // Update mProteinNameSubsequentRefSepChars
+                                ProteinNameSubsequentRefSepChars = characterList;
+                            }
+                        }
+
+                        // Read the custom rules
+                        // If all of the sections are missing, then use the default rules
+                        customRulesLoaded = false;
+
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, ref mHeaderLineRules);
+                        customRulesLoaded = customRulesLoaded || success;
+
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, ref mProteinNameRules);
+                        customRulesLoaded = customRulesLoaded || success;
+
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, ref mProteinDescriptionRules);
+                        customRulesLoaded = customRulesLoaded || success;
+
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, ref mProteinSequenceRules);
+                        customRulesLoaded = customRulesLoaded || success;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in LoadParameterFileSettings", ex);
+                return false;
+            }
+
+            if (!customRulesLoaded)
+            {
+                SetDefaultRules();
+            }
+
+            return true;
+        }
+
+        public string LookupMessageDescription(int errorMessageCode)
+        {
+            return LookupMessageDescription(errorMessageCode, null);
+        }
+
+        public string LookupMessageDescription(int errorMessageCode, string extraInfo)
+        {
+            string message;
+            bool matchFound;
+
+            switch (errorMessageCode)
+            {
+                // Error messages
+                case (int)eMessageCodeConstants.ProteinNameIsTooLong:
+                    message = "Protein name is longer than the maximum allowed length of " + mMaximumProteinNameLength.ToString() + " characters";
+                    break;
+                //case (int)eMessageCodeConstants.ProteinNameContainsInvalidCharacters:
+                //    message = "Protein name contains invalid characters";
+                //    if (!specifiedInvalidProteinNameChars)
+                //    {
+                //        message += " (should contain letters, numbers, period, dash, underscore, colon, comma, or vertical bar)";
+                //        specifiedInvalidProteinNameChars = true;
+                //    }
+                //    break;
+                case (int)eMessageCodeConstants.LineStartsWithSpace:
+                    message = "Found a line starting with a space";
+                    break;
+                //case (int)eMessageCodeConstants.RightArrowFollowedBySpace:
+                //    message = "Space found directly after the > symbol";
+                //    break;
+                //case (int)eMessageCodeConstants.RightArrowFollowedByTab:
+                //    message = "Tab character found directly after the > symbol";
+                //    break;
+                //case (int)eMessageCodeConstants.RightArrowButNoProteinName:
+                //    message = "Line starts with > but does not contain a protein name";
+                //    break;
+                case (int)eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues:
+                    message = "A blank line was found between the protein name and its residues";
+                    break;
+                case (int)eMessageCodeConstants.BlankLineInMiddleOfResidues:
+                    message = "A blank line was found in the middle of the residue block for the protein";
+                    break;
+                case (int)eMessageCodeConstants.ResiduesFoundWithoutProteinHeader:
+                    message = "Residues were found, but a protein header didn't precede them";
+                    break;
+                //case (int)eMessageCodeConstants.ResiduesWithAsterisk:
+                //    message = "An asterisk was found in the residues";
+                //    break;
+                //case (int)eMessageCodeConstants.ResiduesWithSpace:
+                //    message = "A space was found in the residues";
+                //    break;
+                //case (int)eMessageCodeConstants.ResiduesWithTab:
+                //    message = "A tab character was found in the residues";
+                //    break;
+                //case (int)eMessageCodeConstants.ResiduesWithInvalidCharacters:
+                //    message = "Invalid residues found";
+                //    if (!specifiedResidueChars)
+                //    {
+                //        if (mAllowAsteriskInResidues)
+                //        {
+                //            message += " (should be any capital letter except J, plus *)";
+                //        }
+                //        else
+                //        {
+                //            message += " (should be any capital letter except J)";
+                //        }
+                //        specifiedResidueChars = true;
+                //    }
+                //    break;
+                case (int)eMessageCodeConstants.ProteinEntriesNotFound:
+                    message = "File does not contain any protein entries";
+                    break;
+                case (int)eMessageCodeConstants.FinalProteinEntryMissingResidues:
+                    message = "The last entry in the file is a protein header line, but there is no protein sequence line after it";
+                    break;
+                case (int)eMessageCodeConstants.FileDoesNotEndWithLinefeed:
+                    message = "File does not end in a blank line; this is a problem for Sequest";
+                    break;
+                case (int)eMessageCodeConstants.DuplicateProteinName:
+                    message = "Duplicate protein name found";
+                    break;
+
+                // Warning messages
+                case (int)eMessageCodeConstants.ProteinNameIsTooShort:
+                    message = "Protein name is shorter than the minimum suggested length of " + mMinimumProteinNameLength.ToString() + " characters";
+                    break;
+                //case (int)eMessageCodeConstants.ProteinNameContainsComma:
+                //    message = "Protein name contains a comma";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinNameContainsVerticalBars:
+                //    message = "Protein name contains two or more vertical bars";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinNameContainsWarningCharacters:
+                //    message = "Protein name contains undesirable characters";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinNameWithoutDescription:
+                //    message = "Line contains a protein name, but not a description";
+                //    break;
+                case (int)eMessageCodeConstants.BlankLineBeforeProteinName:
+                    message = "Blank line found before the protein name; this is acceptable, but not preferred";
+                    break;
+                // case (int)eMessageCodeConstants.ProteinNameAndDescriptionSeparatedByTab:
+                //    message = "Protein name is separated from the protein description by a tab";
+                //    break;
+                case (int)eMessageCodeConstants.ResiduesLineTooLong:
+                    message = "Residues line is longer than the suggested maximum length of " + mMaximumResiduesPerLine.ToString() + " characters";
+                    break;
+                //case (int)eMessageCodeConstants.ProteinDescriptionWithTab:
+                //    message = "Protein description contains a tab character";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinDescriptionWithQuotationMark:
+                //    message = "Protein description contains a quotation mark";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinDescriptionWithEscapedSlash:
+                //    message = "Protein description contains escaped slash: \/";
+                //    break;
+                //case (int)eMessageCodeConstants.ProteinDescriptionWithUndesirableCharacter:
+                //    message = "Protein description contains undesirable characters";
+                //    break;
+                //case (int)eMessageCodeConstants.ResiduesLineTooLong:
+                //    message = "Residues line is longer than the suggested maximum length of " + mMaximumResiduesPerLine.ToString + " characters";
+                //    break;
+                //case (int)eMessageCodeConstants.ResiduesLineContainsU:
+                //    message = "Residues line contains U (selenocysteine); this residue is unsupported by Sequest";
+                //    break;
+
+                case (int)eMessageCodeConstants.DuplicateProteinSequence:
+                    message = "Duplicate protein sequences found";
+                    break;
+                case (int)eMessageCodeConstants.RenamedProtein:
+                    message = "Renamed protein because duplicate name";
+                    break;
+                case (int)eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence:
+                    message = "Removed protein since duplicate sequence";
+                    break;
+                case (int)eMessageCodeConstants.DuplicateProteinNameRetained:
+                    message = "Duplicate protein retained in fixed file";
+                    break;
+                case (int)eMessageCodeConstants.UnspecifiedError:
+                    message = "Unspecified error";
+                    break;
+                default:
+                    message = "Unspecified error";
+
+                    // Search the custom rules for the given code
+                    matchFound = SearchRulesForID(mHeaderLineRules, errorMessageCode, out message);
+
+                    if (!matchFound)
+                    {
+                        matchFound = SearchRulesForID(mProteinNameRules, errorMessageCode, out message);
+                    }
+
+                    if (!matchFound)
+                    {
+                        matchFound = SearchRulesForID(mProteinDescriptionRules, errorMessageCode, out message);
+                    }
+
+                    if (!matchFound)
+                    {
+                        SearchRulesForID(mProteinSequenceRules, errorMessageCode, out message);
+                    }
+
+                    break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(extraInfo))
+            {
+                message += " (" + extraInfo + ")";
+            }
+
+            return message;
+        }
+
+        private string LookupMessageType(eMsgTypeConstants EntryType)
+        {
+            switch (EntryType)
+            {
+                case eMsgTypeConstants.ErrorMsg:
+                    return "Error";
+                case eMsgTypeConstants.WarningMsg:
+                    return "Warning";
+                default:
+                    return "Status";
+            }
+        }
+
+        /// <summary>
+        /// Validate a single fasta file
+        /// </summary>
+        /// <returns>True if success; false if a fatal error</returns>
+        /// <remarks>
+        /// Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
+        /// Used by clsCustomValidateFastaFiles
+        /// </remarks>
+        protected bool SimpleProcessFile(string inputFilePath)
+        {
+            return ProcessFile(inputFilePath, null, null, false);
+        }
+
+        /// <summary>
+        /// Main processing function
+        /// </summary>
+        /// <param name="inputFilePath"></param>
+        /// <param name="outputFolderPath"></param>
+        /// <param name="parameterFilePath"></param>
+        /// <param name="resetErrorCode"></param>
+        /// <returns>True if success, False if failure</returns>
+        public override bool ProcessFile(
+            string inputFilePath,
+            string outputFolderPath,
+            string parameterFilePath,
+            bool resetErrorCode)
+        {
+            FileInfo ioFile;
+            StreamWriter swStatsOutFile;
+
+            string inputFilePathFull;
+            string statusMessage;
+
+            if (resetErrorCode)
+            {
+                SetLocalErrorCode(eValidateFastaFileErrorCodes.NoError);
+            }
+
+            if (!LoadParameterFileSettings(parameterFilePath))
+            {
+                statusMessage = "Parameter file load error: " + parameterFilePath;
+                OnWarningEvent(statusMessage);
+                if (ErrorCode == ProcessFilesErrorCodes.NoError)
+                {
+                    SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile);
+                }
+
+                return false;
+            }
+
+            try
+            {
+                if (inputFilePath == null || inputFilePath.Length == 0)
+                {
+                    ShowWarning("Input file name is empty");
+                    SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidInputFilePath);
+                    return false;
+                }
+                else
+                {
+                    Console.WriteLine();
+                    ShowMessage("Parsing " + Path.GetFileName(inputFilePath));
+
+                    if (!CleanupFilePaths(ref inputFilePath, ref outputFolderPath))
+                    {
+                        SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError);
+                        return false;
+                    }
+                    else
+                    {
+                        // List of protein names to keep
+                        // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+                        clsNestedStringIntList preloadedProteinNamesToKeep = null;
+
+                        if (!string.IsNullOrEmpty(ExistingProteinHashFile))
+                        {
+                            bool loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, out preloadedProteinNamesToKeep);
+                            if (!loadSuccess)
+                            {
+                                return false;
+                            }
+                        }
+
+                        try
+                        {
+                            // Obtain the full path to the input file
+                            ioFile = new FileInfo(inputFilePath);
+                            inputFilePathFull = ioFile.FullName;
+
+                            bool success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep);
+
+                            if (success)
+                            {
+                                ReportResults(outputFolderPath, mOutputToStatsFile);
+                                DeleteTempFiles();
+                                return true;
+                            }
+                            else
+                            {
+                                if (mOutputToStatsFile)
+                                {
+                                    mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
+                                    swStatsOutFile = new StreamWriter(mStatsFilePath, true);
+                                    swStatsOutFile.WriteLine(GetTimeStamp() + "\t" +
+                                        "Error parsing " +
+                                        Path.GetFileName(inputFilePath) + ": " + GetErrorMessage());
+                                    swStatsOutFile.Close();
+                                }
+                                else
+                                {
+                                    ShowMessage("Error parsing " +
+                                        Path.GetFileName(inputFilePath) +
+                                        ": " + GetErrorMessage());
+                                }
+
+                                return false;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            OnErrorEvent("Error calling AnalyzeFastaFile", ex);
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ProcessFile", ex);
+                return false;
+            }
+        }
+
+        private readonly char[] extraCharsToTrim = {'|', ' '};
+
+        private void PrependExtraTextToProteinDescription(string extraProteinNameText, ref string proteinDescription)
+        {
+            if (extraProteinNameText != null && extraProteinNameText.Length > 0)
+            {
+                // If extraProteinNameText ends in a vertical bar and/or space, them remove them
+                extraProteinNameText = extraProteinNameText.TrimEnd(extraCharsToTrim);
+
+                if (proteinDescription != null && proteinDescription.Length > 0)
+                {
+                    if (proteinDescription[0] == ' ' || proteinDescription[0] == '|')
+                    {
+                        proteinDescription = extraProteinNameText + proteinDescription;
+                    }
+                    else
+                    {
+                        proteinDescription = extraProteinNameText + " " + proteinDescription;
+                    }
+                }
+                else
+                {
+                    proteinDescription = string.Copy(extraProteinNameText);
+                }
+            }
+        }
+
+        private void ProcessResiduesForPreviousProtein(
+            string proteinName,
+            StringBuilder sbCurrentResidues,
+            clsNestedStringDictionary<int> proteinSequenceHashes,
+            ref int proteinSequenceHashCount,
+            ref clsProteinHashInfo[] proteinSeqHashInfo,
+            bool consolidateDupsIgnoreILDiff,
+            TextWriter fixedFastaWriter,
+            int currentValidResidueLineLengthMax,
+            TextWriter sequenceHashWriter)
+        {
+            int wrapLength;
+
+            int index;
+            int length;
+
+            // Check for and remove any asterisks at the end of the residues
+            while (sbCurrentResidues.Length > 0 && sbCurrentResidues[sbCurrentResidues.Length - 1] == '*')
+                sbCurrentResidues.Remove(sbCurrentResidues.Length - 1, 1);
+
+            if (sbCurrentResidues.Length > 0)
+            {
+                // Remove any spaces from the residues
+
+                if (mCheckForDuplicateProteinSequences || mSaveBasicProteinHashInfoFile)
+                {
+                    // Process the previous protein entry to store a hash of the protein sequence
+                    ProcessSequenceHashInfo(
+                        proteinName, sbCurrentResidues,
+                        proteinSequenceHashes,
+                        ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                        consolidateDupsIgnoreILDiff, sequenceHashWriter);
+                }
+
+                if (mGenerateFixedFastaFile && mFixedFastaOptions.WrapLongResidueLines)
+                {
+                    // Write out the residues
+                    // Wrap the lines at currentValidResidueLineLengthMax characters (but do not allow to be longer than mMaximumResiduesPerLine residues)
+
+                    wrapLength = currentValidResidueLineLengthMax;
+                    if (wrapLength <= 0 || wrapLength > mMaximumResiduesPerLine)
+                    {
+                        wrapLength = mMaximumResiduesPerLine;
+                    }
+
+                    if (wrapLength < 10)
+                    {
+                        // Do not allow wrapLength to be less than 10
+                        wrapLength = 10;
+                    }
+
+                    index = 0;
+                    int proteinResidueCount = sbCurrentResidues.Length;
+                    while (index < sbCurrentResidues.Length)
+                    {
+                        length = Math.Min(wrapLength, proteinResidueCount - index);
+                        fixedFastaWriter.WriteLine(sbCurrentResidues.ToString(index, length));
+                        index += wrapLength;
+                    }
+                }
+
+                sbCurrentResidues.Length = 0;
+            }
+        }
+
+        private void ProcessSequenceHashInfo(
+            string proteinName,
+            StringBuilder sbCurrentResidues,
+            clsNestedStringDictionary<int> proteinSequenceHashes,
+            ref int proteinSequenceHashCount,
+            ref clsProteinHashInfo[] proteinSeqHashInfo,
+            bool consolidateDupsIgnoreILDiff,
+            TextWriter sequenceHashWriter)
+        {
+            string computedHash;
+
+            try
+            {
+                if (sbCurrentResidues.Length > 0)
+                {
+                    // Compute the hash value for sbCurrentResidues
+                    computedHash = ComputeProteinHash(sbCurrentResidues, consolidateDupsIgnoreILDiff);
+
+                    if (sequenceHashWriter != null)
+                    {
+                        var dataValues = new List<string>()
+                        {
+                            mProteinCount.ToString(),
+                            proteinName,
+                            sbCurrentResidues.Length.ToString(),
+                            computedHash
+                        };
+
+                        sequenceHashWriter.WriteLine(FlattenList(dataValues));
+                    }
+
+                    if (mCheckForDuplicateProteinSequences && proteinSequenceHashes != null)
+                    {
+                        // See if proteinSequenceHashes contains hash
+                        int seqHashLookupPointer;
+                        if (proteinSequenceHashes.TryGetValue(computedHash, out seqHashLookupPointer))
+                        {
+
+                            // Value exists; update the entry in proteinSeqHashInfo
+                            CachedSequenceHashInfoUpdate(proteinSeqHashInfo[seqHashLookupPointer], proteinName);
+                        }
+                        else
+                        {
+                            // Value not yet present; add it
+                            CachedSequenceHashInfoUpdateAppend(
+                                ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                                computedHash, sbCurrentResidues, proteinName);
+
+                            proteinSequenceHashes.Add(computedHash, proteinSequenceHashCount);
+                            proteinSequenceHashCount += 1;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Error caught; pass it up to the calling function
+                ShowMessage(ex.Message);
+                throw;
+            }
+        }
+
+        private void CachedSequenceHashInfoUpdate(clsProteinHashInfo proteinSeqHashInfo, string proteinName)
+        {
+            if ((proteinSeqHashInfo.ProteinNameFirst ?? "") == (proteinName ?? ""))
+            {
+                proteinSeqHashInfo.DuplicateProteinNameCount += 1;
+            }
+            else
+            {
+                proteinSeqHashInfo.AddAdditionalProtein(proteinName);
+            }
+        }
+
+        private void CachedSequenceHashInfoUpdateAppend(
+            ref int proteinSequenceHashCount,
+            ref clsProteinHashInfo[] proteinSeqHashInfo,
+            string computedHash,
+            StringBuilder sbCurrentResidues,
+            string proteinName)
+        {
+            if (proteinSequenceHashCount >= proteinSeqHashInfo.Length)
+            {
+                // Need to reserve more space in proteinSeqHashInfo
+                if (proteinSeqHashInfo.Length < 1000000)
+                {
+                    var oldProteinSeqHashInfo = proteinSeqHashInfo;
+                    proteinSeqHashInfo = new clsProteinHashInfo[(proteinSeqHashInfo.Length * 2)];
+                    Array.Copy(oldProteinSeqHashInfo, proteinSeqHashInfo, Math.Min(proteinSeqHashInfo.Length * 2, oldProteinSeqHashInfo.Length));
+                }
+                else
+                {
+                    var oldProteinSeqHashInfo1 = proteinSeqHashInfo;
+                    proteinSeqHashInfo = new clsProteinHashInfo[((int)Math.Round(proteinSeqHashInfo.Length * 1.2))];
+                    Array.Copy(oldProteinSeqHashInfo1, proteinSeqHashInfo, Math.Min((int)Math.Round(proteinSeqHashInfo.Length * 1.2), oldProteinSeqHashInfo1.Length));
+                }
+            }
+
+            var newProteinHashInfo = new clsProteinHashInfo(computedHash, sbCurrentResidues, proteinName);
+            proteinSeqHashInfo[proteinSequenceHashCount] = newProteinHashInfo;
+        }
+
+        private bool ReadRulesFromParameterFile(
+            XmlSettingsFileAccessor settingsFile,
+            string sectionName,
+            ref udtRuleDefinitionType[] rules)
+        {
+            // Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
+            // Note: even if RuleCount = 0, this function will return True
+
+            bool success = false;
+            int ruleCount;
+            int ruleNumber;
+
+            string ruleBase;
+
+            udtRuleDefinitionType newRule;
+
+            ruleCount = settingsFile.GetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, -1);
+
+            if (ruleCount >= 0)
+            {
+                ClearRulesDataStructure(ref rules);
+
+                for (ruleNumber = 1; ruleNumber <= ruleCount; ruleNumber++)
+                {
+                    ruleBase = "Rule" + ruleNumber.ToString();
+
+                    newRule.MatchRegEx = settingsFile.GetParam(sectionName, ruleBase + "MatchRegEx", string.Empty);
+
+                    if (newRule.MatchRegEx.Length > 0)
+                    {
+                        // Only read the rule settings if MatchRegEx contains 1 or more characters
+
+                        newRule.MatchIndicatesProblem = settingsFile.GetParam(sectionName, ruleBase + "MatchIndicatesProblem", true);
+                        newRule.MessageWhenProblem = settingsFile.GetParam(sectionName, ruleBase + "MessageWhenProblem", "Error found with RegEx " + newRule.MatchRegEx);
+                        newRule.Severity = settingsFile.GetParam(sectionName, ruleBase + "Severity", (short)3);
+                        newRule.DisplayMatchAsExtraInfo = settingsFile.GetParam(sectionName, ruleBase + "DisplayMatchAsExtraInfo", false);
+
+                        SetRule(ref rules, newRule.MatchRegEx, newRule.MatchIndicatesProblem, newRule.MessageWhenProblem, newRule.Severity, newRule.DisplayMatchAsExtraInfo);
+                    }
+                }
+
+                success = true;
+            }
+
+            return success;
+        }
+
+        private void RecordFastaFileError(
+            int lineNumber,
+            int charIndex,
+            string proteinName,
+            int errorMessageCode)
+        {
+            RecordFastaFileError(lineNumber, charIndex, proteinName,
+                errorMessageCode, string.Empty, string.Empty);
+        }
+
+        private void RecordFastaFileError(
+            int lineNumber,
+            int charIndex,
+            string proteinName,
+            int errorMessageCode,
+            string extraInfo,
+            string context)
+        {
+            RecordFastaFileProblemWork(
+                ref mFileErrorStats,
+                ref mFileErrorCount,
+                ref mFileErrors,
+                lineNumber,
+                charIndex,
+                proteinName,
+                errorMessageCode,
+                extraInfo,
+                context);
+        }
+
+        private void RecordFastaFileWarning(
+            int lineNumber,
+            int charIndex,
+            string proteinName,
+            int warningMessageCode)
+        {
+            RecordFastaFileWarning(
+                lineNumber,
+                charIndex,
+                proteinName,
+                warningMessageCode,
+                string.Empty,
+                string.Empty);
+        }
+
+        private void RecordFastaFileWarning(
+            int lineNumber,
+            int charIndex,
+            string proteinName,
+            int warningMessageCode,
+            string extraInfo, string context)
+        {
+            RecordFastaFileProblemWork(ref mFileWarningStats, ref mFileWarningCount,
+                ref mFileWarnings, lineNumber, charIndex, proteinName,
+                warningMessageCode, extraInfo, context);
+        }
+
+        private void RecordFastaFileProblemWork(
+            ref udtItemSummaryIndexedType itemSummaryIndexed,
+            ref int itemCountSpecified,
+            ref udtMsgInfoType[] items,
+            int lineNumber,
+            int charIndex,
+            string proteinName,
+            int messageCode,
+            string extraInfo,
+            string context)
+        {
+            // Note that charIndex is the index in the source string at which the error occurred
+            // When storing in .ColNumber, we add 1 to charIndex
+
+            // Lookup the index of the entry with messageCode in itemSummaryIndexed.ErrorStats
+            // Add it if not present
+
+            try
+            {
+                int itemIndex;
+                if (!itemSummaryIndexed.MessageCodeToArrayIndex.TryGetValue(messageCode, out itemIndex))
+                {
+                    if (itemSummaryIndexed.ErrorStats.Length <= 0)
+                    {
+                        itemSummaryIndexed.ErrorStats = new udtErrorStatsType[2];
+                    }
+                    else if (itemSummaryIndexed.ErrorStatsCount == itemSummaryIndexed.ErrorStats.Length)
+                    {
+                        var oldErrorStats = itemSummaryIndexed.ErrorStats;
+                        itemSummaryIndexed.ErrorStats = new udtErrorStatsType[(itemSummaryIndexed.ErrorStats.Length * 2)];
+                        Array.Copy(oldErrorStats, itemSummaryIndexed.ErrorStats, Math.Min(itemSummaryIndexed.ErrorStats.Length * 2, oldErrorStats.Length));
+                    }
+
+                    itemIndex = itemSummaryIndexed.ErrorStatsCount;
+                    itemSummaryIndexed.ErrorStats[itemIndex].MessageCode = messageCode;
+                    itemSummaryIndexed.MessageCodeToArrayIndex.Add(messageCode, itemIndex);
+                    itemSummaryIndexed.ErrorStatsCount += 1;
+                }
+
+                var errorStats = itemSummaryIndexed.ErrorStats;
+                if (errorStats[itemIndex].CountSpecified >= mMaximumFileErrorsToTrack)
+                {
+                    errorStats[itemIndex].CountUnspecified += 1;
+                }
+                else
+                {
+                    if (items.Length <= 0)
+                    {
+                        // Initially reserve space for 10 errors
+                        items = new udtMsgInfoType[11];
+                    }
+                    else if (itemCountSpecified >= items.Length)
+                    {
+                        // Double the amount of space reserved for errors
+                        var oldItems = items;
+                        items = new udtMsgInfoType[(items.Length * 2)];
+                        Array.Copy(oldItems, items, Math.Min(items.Length * 2, oldItems.Length));
+                    }
+
+                    items[itemCountSpecified].LineNumber = lineNumber;
+                    items[itemCountSpecified].ColNumber = charIndex + 1;
+                    if (proteinName == null)
+                    {
+                        items[itemCountSpecified].ProteinName = string.Empty;
+                    }
+                    else
+                    {
+                        items[itemCountSpecified].ProteinName = proteinName;
+                    }
+
+                    items[itemCountSpecified].MessageCode = messageCode;
+                    if (extraInfo == null)
+                    {
+                        items[itemCountSpecified].ExtraInfo = string.Empty;
+                    }
+                    else
+                    {
+                        items[itemCountSpecified].ExtraInfo = extraInfo;
+                    }
+
+                    if (extraInfo == null)
+                    {
+                        items[itemCountSpecified].Context = string.Empty;
+                    }
+                    else
+                    {
+                        items[itemCountSpecified].Context = context;
+                    }
+
+                    itemCountSpecified += 1;
+
+                    errorStats[itemIndex].CountSpecified += 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Ignore any errors that occur, but output the error to the console
+                OnWarningEvent("Error in RecordFastaFileProblemWork: " + ex.Message);
+            }
+        }
+
+        private void ReplaceXMLCodesWithText(string parameterFilePath)
+        {
+            string outputFilePath;
+            string timeStamp;
+            string lineIn;
+
+            try
+            {
+                // Define the output file path
+                timeStamp = GetTimeStamp().Replace(" ", "_").Replace(":", "_").Replace("/", "_");
+
+                outputFilePath = parameterFilePath + "_" + timeStamp + ".fixed";
+
+                // Open the input file and output file
+                using (var srInFile = new StreamReader(parameterFilePath))
+                using (var swOutFile = new StreamWriter(new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                {
+                    // Parse each line in the file
+                    while (!srInFile.EndOfStream)
+                    {
+                        lineIn = srInFile.ReadLine();
+
+                        if (lineIn != null)
+                        {
+                            lineIn = lineIn.Replace("&gt;", ">").Replace("&lt;", "<");
+                            swOutFile.WriteLine(lineIn);
+                        }
+                    }
+
+                    // Close the input and output files
+                }
+
+                // Wait 100 msec
+                System.Threading.Thread.Sleep(100);
+
+                // Delete the input file
+                File.Delete(parameterFilePath);
+
+                // Wait 250 msec
+                System.Threading.Thread.Sleep(250);
+
+                // Rename the output file to the input file
+                File.Move(outputFilePath, parameterFilePath);
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReplaceXMLCodesWithText", ex);
+            }
+        }
+
+        private void ReportMemoryUsage()
+        {
+
+            // ReSharper disable once VbUnreachableCode
+            if (REPORT_DETAILED_MEMORY_USAGE)
+            {
+                Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageSummary());
+            }
+            else
+            {
+                Console.WriteLine(MEM_USAGE_PREFIX + GetProcessMemoryUsageWithTimestamp());
+            }
+        }
+
+        private void ReportMemoryUsage(
+            clsNestedStringIntList preloadedProteinNamesToKeep,
+            clsNestedStringDictionary<int> proteinSequenceHashes,
+            ICollection proteinNames,
+            IEnumerable<clsProteinHashInfo> proteinSeqHashInfo)
+        {
+            Console.WriteLine();
+            ReportMemoryUsage();
+
+            if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
+            {
+                Console.WriteLine(" PreloadedProteinNamesToKeep: {0,12:#,##0} records", preloadedProteinNamesToKeep.Count);
+            }
+
+            if (proteinSequenceHashes.Count > 0)
+            {
+                Console.WriteLine(" ProteinSequenceHashes:  {0,12:#,##0} records", proteinSequenceHashes.Count);
+                Console.WriteLine("   {0}", proteinSequenceHashes.GetSizeSummary());
+            }
+
+            Console.WriteLine(" ProteinNames:           {0,12:#,##0} records", proteinNames.Count);
+            Console.WriteLine(" ProteinSeqHashInfo:       {0,12:#,##0} records", proteinSeqHashInfo.Count());
+        }
+
+        private void ReportMemoryUsage(
+            clsNestedStringDictionary<int> proteinNameFirst,
+            clsNestedStringDictionary<int> proteinsWritten,
+            clsNestedStringDictionary<string> duplicateProteinList)
+        {
+            Console.WriteLine();
+            ReportMemoryUsage();
+            Console.WriteLine(" ProteinNameFirst:      {0,12:#,##0} records", proteinNameFirst.Count);
+            Console.WriteLine("   {0}", proteinNameFirst.GetSizeSummary());
+            Console.WriteLine(" ProteinsWritten:       {0,12:#,##0} records", proteinsWritten.Count);
+            Console.WriteLine("   {0}", proteinsWritten.GetSizeSummary());
+            Console.WriteLine(" DuplicateProteinList:  {0,12:#,##0} records", duplicateProteinList.Count);
+            Console.WriteLine("   {0}", duplicateProteinList.GetSizeSummary());
+        }
+
+        private void ReportResults(
+            string outputFolderPath,
+            bool outputToStatsFile)
+        {
+            ErrorInfoComparerClass iErrorInfoComparerClass;
+
+            string proteinName;
+
+            int index;
+            int retryCount;
+
+            bool success;
+            bool fileAlreadyExists;
+
+            try
+            {
+                var outputOptions = new udtOutputOptionsType()
+                {
+                    OutputToStatsFile = outputToStatsFile,
+                    SepChar = "\t"
+                };
+
+                try
+                {
+                    outputOptions.SourceFile = Path.GetFileName(mFastaFilePath);
+                }
+                catch (Exception ex)
+                {
+                    outputOptions.SourceFile = "Unknown_filename_due_to_error.fasta";
+                }
+
+                if (outputToStatsFile)
+                {
+                    mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
+                    fileAlreadyExists = File.Exists(mStatsFilePath);
+
+                    success = false;
+                    retryCount = 0;
+
+                    while (!success && retryCount < 5)
+                    {
+                        FileStream outStream = null;
+                        try
+                        {
+                            outStream = new FileStream(mStatsFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                            var outFileWriter = new StreamWriter(outStream);
+
+                            outputOptions.OutFile = outFileWriter;
+
+                            success = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Failed to open file, wait 1 second, then try again
+                            if (outStream != null)
+                            {
+                                outStream.Close();
+                            }
+
+                            retryCount += 1;
+                            System.Threading.Thread.Sleep(1000);
+                        }
+                    }
+
+                    if (success)
+                    {
+                        outputOptions.SepChar = "\t";
+                        if (!fileAlreadyExists)
+                        {
+                            // Write the header line
+                            var headers = new List<string>()
+                            {
                                 "Date",
                                 "SourceFile",
                                 "MessageType",
@@ -4532,852 +5230,939 @@ Public Class clsValidateFastaFile
                                 "Description_or_Protein",
                                 "Info",
                                 "Context"
+                            };
+
+                            outputOptions.OutFile.WriteLine(string.Join(outputOptions.SepChar, headers));
+                        }
+                    }
+                    else
+                    {
+                        outputOptions.SepChar = ", ";
+                        outputToStatsFile = false;
+                        SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorCreatingStatsFile);
+                    }
+                }
+                else
+                {
+                    outputOptions.SepChar = ", ";
+                }
+
+                ReportResultAddEntry(
+                    outputOptions, eMsgTypeConstants.StatusMsg,
+                    "Full path to file", mFastaFilePath);
+
+                ReportResultAddEntry(
+                    outputOptions, eMsgTypeConstants.StatusMsg,
+                    "Protein count", mProteinCount.ToString("#,##0"));
+
+                ReportResultAddEntry(
+                    outputOptions, eMsgTypeConstants.StatusMsg,
+                    "Residue count", mResidueCount.ToString("#,##0"));
+
+                if (mFileErrorCount > 0)
+                {
+                    ReportResultAddEntry(
+                        outputOptions, eMsgTypeConstants.ErrorMsg,
+                        "Error count", get_ErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString());
+
+                    if (mFileErrorCount > 1)
+                    {
+                        iErrorInfoComparerClass = new ErrorInfoComparerClass();
+                        Array.Sort(mFileErrors, 0, mFileErrorCount, iErrorInfoComparerClass);
+                    }
+
+                    for (index = 0; index <= mFileErrorCount - 1; index++)
+                    {
+                        var fileError = mFileErrors[index];
+                        if (fileError.ProteinName == null || fileError.ProteinName.Length == 0)
+                        {
+                            proteinName = "N/A";
+                        }
+                        else
+                        {
+                            proteinName = string.Copy(fileError.ProteinName);
                         }
 
-                        outputOptions.OutFile.WriteLine(String.Join(outputOptions.SepChar, headers))
-
-                    End If
-                Else
-                    outputOptions.SepChar = ", "
-                    outputToStatsFile = False
-                    SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorCreatingStatsFile)
-                End If
-            Else
-                outputOptions.SepChar = ", "
-            End If
-
-            ReportResultAddEntry(
-                outputOptions, eMsgTypeConstants.StatusMsg,
-                "Full path to file", mFastaFilePath)
-
-            ReportResultAddEntry(
-                outputOptions, eMsgTypeConstants.StatusMsg,
-                "Protein count", mProteinCount.ToString("#,##0"))
-
-            ReportResultAddEntry(
-                outputOptions, eMsgTypeConstants.StatusMsg,
-                "Residue count", mResidueCount.ToString("#,##0"))
-
-            If mFileErrorCount > 0 Then
-                ReportResultAddEntry(
-                    outputOptions, eMsgTypeConstants.ErrorMsg,
-                    "Error count", Me.ErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString)
-
-                If mFileErrorCount > 1 Then
-                    iErrorInfoComparerClass = New ErrorInfoComparerClass
-                    Array.Sort(mFileErrors, 0, mFileErrorCount, iErrorInfoComparerClass)
-                End If
-
-                For index = 0 To mFileErrorCount - 1
-                    With mFileErrors(index)
-                        If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                            proteinName = "N/A"
-                        Else
-                            proteinName = String.Copy(.ProteinName)
-                        End If
-
-                        Dim messageDescription = LookupMessageDescription(.MessageCode, .ExtraInfo)
+                        string messageDescription = LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo);
 
                         ReportResultAddEntry(
                             outputOptions, eMsgTypeConstants.ErrorMsg,
-                            .LineNumber,
-                            .ColNumber,
+                            fileError.LineNumber,
+                            fileError.ColNumber,
                             proteinName,
                             messageDescription,
-                           .Context)
+                            fileError.Context);
+                    }
+                }
 
-                    End With
-                Next index
-            End If
+                if (mFileWarningCount > 0)
+                {
+                    ReportResultAddEntry(
+                        outputOptions, eMsgTypeConstants.WarningMsg,
+                        "Warning count",
+                        get_ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString());
 
-            If mFileWarningCount > 0 Then
-                ReportResultAddEntry(
-                    outputOptions, eMsgTypeConstants.WarningMsg,
-                    "Warning count",
-                    Me.ErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString)
+                    if (mFileWarningCount > 1)
+                    {
+                        iErrorInfoComparerClass = new ErrorInfoComparerClass();
+                        Array.Sort(mFileWarnings, 0, mFileWarningCount, iErrorInfoComparerClass);
+                    }
 
-                If mFileWarningCount > 1 Then
-                    iErrorInfoComparerClass = New ErrorInfoComparerClass
-                    Array.Sort(mFileWarnings, 0, mFileWarningCount, iErrorInfoComparerClass)
-                End If
-
-                For index = 0 To mFileWarningCount - 1
-                    With mFileWarnings(index)
-                        If .ProteinName Is Nothing OrElse .ProteinName.Length = 0 Then
-                            proteinName = "N/A"
-                        Else
-                            proteinName = String.Copy(.ProteinName)
-                        End If
+                    for (index = 0; index <= mFileWarningCount - 1; index++)
+                    {
+                        var fileWarning = mFileWarnings[index];
+                        if (fileWarning.ProteinName == null || fileWarning.ProteinName.Length == 0)
+                        {
+                            proteinName = "N/A";
+                        }
+                        else
+                        {
+                            proteinName = string.Copy(fileWarning.ProteinName);
+                        }
 
                         ReportResultAddEntry(
                             outputOptions, eMsgTypeConstants.WarningMsg,
-                            .LineNumber,
-                            .ColNumber,
+                            fileWarning.LineNumber,
+                            fileWarning.ColNumber,
                             proteinName,
-                            LookupMessageDescription(.MessageCode, .ExtraInfo),
-                            .Context)
+                            LookupMessageDescription(fileWarning.MessageCode, fileWarning.ExtraInfo),
+                            fileWarning.Context);
+                    }
+                }
 
-                    End With
-                Next index
-            End If
+                var fastaFile = new FileInfo(mFastaFilePath);
 
-            Dim fastaFile = New FileInfo(mFastaFilePath)
+                // # Proteins, # Peptides, FileSizeKB
+                ReportResultAddEntry(
+                    outputOptions, eMsgTypeConstants.StatusMsg,
+                    "Summary line",
+                    mProteinCount.ToString() + " proteins, " + mResidueCount.ToString() + " residues, " + (fastaFile.Length / 1024.0).ToString("0") + " KB");
 
-            ' # Proteins, # Peptides, FileSizeKB
-            ReportResultAddEntry(
-                outputOptions, eMsgTypeConstants.StatusMsg,
-                "Summary line",
-                 mProteinCount.ToString() & " proteins, " & mResidueCount.ToString() & " residues, " & (fastaFile.Length / 1024.0).ToString("0") & " KB")
-
-            If outputToStatsFile AndAlso Not outputOptions.OutFile Is Nothing Then
-                outputOptions.OutFile.Close()
-            End If
-
-        Catch ex As Exception
-            OnErrorEvent("Error in ReportResults", ex)
-        End Try
-
-    End Sub
-
-    Private Sub ReportResultAddEntry(
-      outputOptions As udtOutputOptionsType,
-      entryType As eMsgTypeConstants,
-      descriptionOrProteinName As String,
-      info As String,
-      Optional context As String = "")
-
-        ReportResultAddEntry(
-            outputOptions,
-            entryType, 0, 0,
-            descriptionOrProteinName,
-            info,
-            context)
-    End Sub
-
-    Private Sub ReportResultAddEntry(
-      outputOptions As udtOutputOptionsType,
-      entryType As eMsgTypeConstants,
-      lineNumber As Integer,
-      colNumber As Integer,
-      descriptionOrProteinName As String,
-      info As String,
-      context As String)
-
-        Dim dataColumns = New List(Of String) From {
-            outputOptions.SourceFile,
-            LookupMessageType(entryType),
-            lineNumber.ToString,
-            colNumber.ToString,
-            descriptionOrProteinName,
-            info
+                if (outputToStatsFile && outputOptions.OutFile != null)
+                {
+                    outputOptions.OutFile.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReportResults", ex);
+            }
         }
 
-        If Not context Is Nothing AndAlso context.Length > 0 Then
-            dataColumns.Add(context)
-        End If
-
-        Dim message = String.Join(outputOptions.SepChar, dataColumns)
-
-        If outputOptions.OutputToStatsFile Then
-            outputOptions.OutFile.WriteLine(GetTimeStamp() & outputOptions.SepChar & message)
-        Else
-            Console.WriteLine(message)
-        End If
-
-    End Sub
-
-    Private Sub ResetStructures()
-        ' This is used to reset the error arrays and stats variables
-
-        mLineCount = 0
-        mProteinCount = 0
-        mResidueCount = 0
-
-        With mFixedFastaStats
-            .TruncatedProteinNameCount = 0
-            .UpdatedResidueLines = 0
-            .ProteinNamesInvalidCharsReplaced = 0
-            .ProteinNamesMultipleRefsRemoved = 0
-            .DuplicateNameProteinsSkipped = 0
-            .DuplicateNameProteinsRenamed = 0
-            .DuplicateSequenceProteinsSkipped = 0
-        End With
-
-        mFileErrorCount = 0
-        ReDim mFileErrors(-1)
-        ResetItemSummaryStructure(mFileErrorStats)
-
-        mFileWarningCount = 0
-        ReDim mFileWarnings(-1)
-        ResetItemSummaryStructure(mFileWarningStats)
-
-        MyBase.AbortProcessing = False
-    End Sub
-
-    Private Sub ResetItemSummaryStructure(ByRef itemSummary As udtItemSummaryIndexedType)
-        With itemSummary
-            .ErrorStatsCount = 0
-            ReDim .ErrorStats(-1)
-            If .MessageCodeToArrayIndex Is Nothing Then
-                .MessageCodeToArrayIndex = New Dictionary(Of Integer, Integer)
-            Else
-                .MessageCodeToArrayIndex.Clear()
-            End If
-        End With
-
-    End Sub
-
-    Private Sub SaveRulesToParameterFile(settingsFile As XmlSettingsFileAccessor, sectionName As String, rules As IList(Of udtRuleDefinitionType))
-
-        Dim ruleNumber As Integer
-        Dim ruleBase As String
-
-        If rules Is Nothing OrElse rules.Count <= 0 Then
-            settingsFile.SetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, 0)
-        Else
-            settingsFile.SetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, rules.Count)
-
-            For ruleNumber = 1 To rules.Count
-                ruleBase = "Rule" & ruleNumber.ToString
-
-                With rules(ruleNumber - 1)
-                    settingsFile.SetParam(sectionName, ruleBase & "MatchRegEx", .MatchRegEx)
-                    settingsFile.SetParam(sectionName, ruleBase & "MatchIndicatesProblem", .MatchIndicatesProblem)
-                    settingsFile.SetParam(sectionName, ruleBase & "MessageWhenProblem", .MessageWhenProblem)
-                    settingsFile.SetParam(sectionName, ruleBase & "Severity", .Severity)
-                    settingsFile.SetParam(sectionName, ruleBase & "DisplayMatchAsExtraInfo", .DisplayMatchAsExtraInfo)
-                End With
-
-            Next ruleNumber
-        End If
-
-    End Sub
-
-    Public Function SaveSettingsToParameterFile(parameterFilePath As String) As Boolean
-        ' Save a model parameter file
-
-        Dim srOutFile As StreamWriter
-        Dim settingsFile As New XmlSettingsFileAccessor
-
-        Try
-
-            If parameterFilePath Is Nothing OrElse parameterFilePath.Length = 0 Then
-                ' No parameter file specified; do not save the settings
-                Return True
-            End If
-
-            If Not File.Exists(parameterFilePath) Then
-                ' Need to generate a blank XML settings file
-
-                srOutFile = New StreamWriter(parameterFilePath, False)
-
-                srOutFile.WriteLine("<?xml version=""1.0"" encoding=""UTF-8""?>")
-                srOutFile.WriteLine("<sections>")
-                srOutFile.WriteLine("  <section name=""" & XML_SECTION_OPTIONS & """>")
-                srOutFile.WriteLine("  </section>")
-                srOutFile.WriteLine("</sections>")
-
-                srOutFile.Close()
-            End If
-
-            settingsFile.LoadSettings(parameterFilePath)
-
-            ' Save the general settings
-
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", Me.OptionSwitch(SwitchOptions.AddMissingLinefeedatEOF))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", Me.OptionSwitch(SwitchOptions.AllowAsteriskInResidues))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", Me.OptionSwitch(SwitchOptions.AllowDashInResidues))
-
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", Me.OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", Me.OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", Me.OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile))
-
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", Me.MaximumFileErrorsToTrack)
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", Me.MinimumProteinNameLength)
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumProteinNameLength", Me.MaximumProteinNameLength)
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumResiduesPerLine", Me.MaximumResiduesPerLine)
-
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", Me.OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", Me.OptionSwitch(SwitchOptions.WarnLineStartsWithSpace))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", Me.OptionSwitch(SwitchOptions.OutputToStatsFile))
-            settingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", Me.OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters))
-
-
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", Me.OptionSwitch(SwitchOptions.GenerateFixedFASTAFile))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", Me.OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName))
-
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", Me.OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", Me.OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins))
-
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", Me.OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff))
-
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", Me.OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", Me.OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", Me.OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines))
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", Me.OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues))
-
-
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", Me.LongProteinNameSplitChars)
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", Me.ProteinNameInvalidCharsToRemove)
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", Me.ProteinNameFirstRefSepChars)
-            settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", Me.ProteinNameSubsequentRefSepChars)
-
-
-            ' Save the rules
-            SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules)
-            SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules)
-            SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules)
-            SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules)
-
-            ' Commit the new settings to disk
-            settingsFile.SaveSettings()
-
-            ' Need to re-open the parameter file and replace instances of "&gt;" with ">" and "&lt;" with "<"
-            ReplaceXMLCodesWithText(parameterFilePath)
-
-        Catch ex As Exception
-            OnErrorEvent("Error in SaveSettingsToParameterFile", ex)
-            Return False
-        End Try
-
-        Return True
-
-    End Function
-
-    Private Function SearchRulesForID(
-      rules As IList(Of udtRuleDefinitionType),
-      errorMessageCode As Integer,
-      <Out> ByRef message As String) As Boolean
-
-        If Not rules Is Nothing Then
-            For index = 0 To rules.Count - 1
-                If rules(index).CustomRuleID = errorMessageCode Then
-                    message = rules(index).MessageWhenProblem
-                    Return True
-                End If
-            Next index
-        End If
-
-        message = Nothing
-        Return False
-
-    End Function
-
-    ''' <summary>
-    ''' Updates the validation rules using the current options
-    ''' </summary>
-    ''' <remarks>Call this function after setting new options using SetOptionSwitch</remarks>
-    Public Sub SetDefaultRules()
-
-        Me.ClearAllRules()
-
-        ' For the rules, severity level 1 to 4 is warning; severity 5 or higher is an error
-
-        ' Header line errors
-        Me.SetRule(RuleTypes.HeaderLine, "^>[ \t]*$", True, "Line starts with > but does not contain a protein name", DEFAULT_ERROR_SEVERITY)
-        Me.SetRule(RuleTypes.HeaderLine, "^>[ \t].+", True, "Space or tab found directly after the > symbol", DEFAULT_ERROR_SEVERITY)
-
-        ' Header line warnings
-        Me.SetRule(RuleTypes.HeaderLine, "^>[^ \t]+[ \t]*$", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(RuleTypes.HeaderLine, "^>[^ \t]+\t", True, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY)
-
-        ' Protein Name error characters
-        Dim allowedChars = "A-Za-z0-9.\-_:,\|/()\[\]\=\+#"
-
-        If mAllowAllSymbolsInProteinNames Then
-            allowedChars &= "!@$%^&*<>?,\\"
-        End If
-
-        Dim allowedCharsMatchSpec = "[^" & allowedChars & "]"
-
-        Me.SetRule(RuleTypes.ProteinName, allowedCharsMatchSpec, True, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, True)
-
-        ' Protein name warnings
-
-        ' Note that .*? changes .* from being greedy to being lazy
-        Me.SetRule(RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", True, "Protein name contains 3 or more vertical bars", DEFAULT_WARNING_SEVERITY + 1, True)
-
-        If Not mAllowAllSymbolsInProteinNames Then
-            Me.SetRule(RuleTypes.ProteinName, "[/()\[\],]", True, "Protein name contains undesirable characters", DEFAULT_WARNING_SEVERITY, True)
-        End If
-
-        ' Protein description warnings
-        Me.SetRule(RuleTypes.ProteinDescription, """", True, "Protein description contains a quotation mark", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(RuleTypes.ProteinDescription, "\t", True, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(RuleTypes.ProteinDescription, "\\/", True, "Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY)
-        Me.SetRule(RuleTypes.ProteinDescription, "[\x00-\x08\x0E-\x1F]", True, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY)
-        Me.SetRule(RuleTypes.ProteinDescription, ".{900,}", True, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, False)
-
-        ' Protein sequence errors
-        Me.SetRule(RuleTypes.ProteinSequence, "[ \t]", True, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY)
-
-        If Not mAllowAsteriskInResidues Then
-            Me.SetRule(RuleTypes.ProteinSequence, "\*", True, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
-        End If
-
-        If Not mAllowDashInResidues Then
-            Me.SetRule(RuleTypes.ProteinSequence, "\-", True, MESSAGE_TEXT_DASH_IN_RESIDUES, DEFAULT_ERROR_SEVERITY)
-        End If
-
-        ' Note: we look for a space, tab, asterisk, and dash with separate rules (defined above)
-        ' Thus they are "allowed" by this RegEx, even though we may flag them as warnings with a different RegEx
-        ' We look for non-standard amino acids with warning rules (defined below)
-        Me.SetRule(RuleTypes.ProteinSequence, "[^A-Z \t\*\-]", True, "Invalid residues found", DEFAULT_ERROR_SEVERITY, True)
-
-        ' Protein residue warnings
-        ' MS-GF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
-
-        ' SEQUEST uses mass 114.53494 for B (average of N and D)
-        Me.SetRule(RuleTypes.ProteinSequence, "B", True, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1)
-
-        ' Unsupported by SEQUEST
-        Me.SetRule(RuleTypes.ProteinSequence, "J", True, "Residues line contains J (non-standard amino acid)", DEFAULT_WARNING_SEVERITY - 1)
-
-        ' SEQUEST uses mass 114.07931 for O
-        Me.SetRule(RuleTypes.ProteinSequence, "O", True, "Residues line contains O (non-standard amino acid, ornithine)", DEFAULT_WARNING_SEVERITY - 1)
-
-        ' Unsupported by SEQUEST
-        Me.SetRule(RuleTypes.ProteinSequence, "U", True, "Residues line contains U (non-standard amino acid, selenocysteine)", DEFAULT_WARNING_SEVERITY)
-
-        ' SEQUEST uses mass 113.08406 for X (same as L and I)
-        Me.SetRule(RuleTypes.ProteinSequence, "X", True, "Residues line contains X (non-standard amino acid for L or I)", DEFAULT_WARNING_SEVERITY - 1)
-
-        ' SEQUEST uses mass 128.55059 for Z (average of Q and E)
-        Me.SetRule(RuleTypes.ProteinSequence, "Z", True, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1)
-
-    End Sub
-
-    Private Sub SetLocalErrorCode(eNewErrorCode As eValidateFastaFileErrorCodes)
-        SetLocalErrorCode(eNewErrorCode, False)
-    End Sub
-
-    Private Sub SetLocalErrorCode(
-      eNewErrorCode As eValidateFastaFileErrorCodes,
-      leaveExistingErrorCodeUnchanged As Boolean)
-
-        If leaveExistingErrorCodeUnchanged AndAlso mLocalErrorCode <> eValidateFastaFileErrorCodes.NoError Then
-            ' An error code is already defined; do not change it
-        Else
-            mLocalErrorCode = eNewErrorCode
-
-            If eNewErrorCode = eValidateFastaFileErrorCodes.NoError Then
-                If MyBase.ErrorCode = ProcessFilesErrorCodes.LocalizedError Then
-                    MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.NoError)
-                End If
-            Else
-                MyBase.SetBaseClassErrorCode(ProcessFilesErrorCodes.LocalizedError)
-            End If
-        End If
-
-    End Sub
-
-    Private Sub SetRule(
-      ruleType As RuleTypes,
-      regexToMatch As String,
-      doesMatchIndicateProblem As Boolean,
-      problemReturnMessage As String,
-      severityLevel As Short)
-
-        Me.SetRule(
-         ruleType, regexToMatch,
-         doesMatchIndicateProblem,
-         problemReturnMessage,
-         severityLevel, False)
-
-    End Sub
-
-    Private Sub SetRule(
-      ruleType As RuleTypes,
-      regexToMatch As String,
-      doesMatchIndicateProblem As Boolean,
-      problemReturnMessage As String,
-      severityLevel As Short,
-      displayMatchAsExtraInfo As Boolean)
-
-        Select Case ruleType
-            Case RuleTypes.HeaderLine
-                SetRule(Me.mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case RuleTypes.ProteinDescription
-                SetRule(Me.mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case RuleTypes.ProteinName
-                SetRule(Me.mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-            Case RuleTypes.ProteinSequence
-                SetRule(Me.mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo)
-        End Select
-
-    End Sub
-
-    Private Sub SetRule(
-      ByRef rules() As udtRuleDefinitionType,
-      matchRegEx As String,
-      matchIndicatesProblem As Boolean,
-      messageWhenProblem As String,
-      severity As Short,
-      displayMatchAsExtraInfo As Boolean)
-
-        If rules Is Nothing OrElse rules.Length = 0 Then
-            ReDim rules(0)
-        Else
-            ReDim Preserve rules(rules.Length)
-        End If
-
-        With rules(rules.Length - 1)
-            .MatchRegEx = matchRegEx
-            .MatchIndicatesProblem = matchIndicatesProblem
-            .MessageWhenProblem = messageWhenProblem
-            .Severity = severity
-            .DisplayMatchAsExtraInfo = displayMatchAsExtraInfo
-            .CustomRuleID = mMasterCustomRuleID
-        End With
-
-        mMasterCustomRuleID += 1
-
-    End Sub
-
-    Private Function SortFile(proteinHashFile As FileInfo, sortColumnIndex As Integer, sortedFilePath As String) As Boolean
-
-        Dim sortUtility = New FlexibleFileSortUtility.TextFileSorter
-
-        mSortUtilityErrorMessage = String.Empty
-
-        sortUtility.WorkingDirectoryPath = proteinHashFile.Directory.FullName
-        sortUtility.HasHeaderLine = True
-        sortUtility.ColumnDelimiter = ControlChars.Tab
-        sortUtility.MaxFileSizeMBForInMemorySort = 250
-        sortUtility.ChunkSizeMB = 250
-        sortUtility.SortColumn = sortColumnIndex + 1
-        sortUtility.SortColumnIsNumeric = False
-
-        ' The sort utility uses CompareOrdinal (StringComparison.Ordinal)
-        sortUtility.IgnoreCase = False
-
-        RegisterEvents(sortUtility)
-        AddHandler sortUtility.ErrorEvent, AddressOf mSortUtility_ErrorEvent
-
-        Dim success = sortUtility.SortFile(proteinHashFile.FullName, sortedFilePath)
-
-        If success Then
-            Console.WriteLine()
-            Return True
-        End If
-
-        If String.IsNullOrWhiteSpace(mSortUtilityErrorMessage) Then
-            ShowErrorMessage("Unknown error sorting " & proteinHashFile.Name)
-        Else
-            ShowErrorMessage("Sort error: " & mSortUtilityErrorMessage)
-        End If
-
-        Console.WriteLine()
-        Return False
-
-    End Function
-
-    Private Sub SplitFastaProteinHeaderLine(
-      headerLine As String,
-      <Out> ByRef proteinName As String,
-      <Out> ByRef proteinDescription As String,
-      <Out> ByRef descriptionStartIndex As Integer)
-
-        proteinDescription = String.Empty
-        descriptionStartIndex = 0
-
-        ' Make sure the protein name and description are valid
-        ' Find the first space and/or tab
-        Dim spaceIndex = GetBestSpaceIndex(headerLine)
-
-        ' At this point, spaceIndex will contain the location of the space or tab separating the protein name and description
-        ' However, if the space or tab is directly after the > sign, then we cannot continue (if this is the case, then spaceIndex will be 1)
-        If spaceIndex > 1 Then
-
-            proteinName = headerLine.Substring(1, spaceIndex - 1)
-            proteinDescription = headerLine.Substring(spaceIndex + 1)
-            descriptionStartIndex = spaceIndex
-
-        Else
-            ' Line does not contain a description
-            If spaceIndex <= 0 Then
-                If headerLine.Trim.Length <= 1 Then
-                    proteinName = String.Empty
-                Else
-                    ' The line contains a protein name, but not a description
-                    proteinName = headerLine.Substring(1)
-                End If
-            Else
-                ' Space or tab found directly after the > symbol
-                proteinName = String.Empty
-            End If
-        End If
-
-    End Sub
-
-    Private Function VerifyLinefeedAtEOF(strInputFilePath As String, blnAddCrLfIfMissing As Boolean) As Boolean
-
-        Dim blnNeedToAddCrLf As Boolean
-        Dim blnSuccess As Boolean
-
-        Try
-            ' Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
-            Using fsInFile = New FileStream(strInputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-
-                If fsInFile.Length > 2 Then
-                    fsInFile.Seek(-1, SeekOrigin.End)
-
-                    Dim lastByte = fsInFile.ReadByte()
-
-                    If lastByte = 10 Or lastByte = 13 Then
-                        ' File ends in a linefeed or carriage return character; that's good
-                        blnNeedToAddCrLf = False
-                    Else
-                        blnNeedToAddCrLf = True
-                    End If
-                End If
-
-                If blnNeedToAddCrLf Then
-                    If blnAddCrLfIfMissing Then
-                        ShowMessage("Appending CrLf return to: " & Path.GetFileName(strInputFilePath))
-                        fsInFile.WriteByte(13)
-
-                        fsInFile.WriteByte(10)
-                    End If
-                End If
-
-            End Using
-
-            blnSuccess = True
-
-        Catch ex As Exception
-            SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF)
-            blnSuccess = False
-        End Try
-
-        Return blnSuccess
-
-    End Function
-
-    Private Sub WriteCachedProtein(
-      cachedProteinName As String,
-      cachedProteinDescription As String,
-      consolidatedFastaWriter As TextWriter,
-      proteinSeqHashInfo As IList(Of clsProteinHashInfo),
-      sbCachedProteinResidueLines As StringBuilder,
-      sbCachedProteinResidues As StringBuilder,
-      consolidateDuplicateProteinSeqsInFasta As Boolean,
-      consolidateDupsIgnoreILDiff As Boolean,
-      proteinNameFirst As clsNestedStringDictionary(Of Integer),
-      duplicateProteinList As clsNestedStringDictionary(Of String),
-      lineCountRead As Integer,
-      proteinsWritten As clsNestedStringDictionary(Of Integer))
-
-        Static reAdditionalProtein As Regex = New Regex("(.+)-[a-z]\d*", RegexOptions.Compiled)
-
-        Dim masterProteinName As String = String.Empty
-        Dim masterProteinInfo As String
-
-        Dim proteinHash As String
-        Dim lineOut As String = String.Empty
-        Dim reMatch As Match
-
-        Dim keepProtein As Boolean
-        Dim skipDupProtein As Boolean
-
-        Dim additionalProteinNames = New List(Of String)
-
-        Dim seqIndex As Integer
-        If proteinNameFirst.TryGetValue(cachedProteinName, seqIndex) Then
-            ' cachedProteinName was found in proteinNameFirst
-
-            Dim cachedSeqIndex As Integer
-            If proteinsWritten.TryGetValue(cachedProteinName, cachedSeqIndex) Then
-                If mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence Then
-                    ' Keep this protein if its sequence hash differs from the first protein with this name
-                    proteinHash = ComputeProteinHash(sbCachedProteinResidues, consolidateDupsIgnoreILDiff)
-                    If proteinSeqHashInfo(seqIndex).SequenceHash <> proteinHash Then
-                        RecordFastaFileWarning(lineCountRead, 1, cachedProteinName, eMessageCodeConstants.DuplicateProteinNameRetained)
-                        keepProtein = True
-                    Else
-                        keepProtein = False
-                    End If
-                Else
-                    keepProtein = False
-                End If
-            Else
-                keepProtein = True
-                proteinsWritten.Add(cachedProteinName, seqIndex)
-            End If
-
-            If keepProtein AndAlso seqIndex >= 0 Then
-                If proteinSeqHashInfo(seqIndex).AdditionalProteins.Count > 0 Then
-                    ' The protein has duplicate proteins
-                    ' Construct a list of the duplicate protein names
-
-                    additionalProteinNames.Clear()
-                    For Each additionalProtein As String In proteinSeqHashInfo(seqIndex).AdditionalProteins
-                        ' Add the additional protein name if it is not of the form "BaseName-b", "BaseName-c", etc.
-                        skipDupProtein = False
-
-                        If additionalProtein Is Nothing Then
-                            skipDupProtein = True
-                        Else
-                            If additionalProtein.ToLower() = cachedProteinName.ToLower() Then
-                                ' Names match; do not add to the list
-                                skipDupProtein = True
-                            Else
-                                ' Check whether additionalProtein looks like one of the following
-                                ' ProteinX-b
-                                ' ProteinX-a2
-                                ' ProteinX-d3
-                                reMatch = reAdditionalProtein.Match(additionalProtein)
-
-                                If reMatch.Success Then
-
-                                    If cachedProteinName.ToLower() = reMatch.Groups(1).Value.ToLower() Then
-                                        ' Base names match; do not add to the list
-                                        ' For example, ProteinX and ProteinX-b
-                                        skipDupProtein = True
-                                    End If
-                                End If
-
-                            End If
-                        End If
-
-                        If Not skipDupProtein Then
-                            additionalProteinNames.Add(additionalProtein)
-                        End If
-                    Next
-
-                    If additionalProteinNames.Count > 0 AndAlso consolidateDuplicateProteinSeqsInFasta Then
-                        ' Append the duplicate protein names to the description
-                        ' However, do not let the description get over 7995 characters in length
-                        Dim updatedDescription = cachedProteinDescription & "; Duplicate proteins: " & FlattenArray(additionalProteinNames, ","c)
-                        If updatedDescription.Length > MAX_PROTEIN_DESCRIPTION_LENGTH Then
-                            updatedDescription = updatedDescription.Substring(0, MAX_PROTEIN_DESCRIPTION_LENGTH - 3) & "..."
-                        End If
-
-                        lineOut = ConstructFastaHeaderLine(cachedProteinName, updatedDescription)
-                    End If
-                End If
-            End If
-        Else
-            keepProtein = False
-            mFixedFastaStats.DuplicateSequenceProteinsSkipped += 1
-
-            If Not duplicateProteinList.TryGetValue(cachedProteinName, masterProteinName) Then
-                masterProteinInfo = "same as ??"
-            Else
-                masterProteinInfo = "same as " & masterProteinName
-            End If
-            RecordFastaFileWarning(lineCountRead, 0, cachedProteinName, eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence, masterProteinInfo, String.Empty)
-        End If
-
-        If keepProtein Then
-            If String.IsNullOrEmpty(lineOut) Then
-                lineOut = ConstructFastaHeaderLine(cachedProteinName, cachedProteinDescription)
-            End If
-            consolidatedFastaWriter.WriteLine(lineOut)
-            consolidatedFastaWriter.Write(sbCachedProteinResidueLines.ToString())
-        End If
-
-    End Sub
-
-    Private Sub WriteCachedProteinHashMetadata(
-      proteinNamesToKeepWriter As TextWriter,
-      uniqueProteinSeqsWriter As TextWriter,
-      uniqueProteinSeqDuplicateWriter As TextWriter,
-      currentSequenceIndex As Integer,
-      sequenceHash As String,
-      sequenceLength As String,
-      proteinNames As ICollection(Of String))
-
-        If proteinNames.Count < 1 Then
-            Throw New Exception("proteinNames is empty in WriteCachedProteinHashMetadata; this indicates a logic error")
-        End If
-
-        Dim firstProtein = proteinNames(0)
-        Dim duplicateProteinList As String
-
-        ' Append the first protein name to the _ProteinsToKeep.tmp file
-        proteinNamesToKeepWriter.WriteLine(firstProtein)
-
-        If proteinNames.Count = 1 Then
-            duplicateProteinList = String.Empty
-        Else
-
-            Dim duplicateProteins = New StringBuilder()
-
-            For proteinIndex = 1 To proteinNames.Count - 1
-
-                If duplicateProteins.Length > 0 Then
-                    duplicateProteins.Append(",")
-                End If
-                duplicateProteins.Append(proteinNames(proteinIndex))
-
-                Dim dataValuesSeqDuplicate = New List(Of String) From {
-                    currentSequenceIndex.ToString(),
-                    firstProtein,
-                    sequenceLength,
-                    proteinNames(proteinIndex)}
-
-                uniqueProteinSeqDuplicateWriter.WriteLine(FlattenList(dataValuesSeqDuplicate))
-
-            Next
-
-            duplicateProteinList = duplicateProteins.ToString()
-        End If
-
-        Dim dataValues = New List(Of String) From {
-           currentSequenceIndex.ToString(),
-           proteinNames(0),
-           sequenceLength,
-           sequenceHash,
-           proteinNames.Count.ToString(),
-           duplicateProteinList}
-
-        uniqueProteinSeqsWriter.WriteLine(FlattenList(dataValues))
-
-    End Sub
-
-#Region "Event Handlers"
-
-    Private Sub mSortUtility_ErrorEvent(message As String, ex As Exception)
-        mSortUtilityErrorMessage = message
-    End Sub
-
-#End Region
-
-    ' IComparer class to allow comparison of udtMsgInfoType items
-    Private Class ErrorInfoComparerClass
-        Implements IComparer
-
-        Public Function Compare(x As Object, y As Object) As Integer Implements IComparer.Compare
-
-            Dim errorInfo1, errorInfo2 As udtMsgInfoType
-
-            errorInfo1 = CType(x, udtMsgInfoType)
-            errorInfo2 = CType(y, udtMsgInfoType)
-
-            If errorInfo1.MessageCode > errorInfo2.MessageCode Then
-                Return 1
-            ElseIf errorInfo1.MessageCode < errorInfo2.MessageCode Then
-                Return -1
-            Else
-                If errorInfo1.LineNumber > errorInfo2.LineNumber Then
-                    Return 1
-                ElseIf errorInfo1.LineNumber < errorInfo2.LineNumber Then
-                    Return -1
-                Else
-                    If errorInfo1.ColNumber > errorInfo2.ColNumber Then
-                        Return 1
-                    ElseIf errorInfo1.ColNumber < errorInfo2.ColNumber Then
-                        Return -1
-                    Else
-                        Return 0
-                    End If
-                End If
-            End If
-
-        End Function
-    End Class
-
-End Class
+        private void ReportResultAddEntry(
+            udtOutputOptionsType outputOptions,
+            eMsgTypeConstants entryType,
+            string descriptionOrProteinName,
+            string info,
+            string context = "")
+        {
+            ReportResultAddEntry(
+                outputOptions,
+                entryType, 0, 0,
+                descriptionOrProteinName,
+                info,
+                context);
+        }
+
+        private void ReportResultAddEntry(
+            udtOutputOptionsType outputOptions,
+            eMsgTypeConstants entryType,
+            int lineNumber,
+            int colNumber,
+            string descriptionOrProteinName,
+            string info,
+            string context)
+        {
+            var dataColumns = new List<string>()
+            {
+                outputOptions.SourceFile,
+                LookupMessageType(entryType),
+                lineNumber.ToString(),
+                colNumber.ToString(),
+                descriptionOrProteinName,
+                info
+            };
+
+            if (context != null && context.Length > 0)
+            {
+                dataColumns.Add(context);
+            }
+
+            string message = string.Join(outputOptions.SepChar, dataColumns);
+
+            if (outputOptions.OutputToStatsFile)
+            {
+                outputOptions.OutFile.WriteLine(GetTimeStamp() + outputOptions.SepChar + message);
+            }
+            else
+            {
+                Console.WriteLine(message);
+            }
+        }
+
+        private void ResetStructures()
+        {
+            // This is used to reset the error arrays and stats variables
+
+            mLineCount = 0;
+            mProteinCount = 0;
+            mResidueCount = 0;
+
+            mFixedFastaStats.TruncatedProteinNameCount = 0;
+            mFixedFastaStats.UpdatedResidueLines = 0;
+            mFixedFastaStats.ProteinNamesInvalidCharsReplaced = 0;
+            mFixedFastaStats.ProteinNamesMultipleRefsRemoved = 0;
+            mFixedFastaStats.DuplicateNameProteinsSkipped = 0;
+            mFixedFastaStats.DuplicateNameProteinsRenamed = 0;
+            mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0;
+
+            mFileErrorCount = 0;
+            mFileErrors = new udtMsgInfoType[0];
+            ResetItemSummaryStructure(ref mFileErrorStats);
+
+            mFileWarningCount = 0;
+            mFileWarnings = new udtMsgInfoType[0];
+            ResetItemSummaryStructure(ref mFileWarningStats);
+
+            AbortProcessing = false;
+        }
+
+        private void ResetItemSummaryStructure(ref udtItemSummaryIndexedType itemSummary)
+        {
+            itemSummary.ErrorStatsCount = 0;
+            itemSummary.ErrorStats = new udtErrorStatsType[0];
+            if (itemSummary.MessageCodeToArrayIndex == null)
+            {
+                itemSummary.MessageCodeToArrayIndex = new Dictionary<int, int>();
+            }
+            else
+            {
+                itemSummary.MessageCodeToArrayIndex.Clear();
+            }
+        }
+
+        private void SaveRulesToParameterFile(XmlSettingsFileAccessor settingsFile, string sectionName, IList<udtRuleDefinitionType> rules)
+        {
+            int ruleNumber;
+            string ruleBase;
+
+            if (rules == null || rules.Count <= 0)
+            {
+                settingsFile.SetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, 0);
+            }
+            else
+            {
+                settingsFile.SetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, rules.Count);
+
+                for (ruleNumber = 1; ruleNumber <= rules.Count; ruleNumber++)
+                {
+                    ruleBase = "Rule" + ruleNumber.ToString();
+
+                    var rule = rules[ruleNumber - 1];
+                    settingsFile.SetParam(sectionName, ruleBase + "MatchRegEx", rule.MatchRegEx);
+                    settingsFile.SetParam(sectionName, ruleBase + "MatchIndicatesProblem", rule.MatchIndicatesProblem);
+                    settingsFile.SetParam(sectionName, ruleBase + "MessageWhenProblem", rule.MessageWhenProblem);
+                    settingsFile.SetParam(sectionName, ruleBase + "Severity", rule.Severity);
+                    settingsFile.SetParam(sectionName, ruleBase + "DisplayMatchAsExtraInfo", rule.DisplayMatchAsExtraInfo);
+                }
+            }
+        }
+
+        public bool SaveSettingsToParameterFile(string parameterFilePath)
+        {
+            // Save a model parameter file
+
+            StreamWriter srOutFile;
+            var settingsFile = new XmlSettingsFileAccessor();
+
+            try
+            {
+                if (parameterFilePath == null || parameterFilePath.Length == 0)
+                {
+                    // No parameter file specified; do not save the settings
+                    return true;
+                }
+
+                if (!File.Exists(parameterFilePath))
+                {
+                    // Need to generate a blank XML settings file
+
+                    srOutFile = new StreamWriter(parameterFilePath, false);
+
+                    srOutFile.WriteLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                    srOutFile.WriteLine("<sections>");
+                    srOutFile.WriteLine("  <section name=\"" + XML_SECTION_OPTIONS + "\">");
+                    srOutFile.WriteLine("  </section>");
+                    srOutFile.WriteLine("</sections>");
+
+                    srOutFile.Close();
+                }
+
+                settingsFile.LoadSettings(parameterFilePath);
+
+                // Save the general settings
+
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF", get_OptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues", get_OptionSwitch(SwitchOptions.AllowAsteriskInResidues));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "AllowDashInResidues", get_OptionSwitch(SwitchOptions.AllowDashInResidues));
+
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames", get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinNames));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences", get_OptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles", get_OptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile", get_OptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile));
+
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "MinimumProteinNameLength", MinimumProteinNameLength);
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumProteinNameLength", MaximumProteinNameLength);
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "MaximumResiduesPerLine", MaximumResiduesPerLine);
+
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins", get_OptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace", get_OptionSwitch(SwitchOptions.WarnLineStartsWithSpace));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "OutputToStatsFile", get_OptionSwitch(SwitchOptions.OutputToStatsFile));
+                settingsFile.SetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters", get_OptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters));
+
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile", get_OptionSwitch(SwitchOptions.GenerateFixedFASTAFile));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName", get_OptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName));
+
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins", get_OptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins", get_OptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins));
+
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs", get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff", get_OptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff));
+
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames", get_OptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession", get_OptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines", get_OptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines));
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues", get_OptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues));
+
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", LongProteinNameSplitChars);
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", ProteinNameInvalidCharsToRemove);
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", ProteinNameFirstRefSepChars);
+                settingsFile.SetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", ProteinNameSubsequentRefSepChars);
+
+                // Save the rules
+                SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules);
+                SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules);
+                SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules);
+                SaveRulesToParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules);
+
+                // Commit the new settings to disk
+                settingsFile.SaveSettings();
+
+                // Need to re-open the parameter file and replace instances of "&gt;" with ">" and "&lt;" with "<"
+                ReplaceXMLCodesWithText(parameterFilePath);
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in SaveSettingsToParameterFile", ex);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool SearchRulesForID(
+            IList<udtRuleDefinitionType> rules,
+            int errorMessageCode,
+            out string message)
+        {
+            if (rules != null)
+            {
+                for (int index = 0; index <= rules.Count - 1; index++)
+                {
+                    if (rules[index].CustomRuleID == errorMessageCode)
+                    {
+                        message = rules[index].MessageWhenProblem;
+                        return true;
+                    }
+                }
+            }
+
+            message = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Updates the validation rules using the current options
+        /// </summary>
+        /// <remarks>Call this function after setting new options using SetOptionSwitch</remarks>
+        public void SetDefaultRules()
+        {
+            ClearAllRules();
+
+            // For the rules, severity level 1 to 4 is warning; severity 5 or higher is an error
+
+            // Header line errors
+            SetRule(RuleTypes.HeaderLine, @"^>[ \t]*$", true, "Line starts with > but does not contain a protein name", DEFAULT_ERROR_SEVERITY);
+            SetRule(RuleTypes.HeaderLine, @"^>[ \t].+", true, "Space or tab found directly after the > symbol", DEFAULT_ERROR_SEVERITY);
+
+            // Header line warnings
+            SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+[ \t]*$", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY);
+            SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\t", true, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY);
+
+            // Protein Name error characters
+            string allowedChars = @"A-Za-z0-9.\-_:,\|/()\[\]\=\+#";
+
+            if (mAllowAllSymbolsInProteinNames)
+            {
+                allowedChars += @"!@$%^&*<>?,\\";
+            }
+
+            string allowedCharsMatchSpec = "[^" + allowedChars + "]";
+
+            SetRule(RuleTypes.ProteinName, allowedCharsMatchSpec, true, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, true);
+
+            // Protein name warnings
+
+            // Note that .*? changes .* from being greedy to being lazy
+            SetRule(RuleTypes.ProteinName, "[:|].*?[:|;].*?[:|;]", true, "Protein name contains 3 or more vertical bars", DEFAULT_WARNING_SEVERITY + 1, true);
+
+            if (!mAllowAllSymbolsInProteinNames)
+            {
+                SetRule(RuleTypes.ProteinName, @"[/()\[\],]", true, "Protein name contains undesirable characters", DEFAULT_WARNING_SEVERITY, true);
+            }
+
+            // Protein description warnings
+            SetRule(RuleTypes.ProteinDescription, "\"", true, "Protein description contains a quotation mark", DEFAULT_WARNING_SEVERITY);
+            SetRule(RuleTypes.ProteinDescription, @"\t", true, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY);
+            SetRule(RuleTypes.ProteinDescription, @"\\/", true, @"Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY);
+            SetRule(RuleTypes.ProteinDescription, @"[\x00-\x08\x0E-\x1F]", true, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY);
+            SetRule(RuleTypes.ProteinDescription, ".{900,}", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, false);
+
+            // Protein sequence errors
+            SetRule(RuleTypes.ProteinSequence, @"[ \t]", true, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY);
+
+            if (!mAllowAsteriskInResidues)
+            {
+                SetRule(RuleTypes.ProteinSequence, @"\*", true, MESSAGE_TEXT_ASTERISK_IN_RESIDUES, DEFAULT_ERROR_SEVERITY);
+            }
+
+            if (!mAllowDashInResidues)
+            {
+                SetRule(RuleTypes.ProteinSequence, @"\-", true, MESSAGE_TEXT_DASH_IN_RESIDUES, DEFAULT_ERROR_SEVERITY);
+            }
+
+            // Note: we look for a space, tab, asterisk, and dash with separate rules (defined above)
+            // Thus they are "allowed" by this RegEx, even though we may flag them as warnings with a different RegEx
+            // We look for non-standard amino acids with warning rules (defined below)
+            SetRule(RuleTypes.ProteinSequence, @"[^A-Z \t\*\-]", true, "Invalid residues found", DEFAULT_ERROR_SEVERITY, true);
+
+            // Protein residue warnings
+            // MS-GF+ treats these residues as stop characters(meaning no identified peptide will ever contain B, J, O, U, X, or Z)
+
+            // SEQUEST uses mass 114.53494 for B (average of N and D)
+            SetRule(RuleTypes.ProteinSequence, "B", true, "Residues line contains B (non-standard amino acid for N or D)", DEFAULT_WARNING_SEVERITY - 1);
+
+            // Unsupported by SEQUEST
+            SetRule(RuleTypes.ProteinSequence, "J", true, "Residues line contains J (non-standard amino acid)", DEFAULT_WARNING_SEVERITY - 1);
+
+            // SEQUEST uses mass 114.07931 for O
+            SetRule(RuleTypes.ProteinSequence, "O", true, "Residues line contains O (non-standard amino acid, ornithine)", DEFAULT_WARNING_SEVERITY - 1);
+
+            // Unsupported by SEQUEST
+            SetRule(RuleTypes.ProteinSequence, "U", true, "Residues line contains U (non-standard amino acid, selenocysteine)", DEFAULT_WARNING_SEVERITY);
+
+            // SEQUEST uses mass 113.08406 for X (same as L and I)
+            SetRule(RuleTypes.ProteinSequence, "X", true, "Residues line contains X (non-standard amino acid for L or I)", DEFAULT_WARNING_SEVERITY - 1);
+
+            // SEQUEST uses mass 128.55059 for Z (average of Q and E)
+            SetRule(RuleTypes.ProteinSequence, "Z", true, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1);
+        }
+
+        private void SetLocalErrorCode(eValidateFastaFileErrorCodes eNewErrorCode)
+        {
+            SetLocalErrorCode(eNewErrorCode, false);
+        }
+
+        private void SetLocalErrorCode(
+            eValidateFastaFileErrorCodes eNewErrorCode,
+            bool leaveExistingErrorCodeUnchanged)
+        {
+            if (leaveExistingErrorCodeUnchanged && mLocalErrorCode != eValidateFastaFileErrorCodes.NoError)
+            {
+                // An error code is already defined; do not change it
+            }
+            else
+            {
+                mLocalErrorCode = eNewErrorCode;
+
+                if (eNewErrorCode == eValidateFastaFileErrorCodes.NoError)
+                {
+                    if (ErrorCode == ProcessFilesErrorCodes.LocalizedError)
+                    {
+                        SetBaseClassErrorCode(ProcessFilesErrorCodes.NoError);
+                    }
+                }
+                else
+                {
+                    SetBaseClassErrorCode(ProcessFilesErrorCodes.LocalizedError);
+                }
+            }
+        }
+
+        private void SetRule(
+            RuleTypes ruleType,
+            string regexToMatch,
+            bool doesMatchIndicateProblem,
+            string problemReturnMessage,
+            short severityLevel)
+        {
+            SetRule(
+                ruleType, regexToMatch,
+                doesMatchIndicateProblem,
+                problemReturnMessage,
+                severityLevel, false);
+        }
+
+        private void SetRule(
+            RuleTypes ruleType,
+            string regexToMatch,
+            bool doesMatchIndicateProblem,
+            string problemReturnMessage,
+            short severityLevel,
+            bool displayMatchAsExtraInfo)
+        {
+            switch (ruleType)
+            {
+                case RuleTypes.HeaderLine:
+                    SetRule(ref mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    break;
+                case RuleTypes.ProteinDescription:
+                    SetRule(ref mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    break;
+                case RuleTypes.ProteinName:
+                    SetRule(ref mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    break;
+                case RuleTypes.ProteinSequence:
+                    SetRule(ref mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    break;
+            }
+        }
+
+        private void SetRule(
+            ref udtRuleDefinitionType[] rules,
+            string matchRegEx,
+            bool matchIndicatesProblem,
+            string messageWhenProblem,
+            short severity,
+            bool displayMatchAsExtraInfo)
+        {
+            if (rules == null || rules.Length == 0)
+            {
+                rules = new udtRuleDefinitionType[1];
+            }
+            else
+            {
+                var oldRules = rules;
+                rules = new udtRuleDefinitionType[rules.Length + 1];
+                Array.Copy(oldRules, rules, Math.Min(rules.Length + 1, oldRules.Length));
+            }
+
+            rules[rules.Length - 1].MatchRegEx = matchRegEx;
+            rules[rules.Length - 1].MatchIndicatesProblem = matchIndicatesProblem;
+            rules[rules.Length - 1].MessageWhenProblem = messageWhenProblem;
+            rules[rules.Length - 1].Severity = severity;
+            rules[rules.Length - 1].DisplayMatchAsExtraInfo = displayMatchAsExtraInfo;
+            rules[rules.Length - 1].CustomRuleID = mMasterCustomRuleID;
+
+            mMasterCustomRuleID += 1;
+        }
+
+        private bool SortFile(FileInfo proteinHashFile, int sortColumnIndex, string sortedFilePath)
+        {
+            var sortUtility = new FlexibleFileSortUtility.TextFileSorter();
+
+            mSortUtilityErrorMessage = string.Empty;
+
+            sortUtility.WorkingDirectoryPath = proteinHashFile.Directory.FullName;
+            sortUtility.HasHeaderLine = true;
+            sortUtility.ColumnDelimiter = "\t";
+            sortUtility.MaxFileSizeMBForInMemorySort = 250;
+            sortUtility.ChunkSizeMB = 250;
+            sortUtility.SortColumn = sortColumnIndex + 1;
+            sortUtility.SortColumnIsNumeric = false;
+
+            // The sort utility uses CompareOrdinal (StringComparison.Ordinal)
+            sortUtility.IgnoreCase = false;
+
+            RegisterEvents(sortUtility);
+            sortUtility.ErrorEvent += mSortUtility_ErrorEvent;
+
+            bool success = sortUtility.SortFile(proteinHashFile.FullName, sortedFilePath);
+
+            if (success)
+            {
+                Console.WriteLine();
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(mSortUtilityErrorMessage))
+            {
+                ShowErrorMessage("Unknown error sorting " + proteinHashFile.Name);
+            }
+            else
+            {
+                ShowErrorMessage("Sort error: " + mSortUtilityErrorMessage);
+            }
+
+            Console.WriteLine();
+            return false;
+        }
+
+        private void SplitFastaProteinHeaderLine(
+            string headerLine,
+            out string proteinName,
+            out string proteinDescription,
+            out int descriptionStartIndex)
+        {
+            proteinDescription = string.Empty;
+            descriptionStartIndex = 0;
+
+            // Make sure the protein name and description are valid
+            // Find the first space and/or tab
+            int spaceIndex = GetBestSpaceIndex(headerLine);
+
+            // At this point, spaceIndex will contain the location of the space or tab separating the protein name and description
+            // However, if the space or tab is directly after the > sign, then we cannot continue (if this is the case, then spaceIndex will be 1)
+            if (spaceIndex > 1)
+            {
+                proteinName = headerLine.Substring(1, spaceIndex - 1);
+                proteinDescription = headerLine.Substring(spaceIndex + 1);
+                descriptionStartIndex = spaceIndex;
+            }
+            // Line does not contain a description
+            else if (spaceIndex <= 0)
+            {
+                if (headerLine.Trim().Length <= 1)
+                {
+                    proteinName = string.Empty;
+                }
+                else
+                {
+                    // The line contains a protein name, but not a description
+                    proteinName = headerLine.Substring(1);
+                }
+            }
+            else
+            {
+                // Space or tab found directly after the > symbol
+                proteinName = string.Empty;
+            }
+        }
+
+        private bool VerifyLinefeedAtEOF(string strInputFilePath, bool blnAddCrLfIfMissing)
+        {
+            var blnNeedToAddCrLf = default(bool);
+            bool blnSuccess;
+
+            try
+            {
+                // Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
+                using (var fsInFile = new FileStream(strInputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (fsInFile.Length > 2)
+                    {
+                        fsInFile.Seek(-1, SeekOrigin.End);
+
+                        int lastByte = fsInFile.ReadByte();
+
+                        if (lastByte == 10 || lastByte == 13)
+                        {
+                            // File ends in a linefeed or carriage return character; that's good
+                            blnNeedToAddCrLf = false;
+                        }
+                        else
+                        {
+                            blnNeedToAddCrLf = true;
+                        }
+                    }
+
+                    if (blnNeedToAddCrLf)
+                    {
+                        if (blnAddCrLfIfMissing)
+                        {
+                            ShowMessage("Appending CrLf return to: " + Path.GetFileName(strInputFilePath));
+                            fsInFile.WriteByte(13);
+
+                            fsInFile.WriteByte(10);
+                        }
+                    }
+                }
+
+                blnSuccess = true;
+            }
+            catch (Exception ex)
+            {
+                SetLocalErrorCode(eValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
+                blnSuccess = false;
+            }
+
+            return blnSuccess;
+        }
+
+        private readonly Regex reAdditionalProtein = new Regex(@"(.+)-[a-z]\d*", RegexOptions.Compiled);
+
+        private void WriteCachedProtein(
+            string cachedProteinName,
+            string cachedProteinDescription,
+            TextWriter consolidatedFastaWriter,
+            IList<clsProteinHashInfo> proteinSeqHashInfo,
+            StringBuilder sbCachedProteinResidueLines,
+            StringBuilder sbCachedProteinResidues,
+            bool consolidateDuplicateProteinSeqsInFasta,
+            bool consolidateDupsIgnoreILDiff,
+            clsNestedStringDictionary<int> proteinNameFirst,
+            clsNestedStringDictionary<string> duplicateProteinList,
+            int lineCountRead,
+            clsNestedStringDictionary<int> proteinsWritten)
+        {
+            string masterProteinName = string.Empty;
+            string masterProteinInfo;
+
+            string proteinHash;
+            string lineOut = string.Empty;
+            Match reMatch;
+
+            bool keepProtein;
+            bool skipDupProtein;
+
+            var additionalProteinNames = new List<string>();
+
+            int seqIndex;
+            if (proteinNameFirst.TryGetValue(cachedProteinName, out seqIndex))
+            {
+                // cachedProteinName was found in proteinNameFirst
+
+                int cachedSeqIndex;
+                if (proteinsWritten.TryGetValue(cachedProteinName, out cachedSeqIndex))
+                {
+                    if (mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence)
+                    {
+                        // Keep this protein if its sequence hash differs from the first protein with this name
+                        proteinHash = ComputeProteinHash(sbCachedProteinResidues, consolidateDupsIgnoreILDiff);
+                        if ((proteinSeqHashInfo[seqIndex].SequenceHash ?? "") != (proteinHash ?? ""))
+                        {
+                            RecordFastaFileWarning(lineCountRead, 1, cachedProteinName, (int)eMessageCodeConstants.DuplicateProteinNameRetained);
+                            keepProtein = true;
+                        }
+                        else
+                        {
+                            keepProtein = false;
+                        }
+                    }
+                    else
+                    {
+                        keepProtein = false;
+                    }
+                }
+                else
+                {
+                    keepProtein = true;
+                    proteinsWritten.Add(cachedProteinName, seqIndex);
+                }
+
+                if (keepProtein && seqIndex >= 0)
+                {
+                    if (proteinSeqHashInfo[seqIndex].AdditionalProteins.Count() > 0)
+                    {
+                        // The protein has duplicate proteins
+                        // Construct a list of the duplicate protein names
+
+                        additionalProteinNames.Clear();
+                        foreach (string additionalProtein in proteinSeqHashInfo[seqIndex].AdditionalProteins)
+                        {
+                            // Add the additional protein name if it is not of the form "BaseName-b", "BaseName-c", etc.
+                            skipDupProtein = false;
+
+                            if (additionalProtein == null)
+                            {
+                                skipDupProtein = true;
+                            }
+                            else if ((additionalProtein.ToLower() ?? "") == (cachedProteinName.ToLower() ?? ""))
+                            {
+                                // Names match; do not add to the list
+                                skipDupProtein = true;
+                            }
+                            else
+                            {
+                                // Check whether additionalProtein looks like one of the following
+                                // ProteinX-b
+                                // ProteinX-a2
+                                // ProteinX-d3
+                                reMatch = reAdditionalProtein.Match(additionalProtein);
+
+                                if (reMatch.Success)
+                                {
+                                    if ((cachedProteinName.ToLower() ?? "") == (reMatch.Groups[1].Value.ToLower() ?? ""))
+                                    {
+                                        // Base names match; do not add to the list
+                                        // For example, ProteinX and ProteinX-b
+                                        skipDupProtein = true;
+                                    }
+                                }
+                            }
+
+                            if (!skipDupProtein)
+                            {
+                                additionalProteinNames.Add(additionalProtein);
+                            }
+                        }
+
+                        if (additionalProteinNames.Count > 0 && consolidateDuplicateProteinSeqsInFasta)
+                        {
+                            // Append the duplicate protein names to the description
+                            // However, do not let the description get over 7995 characters in length
+                            string updatedDescription = cachedProteinDescription + "; Duplicate proteins: " + FlattenArray(additionalProteinNames, ',');
+                            if (updatedDescription.Length > MAX_PROTEIN_DESCRIPTION_LENGTH)
+                            {
+                                updatedDescription = updatedDescription.Substring(0, MAX_PROTEIN_DESCRIPTION_LENGTH - 3) + "...";
+                            }
+
+                            lineOut = ConstructFastaHeaderLine(cachedProteinName, updatedDescription);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                keepProtein = false;
+                mFixedFastaStats.DuplicateSequenceProteinsSkipped += 1;
+
+                if (!duplicateProteinList.TryGetValue(cachedProteinName, out masterProteinName))
+                {
+                    masterProteinInfo = "same as ??";
+                }
+                else
+                {
+                    masterProteinInfo = "same as " + masterProteinName;
+                }
+
+                RecordFastaFileWarning(lineCountRead, 0, cachedProteinName, (int)eMessageCodeConstants.ProteinRemovedSinceDuplicateSequence, masterProteinInfo, string.Empty);
+            }
+
+            if (keepProtein)
+            {
+                if (string.IsNullOrEmpty(lineOut))
+                {
+                    lineOut = ConstructFastaHeaderLine(cachedProteinName, cachedProteinDescription);
+                }
+
+                consolidatedFastaWriter.WriteLine(lineOut);
+                consolidatedFastaWriter.Write(sbCachedProteinResidueLines.ToString());
+            }
+        }
+
+        private void WriteCachedProteinHashMetadata(
+            TextWriter proteinNamesToKeepWriter,
+            TextWriter uniqueProteinSeqsWriter,
+            TextWriter uniqueProteinSeqDuplicateWriter,
+            int currentSequenceIndex,
+            string sequenceHash,
+            string sequenceLength,
+            ICollection<string> proteinNames)
+        {
+            if (proteinNames.Count < 1)
+            {
+                throw new Exception("proteinNames is empty in WriteCachedProteinHashMetadata; this indicates a logic error");
+            }
+
+            string firstProtein = proteinNames.ElementAtOrDefault(0);
+            string duplicateProteinList;
+
+            // Append the first protein name to the _ProteinsToKeep.tmp file
+            proteinNamesToKeepWriter.WriteLine(firstProtein);
+
+            if (proteinNames.Count == 1)
+            {
+                duplicateProteinList = string.Empty;
+            }
+            else
+            {
+                var duplicateProteins = new StringBuilder();
+
+                for (int proteinIndex = 1; proteinIndex <= proteinNames.Count - 1; proteinIndex++)
+                {
+                    if (duplicateProteins.Length > 0)
+                    {
+                        duplicateProteins.Append(",");
+                    }
+
+                    duplicateProteins.Append(proteinNames.ElementAtOrDefault(proteinIndex));
+
+                    var dataValuesSeqDuplicate = new List<string>()
+                    {
+                        currentSequenceIndex.ToString(),
+                        firstProtein,
+                        sequenceLength,
+                        proteinNames.ElementAtOrDefault(proteinIndex)
+                    };
+                    uniqueProteinSeqDuplicateWriter.WriteLine(FlattenList(dataValuesSeqDuplicate));
+                }
+
+                duplicateProteinList = duplicateProteins.ToString();
+            }
+
+            var dataValues = new List<string>()
+            {
+                currentSequenceIndex.ToString(),
+                proteinNames.ElementAtOrDefault(0),
+                sequenceLength,
+                sequenceHash,
+                proteinNames.Count.ToString(),
+                duplicateProteinList
+            };
+
+            uniqueProteinSeqsWriter.WriteLine(FlattenList(dataValues));
+        }
+
+        #region "Event Handlers"
+
+        private void mSortUtility_ErrorEvent(string message, Exception ex)
+        {
+            mSortUtilityErrorMessage = message;
+        }
+
+        #endregion
+
+        // IComparer class to allow comparison of udtMsgInfoType items
+        private class ErrorInfoComparerClass : IComparer
+        {
+            public int Compare(object x, object y)
+            {
+                udtMsgInfoType errorInfo1, errorInfo2;
+
+                errorInfo1 = (udtMsgInfoType)x;
+                errorInfo2 = (udtMsgInfoType)y;
+
+                if (errorInfo1.MessageCode > errorInfo2.MessageCode)
+                {
+                    return 1;
+                }
+                else if (errorInfo1.MessageCode < errorInfo2.MessageCode)
+                {
+                    return -1;
+                }
+                else if (errorInfo1.LineNumber > errorInfo2.LineNumber)
+                {
+                    return 1;
+                }
+                else if (errorInfo1.LineNumber < errorInfo2.LineNumber)
+                {
+                    return -1;
+                }
+                else if (errorInfo1.ColNumber > errorInfo2.ColNumber)
+                {
+                    return 1;
+                }
+                else if (errorInfo1.ColNumber < errorInfo2.ColNumber)
+                {
+                    return -1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
+    }
+}

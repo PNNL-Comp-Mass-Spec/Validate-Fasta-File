@@ -40,7 +40,6 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="FlexibleFileSortUtility">
       <HintPath>Lib\FlexibleFileSortUtility.dll</HintPath>
     </Reference>

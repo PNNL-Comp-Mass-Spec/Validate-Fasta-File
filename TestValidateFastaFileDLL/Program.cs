@@ -1,102 +1,110 @@
-﻿Option Strict On
+﻿using System;
+using PRISM;
+using ValidateFastaFile;
 
-Imports PRISM
-Imports ValidateFastaFile
+namespace TestValidateFastaFileDLL
+{
 
-' Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-' Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
+    // Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
+    // Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
-' This program can be used to test the use of the clsValidateFastaFiles in the ValidateFastaFiles.Dll file
-' Last modified May 8, 2007
+    // This program can be used to test the use of the clsValidateFastaFiles in the ValidateFastaFiles.Dll file
+    // Last modified May 8, 2007
 
-Module Program
+    static class Program
+    {
+        public static int Main()
+        {
+            // Returns 0 if no error, error code if an error
 
-    Public Function Main() As Integer
-        ' Returns 0 if no error, error code if an error
+            string testFilePath = "JunkTest.fasta";
 
-        Dim testFilePath = "JunkTest.fasta"
+            clsValidateFastaFile fastaFileValidator;
 
-        Dim fastaFileValidator As clsValidateFastaFile
+            string[] parameters;
 
-        Dim parameters() As String
+            bool success;
 
-        Dim success As Boolean
+            int count;
 
-        Dim count As Integer
+            var returnCode = default(int);
 
-        Dim returnCode As Integer
+            try
+            {
+                // See if the user provided a custom filepath at the command line
+                try
+                {
+                    // This command will fail if the program is called from a network share
+                    parameters = Environment.GetCommandLineArgs();
 
-        Try
-            ' See if the user provided a custom filepath at the command line
-            Try
-                ' This command will fail if the program is called from a network share
-                parameters = Environment.GetCommandLineArgs()
+                    if (parameters != null && parameters.Length > 1)
+                    {
+                        // Note that parameters(0) is the path to the Executable for the calling program
+                        testFilePath = parameters[1];
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Ignore errors here
+                }
 
-                If Not parameters Is Nothing AndAlso parameters.Length > 1 Then
-                    ' Note that parameters(0) is the path to the Executable for the calling program
-                    testFilePath = parameters(1)
-                End If
+                Console.WriteLine("Examining file: " + testFilePath);
 
-            Catch ex As Exception
-                ' Ignore errors here
-            End Try
+                fastaFileValidator = new clsValidateFastaFile();
 
-            Console.WriteLine("Examining file: " & testFilePath)
+                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, true);
 
-            fastaFileValidator = New clsValidateFastaFile()
-            With fastaFileValidator
-                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, True)
+                // Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
+                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLineFeedAtEOF, false);
+                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, true);
 
-                ' Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
-                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLinefeedatEOF, False)
-                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, True)
+                fastaFileValidator.MaximumFileErrorsToTrack = 5;               // The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
+                fastaFileValidator.MinimumProteinNameLength = 3;
+                fastaFileValidator.MaximumProteinNameLength = 34;
 
-                .MaximumFileErrorsToTrack = 5               ' The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
-                .MinimumProteinNameLength = 3
-                .MaximumProteinNameLength = 34
+                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, false);
 
-                .SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, False)
-            End With
+                // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
+                success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
 
-            ' Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
-            success = fastaFileValidator.ProcessFile(testFilePath, String.Empty)
+                if (success)
+                {
+                    count = fastaFileValidator.get_ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    if (count == 0)
+                    {
+                        Console.WriteLine(" No errors were found");
+                    }
+                    else
+                    {
+                        Console.WriteLine(" " + count.ToString() + " errors were found");
+                    }
 
-            If success Then
-                With fastaFileValidator
+                    count = fastaFileValidator.get_ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    if (count == 0)
+                    {
+                        Console.WriteLine(" No warnings were found");
+                    }
+                    else
+                    {
+                        Console.WriteLine(" " + count.ToString() + " warnings were found");
+                    }
 
-                    count = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
-                    If count = 0 Then
-                        Console.WriteLine(" No errors were found")
-                    Else
-                        Console.WriteLine(" " & count.ToString & " errors were found")
-                    End If
+                    // ' Could enumerate the errors using the following
+                    for (int index = 0; index <= count - 1; index++)
+                        Console.WriteLine(fastaFileValidator.get_ErrorMessageTextByIndex(index, "\t"));
+                }
+                else
+                {
+                    ConsoleMsgUtils.ShowError("Error calling validateFastaFile.ProcessFile: " + fastaFileValidator.GetErrorMessage());
+                }
+            }
+            catch (Exception ex)
+            {
+                ConsoleMsgUtils.ShowError("Error occurred: " + ex.Message);
+                returnCode = -1;
+            }
 
-                    count = .ErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total)
-                    If count = 0 Then
-                        Console.WriteLine(" No warnings were found")
-                    Else
-                        Console.WriteLine(" " & count.ToString & " warnings were found")
-                    End If
-
-                    '' Could enumerate the errors using the following
-                    For index = 0 To count - 1
-                        Console.WriteLine(.ErrorMessageTextByIndex(index, ControlChars.Tab))
-                    Next index
-
-                End With
-            Else
-                ConsoleMsgUtils.ShowError("Error calling validateFastaFile.ProcessFile: " & fastaFileValidator.GetErrorMessage())
-            End If
-
-        Catch ex As Exception
-            ConsoleMsgUtils.ShowError("Error occurred: " & ex.Message)
-            returnCode = -1
-        End Try
-
-        Return returnCode
-
-    End Function
-
-
-
-End Module
+            return returnCode;
+        }
+    }
+}
