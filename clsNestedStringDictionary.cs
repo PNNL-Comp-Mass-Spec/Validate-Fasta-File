@@ -246,7 +246,7 @@ namespace ValidateFastaFile
         {
             if (key == null)
             {
-                throw new ArgumentNullException(key, "Key cannot be null");
+                throw new ArgumentNullException(nameof(key), "Key cannot be null");
             }
 
             if (key.Length <= SpannerCharLength)

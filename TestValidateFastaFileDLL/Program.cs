@@ -16,7 +16,7 @@ namespace TestValidateFastaFileDLL
         {
             // Returns 0 if no error, error code if an error
 
-            string testFilePath = "JunkTest.fasta";
+            var testFilePath = "JunkTest.fasta";
 
             var returnCode = 0;
 
@@ -81,7 +81,7 @@ namespace TestValidateFastaFileDLL
                     }
 
                     // ' Could enumerate the errors using the following
-                    for (int index = 0; index <= count - 1; index++)
+                    for (var index = 0; index <= count - 1; index++)
                         Console.WriteLine(fastaFileValidator.GetErrorMessageTextByIndex(index, "\t"));
                 }
                 else

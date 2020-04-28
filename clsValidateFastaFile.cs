@@ -927,14 +927,14 @@ namespace ValidateFastaFile
             StreamWriter fixedFastaWriter = null;
             StreamWriter sequenceHashWriter = null;
 
-            string fastaFilePathOut = "UndefinedFilePath.xyz";
+            var fastaFilePathOut = "UndefinedFilePath.xyz";
 
             bool success;
-            bool exceptionCaught = false;
+            var exceptionCaught = false;
 
-            bool consolidateDuplicateProteinSeqsInFasta = false;
-            bool keepDuplicateNamedProteinsUnlessMatchingSequence = false;
-            bool consolidateDupsIgnoreILDiff = false;
+            var consolidateDuplicateProteinSeqsInFasta = false;
+            var keepDuplicateNamedProteinsUnlessMatchingSequence = false;
+            var consolidateDupsIgnoreILDiff = false;
 
             // This array tracks protein hash details
             var proteinSequenceHashCount = 0;
@@ -955,7 +955,7 @@ namespace ValidateFastaFile
                 // This dictionary is not used if preloadedProteinNamesToKeep contains data
                 const int SPANNER_CHAR_LENGTH = 1;
                 var proteinSequenceHashes = new clsNestedStringDictionary<int>(false, SPANNER_CHAR_LENGTH);
-                bool usingPreloadedProteinNames = false;
+                var usingPreloadedProteinNames = false;
 
                 if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
                 {
@@ -995,11 +995,11 @@ namespace ValidateFastaFile
 
                 OnProgressUpdate("Parsing " + Path.GetFileName(mFastaFilePath), 0);
 
-                bool proteinHeaderFound = false;
-                bool processingResidueBlock = false;
-                bool blankLineProcessed = false;
+                var proteinHeaderFound = false;
+                var processingResidueBlock = false;
+                var blankLineProcessed = false;
 
-                string proteinName = string.Empty;
+                var proteinName = string.Empty;
                 var sbCurrentResidues = new StringBuilder();
 
                 // Initialize the RegEx objects
@@ -1032,8 +1032,8 @@ namespace ValidateFastaFile
                         RegexOptions.Singleline | RegexOptions.Compiled);
                 // The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
                 reProteinNameTruncation.reMatchJGIBaseAndID =
-                new Regex(@"^jgi\|[^|]+\|\d+",
-                RegexOptions.Singleline | RegexOptions.Compiled);
+                    new Regex(@"^jgi\|[^|]+\|\d+",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
 
                 // Note that this RegEx contains a group with captured text:
                 reProteinNameTruncation.reMatchDoubleBarOrColonAndBar =
@@ -1044,7 +1044,7 @@ namespace ValidateFastaFile
                         RegexOptions.Singleline | RegexOptions.Compiled);
 
                 // Non-letter characters in residues
-                string allowedResidueChars = "A-Z";
+                var allowedResidueChars = "A-Z";
                 if (mAllowAsteriskInResidues)
                     allowedResidueChars += "*";
                 if (mAllowDashInResidues)
@@ -1067,7 +1067,7 @@ namespace ValidateFastaFile
                 InitializeRuleDetails(ref mProteinSequenceRules, ref proteinSequenceRuleDetails);
 
                 // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
-                int terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck);
+                var terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck);
 
                 // Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
                 AutoDetermineFastaProteinNameSpannerCharLength(mFastaFilePath, terminatorSize);
@@ -1100,7 +1100,7 @@ namespace ValidateFastaFile
                     // Optionally, open the Sequence Hash file
                     if (mSaveBasicProteinHashInfoFile)
                     {
-                        string basicProteinHashInfoFilePath = "<undefined>";
+                        var basicProteinHashInfoFilePath = "<undefined>";
 
                         try
                         {
@@ -1172,8 +1172,8 @@ namespace ValidateFastaFile
                     var lastMemoryUsageReport = DateTime.UtcNow;
 
                     // Note: This value is updated only if the line length is < mMaximumResiduesPerLine
-                    int currentValidResidueLineLengthMax = 0;
-                    bool processingDuplicateOrInvalidProtein = false;
+                    var currentValidResidueLineLengthMax = 0;
+                    var processingDuplicateOrInvalidProtein = false;
 
                     var lastProgressReport = DateTime.UtcNow;
 
@@ -1210,7 +1210,7 @@ namespace ValidateFastaFile
                             if (DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5)
                             {
                                 lastProgressReport = DateTime.UtcNow;
-                                float percentComplete = (float)(bytesRead / (double)fastaReader.BaseStream.Length * 100.0);
+                                var percentComplete = (float)(bytesRead / (double)fastaReader.BaseStream.Length * 100.0);
                                 if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
                                 {
                                     // Bump the % complete down so that 100% complete in this routine will equate to 75% complete
@@ -1340,7 +1340,7 @@ namespace ValidateFastaFile
                                 RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineInMiddleOfResidues);
                             }
 
-                            int newResidueCount = lineIn.Length;
+                            var newResidueCount = lineIn.Length;
                             mResidueCount += newResidueCount;
 
                             // Check the line length; raise a warning if longer than suggested
@@ -1415,7 +1415,7 @@ namespace ValidateFastaFile
                     if (mCheckForDuplicateProteinSequences)
                     {
                         // Step through proteinSeqHashInfo and look for duplicate sequences
-                        for (int index = 0; index <= proteinSequenceHashCount - 1; index++)
+                        for (var index = 0; index <= proteinSequenceHashCount - 1; index++)
                         {
                             if (proteinSeqHashInfo[index].AdditionalProteins.Any())
                             {
@@ -1426,7 +1426,7 @@ namespace ValidateFastaFile
                         }
                     }
 
-                    float memoryUsageMB = clsMemoryUsageLogger.GetProcessMemoryUsageMB();
+                    var memoryUsageMB = clsMemoryUsageLogger.GetProcessMemoryUsageMB();
                     if (memoryUsageMB > mProcessMemoryUsageMBAtStart * 4 ||
                         memoryUsageMB - mProcessMemoryUsageMBAtStart > 50)
                     {
@@ -1434,10 +1434,10 @@ namespace ValidateFastaFile
                     }
                 }
 
-                double totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds;
+                var totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds;
                 if (totalSeconds > 5)
                 {
-                    int linesPerSecond = (int)Math.Round(mLineCount / totalSeconds);
+                    var linesPerSecond = (int)Math.Round(mLineCount / totalSeconds);
                     Console.WriteLine();
                     ShowMessage(string.Format(
                         "Processing complete after {0:N0} seconds; read {1:N0} lines/second",
@@ -1470,10 +1470,10 @@ namespace ValidateFastaFile
                 if (usingPreloadedProteinNames)
                 {
                     // Report stats on the number of proteins read, the number written, and any that had duplicate protein names in the original fasta file
-                    int nameCountNotFound = 0;
-                    int duplicateProteinNameCount = 0;
-                    int proteinCountWritten = 0;
-                    int preloadedProteinNameCount = 0;
+                    var nameCountNotFound = 0;
+                    var duplicateProteinNameCount = 0;
+                    var proteinCountWritten = 0;
+                    var preloadedProteinNameCount = 0;
 
                     foreach (var spanningKey in preloadedProteinNamesToKeep.GetSpanningKeys())
                     {
@@ -1521,7 +1521,7 @@ namespace ValidateFastaFile
                 }
                 else if (mSaveProteinSequenceHashInfoFiles)
                 {
-                    float percentComplete = 98.0F;
+                    var percentComplete = 98.0F;
                     if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
                     {
                         percentComplete = percentComplete * 3 / 4;
@@ -1529,7 +1529,7 @@ namespace ValidateFastaFile
 
                     UpdateProgress("Validating FASTA File (" + Math.Round(percentComplete, 0) + "% Done)", percentComplete);
 
-                    bool hashInfoSuccess = AnalyzeFastaSaveHashInfo(
+                    var hashInfoSuccess = AnalyzeFastaSaveHashInfo(
                         fastaFilePathToCheck,
                         proteinSequenceHashCount,
                         proteinSeqHashInfo,
@@ -1583,9 +1583,9 @@ namespace ValidateFastaFile
             IList<udtRuleDefinitionExtendedType> proteinDescriptionRuleDetails,
             udtProteinNameTruncationRegex reProteinNameTruncation)
         {
-            string proteinDescription = string.Empty;
+            var proteinDescription = string.Empty;
 
-            bool skipDuplicateProtein = false;
+            var skipDuplicateProtein = false;
 
             proteinName = string.Empty;
             processingDuplicateOrInvalidProtein = true;
@@ -1636,7 +1636,7 @@ namespace ValidateFastaFile
                     if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
                     {
                         // See if preloadedProteinNamesToKeep contains proteinName
-                        int matchCount = preloadedProteinNamesToKeep.GetValueForItem(proteinName, -1);
+                        var matchCount = preloadedProteinNamesToKeep.GetValueForItem(proteinName, -1);
 
                         if (matchCount >= 0)
                         {
@@ -1719,8 +1719,8 @@ namespace ValidateFastaFile
             StreamWriter swUniqueProteinSeqsOut;
             StreamWriter swDuplicateProteinMapping = null;
 
-            string uniqueProteinSeqsFileOut = string.Empty;
-            string duplicateProteinMappingFileOut = string.Empty;
+            var uniqueProteinSeqsFileOut = string.Empty;
+            var duplicateProteinMappingFileOut = string.Empty;
 
             var duplicateIndex = 0;
 
@@ -1818,7 +1818,7 @@ namespace ValidateFastaFile
                             swDuplicateProteinMapping.WriteLine(FlattenList(proteinHeaderColumns));
                         }
 
-                        foreach (string additionalProtein in proteinHashInfo.AdditionalProteins)
+                        foreach (var additionalProtein in proteinHashInfo.AdditionalProteins)
                         {
                             if (proteinHashInfo.AdditionalProteins.ElementAtOrDefault(duplicateIndex) != null)
                             {
@@ -1885,12 +1885,12 @@ namespace ValidateFastaFile
 
             var proteinStartLetters = new Dictionary<string, int>();
             var startTime = DateTime.UtcNow;
-            bool showStats = false;
+            var showStats = false;
 
             var fastaFile = new FileInfo(fastaFilePathToTest);
             if (!fastaFile.Exists)
                 return;
-            long fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE;
+            var fullScanLengthBytes = 1024L * PARTS_TO_SAMPLE * KILOBYTES_PER_SAMPLE;
             long linesReadTotal = 0;
 
             if (fastaFile.Length < fullScanLengthBytes)
@@ -1900,11 +1900,11 @@ namespace ValidateFastaFile
             }
             else
             {
-                long stepSizeBytes = (long) Math.Round(fastaFile.Length / (double)PARTS_TO_SAMPLE, 0);
+                var stepSizeBytes = (long) Math.Round(fastaFile.Length / (double)PARTS_TO_SAMPLE, 0);
 
                 for (long byteOffsetStart = 0; byteOffsetStart <= fastaFile.Length; byteOffsetStart += stepSizeBytes)
                 {
-                    long linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024);
+                    var linesRead = AutoDetermineFastaProteinNameSpannerCharLength(fastaFile, terminatorSize, proteinStartLetters, byteOffsetStart, KILOBYTES_PER_SAMPLE * 1024);
 
                     if (linesRead < 0)
                     {
@@ -1928,11 +1928,11 @@ namespace ValidateFastaFile
             }
             else
             {
-                int preScanProteinCount = (from item in proteinStartLetters select item.Value).Sum();
+                var preScanProteinCount = (from item in proteinStartLetters select item.Value).Sum();
 
                 if (showStats)
                 {
-                    double percentFileProcessed = fullScanLengthBytes / (double)fastaFile.Length * 100;
+                    var percentFileProcessed = fullScanLengthBytes / (double)fastaFile.Length * 100;
 
                     ShowMessage(string.Format(
                         "  parsed {0:0}% of the file, reading {1:#,##0} lines and finding {2:#,##0} proteins",
@@ -1964,12 +1964,12 @@ namespace ValidateFastaFile
             long startOffset,
             long bytesToRead)
         {
-            long linesRead = 0L;
+            var linesRead = 0L;
 
             try
             {
-                int previousProteinLength = 0;
-                string previousProteinName = string.Empty;
+                var previousProteinLength = 0;
+                var previousProteinName = string.Empty;
 
                 if (startOffset >= fastaFile.Length)
                 {
@@ -1981,7 +1981,7 @@ namespace ValidateFastaFile
 
                 long bytesRead = 0;
 
-                bool firstLineDiscarded = startOffset == 0;
+                var firstLineDiscarded = startOffset == 0;
 
                 using (var inStream = new FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {
@@ -1991,7 +1991,7 @@ namespace ValidateFastaFile
                     {
                         while (!reader.EndOfStream)
                         {
-                            string lineIn = reader.ReadLine();
+                            var lineIn = reader.ReadLine();
                             bytesRead += terminatorSize;
                             linesRead += 1;
 
@@ -2020,7 +2020,7 @@ namespace ValidateFastaFile
 
                             // Make sure the protein name and description are valid
                             // Find the first space and/or tab
-                            int spaceIndex = GetBestSpaceIndex(lineIn);
+                            var spaceIndex = GetBestSpaceIndex(lineIn);
                             string proteinName;
 
                             if (spaceIndex > 1)
@@ -2053,8 +2053,8 @@ namespace ValidateFastaFile
                                 continue;
                             }
 
-                            int currentNameLength = proteinName.Length;
-                            int charIndex = 0;
+                            var currentNameLength = proteinName.Length;
+                            var charIndex = 0;
 
                             while (charIndex < previousProteinLength)
                             {
@@ -2072,10 +2072,10 @@ namespace ValidateFastaFile
                                 charIndex += 1;
                             }
 
-                            int charsInCommon = charIndex;
+                            var charsInCommon = charIndex;
                             if (charsInCommon > 0)
                             {
-                                string baseName = previousProteinName.Substring(0, charsInCommon);
+                                var baseName = previousProteinName.Substring(0, charsInCommon);
 
                                 if (proteinStartLetters.TryGetValue(baseName, out var matchCount))
                                 {
@@ -2120,7 +2120,7 @@ namespace ValidateFastaFile
             int charIndex;
             string extraProteinNameText;
 
-            bool multipleRefsSplitOutFromKnownAccession = false;
+            var multipleRefsSplitOutFromKnownAccession = false;
 
             // Auto-fix potential errors in the protein name
 
@@ -2247,7 +2247,7 @@ namespace ValidateFastaFile
                         // Next, replace any remaining instances of the character with an underscore
                         newProteinName = newProteinName.Replace(invalidChar, INVALID_PROTEIN_NAME_CHAR_REPLACEMENT);
 
-                    if ((proteinName ?? "") != (newProteinName ?? ""))
+                    if (proteinName != newProteinName)
                     {
                         if (newProteinName.Length >= 3)
                         {
@@ -2430,10 +2430,10 @@ namespace ValidateFastaFile
 
             int terminatorSize;
 
-            string fixedFastaFilePathTemp = string.Empty;
+            var fixedFastaFilePathTemp = string.Empty;
 
-            string cachedProteinName = string.Empty;
-            string cachedProteinDescription = string.Empty;
+            var cachedProteinName = string.Empty;
+            var cachedProteinDescription = string.Empty;
             var sbCachedProteinResidueLines = new StringBuilder(250);
             var sbCachedProteinResidues = new StringBuilder(250);
 
@@ -2529,7 +2529,7 @@ namespace ValidateFastaFile
                 // Populate htDuplicateProteinList with the protein names in proteinSeqHashInfo().AdditionalProteins
                 var duplicateProteinList = new clsNestedStringDictionary<string>(true, mProteinNameSpannerCharLength);
 
-                for (int index = 0; index <= proteinSequenceHashCount - 1; index++)
+                for (var index = 0; index <= proteinSequenceHashCount - 1; index++)
                 {
                     var proteinHashInfo = proteinSeqHashInfo[index];
 
@@ -2547,7 +2547,7 @@ namespace ValidateFastaFile
 
                     if (proteinHashInfo.AdditionalProteins.Any())
                     {
-                        foreach (string additionalProtein in proteinHashInfo.AdditionalProteins)
+                        foreach (var additionalProtein in proteinHashInfo.AdditionalProteins)
                         {
                             if (consolidateDuplicateProteinSeqsInFasta)
                             {
@@ -2705,7 +2705,7 @@ namespace ValidateFastaFile
 
         private string ConstructStatsFilePath(string outputFolderPath)
         {
-            string outFilePath = string.Empty;
+            var outFilePath = string.Empty;
 
             try
             {
@@ -2862,7 +2862,7 @@ namespace ValidateFastaFile
             string newFileName,
             eLineEndingCharacters desiredLineEndCharacterType)
         {
-            string newEndChar = "\r\n";
+            var newEndChar = "\r\n";
 
             var endCharType = DetermineLineTerminatorType(pathOfFileToFix);
 
@@ -2908,7 +2908,7 @@ namespace ValidateFastaFile
                 }
 
                 var targetFile = new FileInfo(pathOfFileToFix);
-                long fileSizeBytes = targetFile.Length;
+                var fileSizeBytes = targetFile.Length;
 
                 var reader = targetFile.OpenText();
 
@@ -2916,14 +2916,14 @@ namespace ValidateFastaFile
                 {
                     this.OnProgressUpdate("Normalizing Line Endings...", 0.0F);
 
-                    string dataLine = reader.ReadLine();
+                    var dataLine = reader.ReadLine();
                     long linesRead = 0;
                     while (dataLine != null)
                     {
                         writer.Write(dataLine);
                         writer.Write(newEndChar);
 
-                        int currentFilePos = dataLine.Length + origEndCharCount;
+                        var currentFilePos = dataLine.Length + origEndCharCount;
                         linesRead += 1;
 
                         if (linesRead % 1000 == 0)
@@ -2997,15 +2997,15 @@ namespace ValidateFastaFile
             out bool skipDuplicateProtein,
             ref bool processingDuplicateOrInvalidProtein)
         {
-            bool duplicateName = proteinNames.Contains(proteinName);
+            var duplicateName = proteinNames.Contains(proteinName);
             skipDuplicateProtein = false;
 
             if (duplicateName && mGenerateFixedFastaFile)
             {
                 if (mFixedFastaOptions.RenameProteinsWithDuplicateNames)
                 {
-                    char letterToAppend = 'b';
-                    int numberToAppend = 0;
+                    var letterToAppend = 'b';
+                    var numberToAppend = 0;
                     string newProteinName;
 
                     do
@@ -3198,8 +3198,8 @@ namespace ValidateFastaFile
         /// <remarks>Used for determining protein name</remarks>
         private int GetBestSpaceIndex(string headerLine)
         {
-            int spaceIndex = headerLine.IndexOf(' ');
-            int tabIndex = headerLine.IndexOf('\t');
+            var spaceIndex = headerLine.IndexOf(' ');
+            var tabIndex = headerLine.IndexOf('\t');
 
             if (spaceIndex == 1)
             {
@@ -3320,7 +3320,7 @@ namespace ValidateFastaFile
         {
             var fileErrors = new List<udtMsgInfoType>();
 
-            for (int i = 0; i <= mFileErrorCount - 1; i++)
+            for (var i = 0; i <= mFileErrorCount - 1; i++)
                 fileErrors.Add(mFileErrors[i]);
             return fileErrors;
         }
@@ -3374,7 +3374,7 @@ namespace ValidateFastaFile
         {
             var fileWarnings = new List<udtMsgInfoType>();
 
-            for (int i = 0; i <= mFileWarningCount - 1; i++)
+            for (var i = 0; i <= mFileWarningCount - 1; i++)
                 fileWarnings.Add(mFileWarnings[i]);
 
             return fileWarnings;
@@ -3511,11 +3511,11 @@ namespace ValidateFastaFile
 
                 var headerInfo = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
                 long proteinHashFileLines = 0;
-                string cachedHeaderLine = string.Empty;
+                var cachedHeaderLine = string.Empty;
 
                 ShowMessage("Examining pre-existing protein hash file to count the number of entries: " + Path.GetFileName(proteinHashFilePath));
                 var lastStatus = DateTime.UtcNow;
-                bool progressDotShown = false;
+                var progressDotShown = false;
 
                 using (var hashFileReader = new StreamReader(new FileStream(proteinHashFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
@@ -3525,7 +3525,7 @@ namespace ValidateFastaFile
 
                         var headerNames = cachedHeaderLine.Split('\t');
 
-                        for (int colIndex = 0; colIndex <= headerNames.Count() - 1; colIndex++)
+                        for (var colIndex = 0; colIndex <= headerNames.Count() - 1; colIndex++)
                             headerInfo.Add(headerNames[colIndex], colIndex);
 
                         proteinHashFileLines = 1;
@@ -3575,9 +3575,9 @@ namespace ValidateFastaFile
                     return false;
                 }
 
-                string baseHashFileName = Path.GetFileNameWithoutExtension(proteinHashFile.Name);
+                var baseHashFileName = Path.GetFileNameWithoutExtension(proteinHashFile.Name);
                 string sortedProteinHashSuffix;
-                string proteinHashFilenameSuffixNoExtension = Path.GetFileNameWithoutExtension(PROTEIN_HASHES_FILENAME_SUFFIX);
+                var proteinHashFilenameSuffixNoExtension = Path.GetFileNameWithoutExtension(PROTEIN_HASHES_FILENAME_SUFFIX);
 
                 if (baseHashFileName.EndsWith(proteinHashFilenameSuffixNoExtension))
                 {
@@ -3589,14 +3589,14 @@ namespace ValidateFastaFile
                     sortedProteinHashSuffix = string.Empty;
                 }
 
-                string baseDataFileName = Path.Combine(proteinHashFile.Directory.FullName, baseHashFileName);
+                var baseDataFileName = Path.Combine(proteinHashFile.Directory.FullName, baseHashFileName);
 
                 // Note: do not add sortedProteinHashFilePath to mTempFilesToDelete
-                string sortedProteinHashFilePath = baseDataFileName + sortedProteinHashSuffix + "_Sorted.tmp";
+                var sortedProteinHashFilePath = baseDataFileName + sortedProteinHashSuffix + "_Sorted.tmp";
 
                 var sortedProteinHashFile = new FileInfo(sortedProteinHashFilePath);
                 long sortedHashFileLines = 0;
-                bool sortRequired = true;
+                var sortRequired = true;
 
                 if (sortedProteinHashFile.Exists)
                 {
@@ -3609,7 +3609,7 @@ namespace ValidateFastaFile
                     {
                         if (!sortedHashFileReader.EndOfStream)
                         {
-                            string headerLine = sortedHashFileReader.ReadLine();
+                            var headerLine = sortedHashFileReader.ReadLine();
                             if (!string.Equals(headerLine, cachedHeaderLine))
                             {
                                 sortedHashFileLines = -1;
@@ -3669,7 +3669,7 @@ namespace ValidateFastaFile
                 {
                     Console.WriteLine();
                     ShowMessage("Sorting the existing protein hash file to create " + Path.GetFileName(sortedProteinHashFilePath));
-                    bool sortHashSuccess = SortFile(proteinHashFile, sequenceHashColumnIndex, sortedProteinHashFilePath);
+                    var sortHashSuccess = SortFile(proteinHashFile, sequenceHashColumnIndex, sortedProteinHashFilePath);
                     if (!sortHashSuccess)
                     {
                         return false;
@@ -3679,7 +3679,7 @@ namespace ValidateFastaFile
                 ShowMessage("Determining the best spanner length for protein names");
 
                 // Examine the protein names in the sequence hash file to determine the appropriate spanner length for the names
-                byte spannerCharLength = clsNestedStringIntList.AutoDetermineSpannerCharLength(proteinHashFile, proteinNameColumnIndex, true);
+                var spannerCharLength = clsNestedStringIntList.AutoDetermineSpannerCharLength(proteinHashFile, proteinNameColumnIndex, true);
                 const bool RAISE_EXCEPTION_IF_ADDED_DATA_NOT_SORTED = true;
 
                 // List of protein names to keep
@@ -3690,17 +3690,17 @@ namespace ValidateFastaFile
                 Console.WriteLine();
                 ShowMessage("Finding the name of the first protein for each protein hash");
 
-                string currentHash = string.Empty;
-                string currentHashSeqLength = string.Empty;
+                var currentHash = string.Empty;
+                var currentHashSeqLength = string.Empty;
                 var proteinNamesCurrentHash = new SortedSet<string>();
 
-                int linesRead = 0;
-                int proteinNamesUnsortedCount = 0;
+                var linesRead = 0;
+                var proteinNamesUnsortedCount = 0;
 
-                string proteinNamesUnsortedFilePath = baseDataFileName + "_ProteinNamesUnsorted.tmp";
-                string proteinNamesToKeepFilePath = baseDataFileName + "_ProteinNamesToKeep.tmp";
-                string uniqueProteinSeqsFilePath = baseDataFileName + "_UniqueProteinSeqs.txt";
-                string uniqueProteinSeqDuplicateFilePath = baseDataFileName + "_UniqueProteinSeqDuplicates.txt";
+                var proteinNamesUnsortedFilePath = baseDataFileName + "_ProteinNamesUnsorted.tmp";
+                var proteinNamesToKeepFilePath = baseDataFileName + "_ProteinNamesToKeep.tmp";
+                var uniqueProteinSeqsFilePath = baseDataFileName + "_UniqueProteinSeqs.txt";
+                var uniqueProteinSeqDuplicateFilePath = baseDataFileName + "_UniqueProteinSeqDuplicates.txt";
 
                 mTempFilesToDelete.Add(proteinNamesUnsortedFilePath);
                 mTempFilesToDelete.Add(proteinNamesToKeepFilePath);
@@ -3746,17 +3746,17 @@ namespace ValidateFastaFile
                         sortedHashFileReader.ReadLine();
                     }
 
-                    int currentSequenceIndex = 0;
+                    var currentSequenceIndex = 0;
 
                     while (!sortedHashFileReader.EndOfStream)
                     {
-                        string dataLine = sortedHashFileReader.ReadLine();
+                        var dataLine = sortedHashFileReader.ReadLine();
                         linesRead += 1;
 
                         var dataValues = dataLine.Split('\t');
 
-                        string proteinName = dataValues[proteinNameColumnIndex];
-                        string proteinHash = dataValues[sequenceHashColumnIndex];
+                        var proteinName = dataValues[proteinNameColumnIndex];
+                        var proteinHash = dataValues[sequenceHashColumnIndex];
 
                         proteinNamesUnsortedWriter.WriteLine(FlattenList(new List<string>() { proteinName, proteinHash }));
                         proteinNamesUnsortedCount += 1;
@@ -3825,18 +3825,18 @@ namespace ValidateFastaFile
                 Console.WriteLine();
 
                 // Sort the protein names to keep file
-                string sortedProteinNamesToKeepFilePath = baseDataFileName + "_ProteinsToKeepSorted.tmp";
+                var sortedProteinNamesToKeepFilePath = baseDataFileName + "_ProteinsToKeepSorted.tmp";
                 mTempFilesToDelete.Add(sortedProteinNamesToKeepFilePath);
 
                 ShowMessage("Sorting the protein names to keep file to create " + Path.GetFileName(sortedProteinNamesToKeepFilePath));
-                bool sortProteinNamesToKeepSuccess = SortFile(new FileInfo(proteinNamesToKeepFilePath), 0, sortedProteinNamesToKeepFilePath);
+                var sortProteinNamesToKeepSuccess = SortFile(new FileInfo(proteinNamesToKeepFilePath), 0, sortedProteinNamesToKeepFilePath);
 
                 if (!sortProteinNamesToKeepSuccess)
                 {
                     return false;
                 }
 
-                string lastProteinAdded = string.Empty;
+                var lastProteinAdded = string.Empty;
 
                 // Read the sorted protein names to keep file and cache the protein names in memory
                 using (var sortedNamesFileReader = new StreamReader(new FileStream(sortedProteinNamesToKeepFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
@@ -3846,7 +3846,7 @@ namespace ValidateFastaFile
 
                     while (!sortedNamesFileReader.EndOfStream)
                     {
-                        string proteinName = sortedNamesFileReader.ReadLine();
+                        var proteinName = sortedNamesFileReader.ReadLine();
 
                         if (string.Equals(lastProteinAdded, proteinName))
                         {
@@ -3868,19 +3868,19 @@ namespace ValidateFastaFile
                 ShowMessage("The fixed FASTA file will only contain entries for these proteins");
 
                 // Sort the protein names file so that we can check for duplicate protein names
-                string sortedProteinNamesFilePath = baseDataFileName + "_ProteinNamesSorted.tmp";
+                var sortedProteinNamesFilePath = baseDataFileName + "_ProteinNamesSorted.tmp";
                 mTempFilesToDelete.Add(sortedProteinNamesFilePath);
 
                 Console.WriteLine();
                 ShowMessage("Sorting the protein names file to create " + Path.GetFileName(sortedProteinNamesFilePath));
-                bool sortProteinNamesSuccess = SortFile(new FileInfo(proteinNamesUnsortedFilePath), 0, sortedProteinNamesFilePath);
+                var sortProteinNamesSuccess = SortFile(new FileInfo(proteinNamesUnsortedFilePath), 0, sortedProteinNamesFilePath);
 
                 if (!sortProteinNamesSuccess)
                 {
                     return false;
                 }
 
-                string proteinNameSummaryFilePath = baseDataFileName + "_ProteinNameSummary.txt";
+                var proteinNameSummaryFilePath = baseDataFileName + "_ProteinNameSummary.txt";
 
                 // We can now safely delete some files to free up disk space
                 try
@@ -3912,9 +3912,9 @@ namespace ValidateFastaFile
 
                     proteinNameSummaryWriter.WriteLine(FlattenList(proteinNameHeaderColumns));
 
-                    string lastProtein = string.Empty;
-                    bool warningShown = false;
-                    int duplicateCount = 0;
+                    var lastProtein = string.Empty;
+                    var warningShown = false;
+                    var duplicateCount = 0;
 
                     linesRead = 0;
                     lastStatus = DateTime.UtcNow;
@@ -3922,14 +3922,14 @@ namespace ValidateFastaFile
 
                     while (!sortedProteinNamesReader.EndOfStream)
                     {
-                        string dataLine = sortedProteinNamesReader.ReadLine();
+                        var dataLine = sortedProteinNamesReader.ReadLine();
                         var dataValues = dataLine.Split('\t');
 
-                        string currentProtein = dataValues[0];
-                        string sequenceHash = dataValues[1];
+                        var currentProtein = dataValues[0];
+                        var sequenceHash = dataValues[1];
 
-                        bool firstProteinForHash = preloadedProteinNamesToKeep.Contains(currentProtein);
-                        bool duplicateProtein = false;
+                        var firstProteinForHash = preloadedProteinNamesToKeep.Contains(currentProtein);
+                        var duplicateProtein = false;
 
                         if (string.Equals(lastProtein, currentProtein))
                         {
@@ -4461,7 +4461,7 @@ namespace ValidateFastaFile
 
                         if (!string.IsNullOrEmpty(ExistingProteinHashFile))
                         {
-                            bool loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, out preloadedProteinNamesToKeep);
+                            var loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, out preloadedProteinNamesToKeep);
                             if (!loadSuccess)
                             {
                                 return false;
@@ -4474,7 +4474,7 @@ namespace ValidateFastaFile
                             var ioFile = new FileInfo(inputFilePath);
                             var inputFilePathFull = ioFile.FullName;
 
-                            bool success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep);
+                            var success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep);
 
                             if (success)
                             {
@@ -4592,7 +4592,7 @@ namespace ValidateFastaFile
                     }
 
                     var index = 0;
-                    int proteinResidueCount = sbCurrentResidues.Length;
+                    var proteinResidueCount = sbCurrentResidues.Length;
                     while (index < sbCurrentResidues.Length)
                     {
                         var length = Math.Min(wrapLength, proteinResidueCount - index);
@@ -4712,7 +4712,7 @@ namespace ValidateFastaFile
             // Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
             // Note: even if RuleCount = 0, this function will return True
 
-            bool success = false;
+            var success = false;
 
             var ruleCount = settingsFile.GetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, -1);
 
@@ -5102,7 +5102,7 @@ namespace ValidateFastaFile
                             proteinName = string.Copy(fileError.ProteinName);
                         }
 
-                        string messageDescription = LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo);
+                        var messageDescription = LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo);
 
                         ReportResultAddEntry(
                             outputOptions, eMsgTypeConstants.ErrorMsg,
@@ -5157,9 +5157,9 @@ namespace ValidateFastaFile
                     "Summary line",
                     mProteinCount.ToString() + " proteins, " + mResidueCount.ToString() + " residues, " + (fastaFile.Length / 1024.0).ToString("0") + " KB");
 
-                if (outputToStatsFile && outputOptions.OutFile != null)
+                if (outputToStatsFile)
                 {
-                    outputOptions.OutFile.Close();
+                    outputOptions.OutFile?.Close();
                 }
             }
             catch (Exception ex)
@@ -5207,7 +5207,7 @@ namespace ValidateFastaFile
                 dataColumns.Add(context);
             }
 
-            string message = string.Join(outputOptions.SepChar, dataColumns);
+            var message = string.Join(outputOptions.SepChar, dataColumns);
 
             if (outputOptions.OutputToStatsFile)
             {
@@ -5384,7 +5384,7 @@ namespace ValidateFastaFile
         {
             if (rules != null)
             {
-                for (int index = 0; index <= rules.Count - 1; index++)
+                for (var index = 0; index <= rules.Count - 1; index++)
                 {
                     if (rules[index].CustomRuleID == errorMessageCode)
                     {
@@ -5417,14 +5417,14 @@ namespace ValidateFastaFile
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\t", true, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY);
 
             // Protein Name error characters
-            string allowedChars = @"A-Za-z0-9.\-_:,\|/()\[\]\=\+#";
+            var allowedChars = @"A-Za-z0-9.\-_:,\|/()\[\]\=\+#";
 
             if (mAllowAllSymbolsInProteinNames)
             {
                 allowedChars += @"!@$%^&*<>?,\\";
             }
 
-            string allowedCharsMatchSpec = "[^" + allowedChars + "]";
+            var allowedCharsMatchSpec = "[^" + allowedChars + "]";
 
             SetRule(RuleTypes.ProteinName, allowedCharsMatchSpec, true, "Protein name contains invalid characters", DEFAULT_ERROR_SEVERITY, true);
 
@@ -5604,7 +5604,7 @@ namespace ValidateFastaFile
             RegisterEvents(sortUtility);
             sortUtility.ErrorEvent += mSortUtility_ErrorEvent;
 
-            bool success = sortUtility.SortFile(proteinHashFile.FullName, sortedFilePath);
+            var success = sortUtility.SortFile(proteinHashFile.FullName, sortedFilePath);
 
             if (success)
             {
@@ -5636,7 +5636,7 @@ namespace ValidateFastaFile
 
             // Make sure the protein name and description are valid
             // Find the first space and/or tab
-            int spaceIndex = GetBestSpaceIndex(headerLine);
+            var spaceIndex = GetBestSpaceIndex(headerLine);
 
             // At this point, spaceIndex will contain the location of the space or tab separating the protein name and description
             // However, if the space or tab is directly after the > sign, then we cannot continue (if this is the case, then spaceIndex will be 1)
@@ -5680,7 +5680,7 @@ namespace ValidateFastaFile
                     {
                         fsInFile.Seek(-1, SeekOrigin.End);
 
-                        int lastByte = fsInFile.ReadByte();
+                        var lastByte = fsInFile.ReadByte();
 
                         if (lastByte == 10 || lastByte == 13)
                         {
@@ -5732,9 +5732,7 @@ namespace ValidateFastaFile
             int lineCountRead,
             clsNestedStringDictionary<int> proteinsWritten)
         {
-            string masterProteinName = string.Empty;
-
-            string lineOut = string.Empty;
+            var lineOut = string.Empty;
 
             bool keepProtein;
 
@@ -5780,7 +5778,7 @@ namespace ValidateFastaFile
                         // Construct a list of the duplicate protein names
 
                         additionalProteinNames.Clear();
-                        foreach (string additionalProtein in proteinSeqHashInfo[seqIndex].AdditionalProteins)
+                        foreach (var additionalProtein in proteinSeqHashInfo[seqIndex].AdditionalProteins)
                         {
                             // Add the additional protein name if it is not of the form "BaseName-b", "BaseName-c", etc.
                             var skipDupProtein = false;
@@ -5789,7 +5787,7 @@ namespace ValidateFastaFile
                             {
                                 skipDupProtein = true;
                             }
-                            else if ((additionalProtein.ToLower() ?? "") == (cachedProteinName.ToLower() ?? ""))
+                            else if (additionalProtein.ToLower() == cachedProteinName.ToLower())
                             {
                                 // Names match; do not add to the list
                                 skipDupProtein = true;
@@ -5804,7 +5802,7 @@ namespace ValidateFastaFile
 
                                 if (reMatch.Success)
                                 {
-                                    if ((cachedProteinName.ToLower() ?? "") == (reMatch.Groups[1].Value.ToLower() ?? ""))
+                                    if (cachedProteinName.ToLower() == reMatch.Groups[1].Value.ToLower())
                                     {
                                         // Base names match; do not add to the list
                                         // For example, ProteinX and ProteinX-b
@@ -5823,7 +5821,7 @@ namespace ValidateFastaFile
                         {
                             // Append the duplicate protein names to the description
                             // However, do not let the description get over 7995 characters in length
-                            string updatedDescription = cachedProteinDescription + "; Duplicate proteins: " + FlattenArray(additionalProteinNames, ',');
+                            var updatedDescription = cachedProteinDescription + "; Duplicate proteins: " + FlattenArray(additionalProteinNames, ',');
                             if (updatedDescription.Length > MAX_PROTEIN_DESCRIPTION_LENGTH)
                             {
                                 updatedDescription = updatedDescription.Substring(0, MAX_PROTEIN_DESCRIPTION_LENGTH - 3) + "...";
@@ -5840,7 +5838,7 @@ namespace ValidateFastaFile
                 mFixedFastaStats.DuplicateSequenceProteinsSkipped += 1;
 
                 string masterProteinInfo;
-                if (!duplicateProteinList.TryGetValue(cachedProteinName, out masterProteinName))
+                if (!duplicateProteinList.TryGetValue(cachedProteinName, out var masterProteinName))
                 {
                     masterProteinInfo = "same as ??";
                 }
@@ -5878,7 +5876,7 @@ namespace ValidateFastaFile
                 throw new Exception("proteinNames is empty in WriteCachedProteinHashMetadata; this indicates a logic error");
             }
 
-            string firstProtein = proteinNames.ElementAtOrDefault(0);
+            var firstProtein = proteinNames.ElementAtOrDefault(0);
             string duplicateProteinList;
 
             // Append the first protein name to the _ProteinsToKeep.tmp file
@@ -5892,7 +5890,7 @@ namespace ValidateFastaFile
             {
                 var duplicateProteins = new StringBuilder();
 
-                for (int proteinIndex = 1; proteinIndex <= proteinNames.Count - 1; proteinIndex++)
+                for (var proteinIndex = 1; proteinIndex <= proteinNames.Count - 1; proteinIndex++)
                 {
                     if (duplicateProteins.Length > 0)
                     {

@@ -152,7 +152,7 @@ namespace ValidateFastaFile
             string extraInfo,
             eValidationMessageTypes messageType)
         {
-            string msgString = LookupMessageDescription(errorMessageCode, extraInfo);
+            var msgString = LookupMessageDescription(errorMessageCode, extraInfo);
 
             RecordFastaFileProblemToHash(lineNumber, proteinName, msgString, extraInfo, messageType);
         }
@@ -214,7 +214,7 @@ namespace ValidateFastaFile
         /// <returns>True if the file was successfully processed (even if it contains errors)</returns>
         public bool StartValidateFASTAFile(string filePath)
         {
-            bool success = SimpleProcessFile(filePath);
+            var success = SimpleProcessFile(filePath);
 
             if (success)
             {
@@ -237,9 +237,9 @@ namespace ValidateFastaFile
 
                     foreach (var item in errors)
                     {
-                        string errorMessage = LookupMessageDescription(item.MessageCode, item.ExtraInfo);
+                        var errorMessage = LookupMessageDescription(item.MessageCode, item.ExtraInfo);
 
-                        bool ignoreError = false;
+                        var ignoreError = false;
                         switch (errorMessage)
                         {
                             case MESSAGE_TEXT_ASTERISK_IN_RESIDUES:

@@ -207,7 +207,7 @@ namespace ValidateFastaFile
         /// <remarks></remarks>
         public string InitializePerfCounters()
         {
-            string msgErrors = string.Empty;
+            var msgErrors = string.Empty;
 
             try
             {
@@ -279,7 +279,7 @@ namespace ValidateFastaFile
                     logFilePath = string.Copy(logFileName);
                 }
 
-                bool writeHeader = !File.Exists(logFilePath);
+                var writeHeader = !File.Exists(logFilePath);
 
                 using (var writer = new StreamWriter(new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read)))
                 {

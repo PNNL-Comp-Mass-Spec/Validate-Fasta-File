@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using PRISM;
 
@@ -234,7 +233,6 @@ namespace ValidateFastaFile
         {
             // Returns True if no problems; otherwise, returns false
 
-            string value = string.Empty;
             var validParameters = new List<string>()
             {
                 "I", "O", "P", "C",
@@ -256,6 +254,7 @@ namespace ValidateFastaFile
                 }
                 else
                 {
+                    string value;
                     // Query commandLineParser to see if various parameters are present
                     if (commandLineParser.RetrieveValueForParameter("I", out value))
                     {
@@ -338,7 +337,7 @@ namespace ValidateFastaFile
         {
             try
             {
-                string exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
+                var exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
 
                 Console.WriteLine("== Overview ==");
                 Console.WriteLine();
