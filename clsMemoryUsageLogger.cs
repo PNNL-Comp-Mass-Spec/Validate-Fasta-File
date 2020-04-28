@@ -211,8 +211,7 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterFreeMemory = new PerformanceCounter("Memory", "Available MBytes");
-                m_PerfCounterFreeMemory.ReadOnly = true;
+                m_PerfCounterFreeMemory = new PerformanceCounter("Memory", "Available MBytes") {ReadOnly = true};
             }
             catch (Exception ex)
             {
@@ -223,8 +222,7 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterPoolPagedBytes = new PerformanceCounter("Memory", "Pool Paged Bytes");
-                m_PerfCounterPoolPagedBytes.ReadOnly = true;
+                m_PerfCounterPoolPagedBytes = new PerformanceCounter("Memory", "Pool Paged Bytes") {ReadOnly = true};
             }
             catch (Exception ex)
             {
@@ -235,8 +233,8 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterPoolNonpagedBytes = new PerformanceCounter("Memory", "Pool NonPaged Bytes");
-                m_PerfCounterPoolNonpagedBytes.ReadOnly = true;
+                m_PerfCounterPoolNonpagedBytes =
+                    new PerformanceCounter("Memory", "Pool NonPaged Bytes") {ReadOnly = true};
             }
             catch (Exception ex)
             {

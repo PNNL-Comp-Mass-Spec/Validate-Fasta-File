@@ -108,7 +108,7 @@ namespace ValidateFastaFile
 
                 if (proceed && !commandLineParser.NeedToShowHelp && mCreateModelXMLParameterFile)
                 {
-                    if (mParameterFilePath == null || mParameterFilePath.Length == 0)
+                    if (string.IsNullOrEmpty(mParameterFilePath))
                     {
                         mParameterFilePath = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location) + "_ModelSettings.xml";
                     }

@@ -70,15 +70,8 @@ namespace ValidateFastaFile
 
         public void ClearErrorList()
         {
-            if (FullErrorCollection != null)
-            {
-                FullErrorCollection.Clear();
-            }
-
-            if (FullWarningCollection != null)
-            {
-                FullWarningCollection.Clear();
-            }
+            FullErrorCollection?.Clear();
+            FullWarningCollection?.Clear();
         }
 
         /// <summary>
