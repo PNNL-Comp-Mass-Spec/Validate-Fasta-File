@@ -945,11 +945,6 @@ namespace ValidateFastaFile
                 ResetStructures();
                 var proteinSeqHashInfo = new clsProteinHashInfo[1];
 
-                var headerLineRuleDetails = new udtRuleDefinitionExtendedType[2];
-                var proteinNameRuleDetails = new udtRuleDefinitionExtendedType[2];
-                var proteinDescriptionRuleDetails = new udtRuleDefinitionExtendedType[2];
-                var proteinSequenceRuleDetails = new udtRuleDefinitionExtendedType[2];
-
                 // This is a dictionary of dictionaries, with one dictionary for each letter or number that a SHA-1 hash could start with
                 // This dictionary of dictionaries provides a quick lookup for existing protein hashes
                 // This dictionary is not used if preloadedProteinNamesToKeep contains data
@@ -1061,10 +1056,10 @@ namespace ValidateFastaFile
                 }
 
                 // Initialize the rule details UDTs, which contain a RegEx object for each rule
-                InitializeRuleDetails(ref mHeaderLineRules, ref headerLineRuleDetails);
-                InitializeRuleDetails(ref mProteinNameRules, ref proteinNameRuleDetails);
-                InitializeRuleDetails(ref mProteinDescriptionRules, ref proteinDescriptionRuleDetails);
-                InitializeRuleDetails(ref mProteinSequenceRules, ref proteinSequenceRuleDetails);
+                InitializeRuleDetails(mHeaderLineRules, out var headerLineRuleDetails);
+                InitializeRuleDetails(mProteinNameRules, out var proteinNameRuleDetails);
+                InitializeRuleDetails(mProteinDescriptionRules, out var proteinDescriptionRuleDetails);
+                InitializeRuleDetails(mProteinSequenceRules, out var proteinSequenceRuleDetails);
 
                 // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
                 var terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck);
@@ -1684,7 +1679,7 @@ namespace ValidateFastaFile
                         // Optionally, check for duplicate protein names
                         if (mCheckForDuplicateProteinNames)
                         {
-                            proteinName = ExamineProteinName(ref proteinName, proteinNames, out skipDuplicateProtein, ref processingDuplicateOrInvalidProtein);
+                            proteinName = ExamineProteinName(ref proteinName, proteinNames, out skipDuplicateProtein, out processingDuplicateOrInvalidProtein);
 
                             if (skipDuplicateProtein)
                             {
@@ -2351,21 +2346,21 @@ namespace ValidateFastaFile
             switch (ruleType)
             {
                 case RuleTypes.HeaderLine:
-                    ClearRulesDataStructure(ref mHeaderLineRules);
+                    ClearRulesDataStructure(out mHeaderLineRules);
                     break;
                 case RuleTypes.ProteinDescription:
-                    ClearRulesDataStructure(ref mProteinDescriptionRules);
+                    ClearRulesDataStructure(out mProteinDescriptionRules);
                     break;
                 case RuleTypes.ProteinName:
-                    ClearRulesDataStructure(ref mProteinNameRules);
+                    ClearRulesDataStructure(out mProteinNameRules);
                     break;
                 case RuleTypes.ProteinSequence:
-                    ClearRulesDataStructure(ref mProteinSequenceRules);
+                    ClearRulesDataStructure(out mProteinSequenceRules);
                     break;
             }
         }
 
-        private void ClearRulesDataStructure(ref udtRuleDefinitionType[] rules)
+        private void ClearRulesDataStructure(out udtRuleDefinitionType[] rules)
         {
             rules = new udtRuleDefinitionType[0];
         }
@@ -2995,7 +2990,7 @@ namespace ValidateFastaFile
             ref string proteinName,
             ISet<string> proteinNames,
             out bool skipDuplicateProtein,
-            ref bool processingDuplicateOrInvalidProtein)
+            out bool processingDuplicateOrInvalidProtein)
         {
             var duplicateName = proteinNames.Contains(proteinName);
             skipDuplicateProtein = false;
@@ -3457,8 +3452,8 @@ namespace ValidateFastaFile
         }
 
         private void InitializeRuleDetails(
-            ref udtRuleDefinitionType[] ruleDefinitions,
-            ref udtRuleDefinitionExtendedType[] ruleDetails)
+            udtRuleDefinitionType[] ruleDefinitions,
+            out udtRuleDefinitionExtendedType[] ruleDetails)
         {
             if (ruleDefinitions == null || ruleDefinitions.Length == 0)
             {
@@ -3472,6 +3467,7 @@ namespace ValidateFastaFile
                 {
                     try
                     {
+                        ruleDetails[index] = new udtRuleDefinitionExtendedType();
                         ruleDetails[index].RuleDefinition = ruleDefinitions[index];
                         ruleDetails[index].reRule = new Regex(
                             ruleDetails[index].RuleDefinition.MatchRegEx,
@@ -4647,7 +4643,7 @@ namespace ValidateFastaFile
                         {
                             // Value not yet present; add it
                             CachedSequenceHashInfoUpdateAppend(
-                                ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                                proteinSequenceHashCount, ref proteinSeqHashInfo,
                                 computedHash, sbCurrentResidues, proteinName);
 
                             proteinSequenceHashes.Add(computedHash, proteinSequenceHashCount);
@@ -4677,7 +4673,7 @@ namespace ValidateFastaFile
         }
 
         private void CachedSequenceHashInfoUpdateAppend(
-            ref int proteinSequenceHashCount,
+            int proteinSequenceHashCount,
             ref clsProteinHashInfo[] proteinSeqHashInfo,
             string computedHash,
             StringBuilder sbCurrentResidues,
@@ -4718,14 +4714,16 @@ namespace ValidateFastaFile
 
             if (ruleCount >= 0)
             {
-                ClearRulesDataStructure(ref rules);
+                ClearRulesDataStructure(out rules);
 
                 for (var ruleNumber = 1; ruleNumber <= ruleCount; ruleNumber++)
                 {
                     var ruleBase = "Rule" + ruleNumber.ToString();
 
-                    udtRuleDefinitionType newRule;
-                    newRule.MatchRegEx = settingsFile.GetParam(sectionName, ruleBase + "MatchRegEx", string.Empty);
+                    var newRule = new udtRuleDefinitionType
+                    {
+                        MatchRegEx = settingsFile.GetParam(sectionName, ruleBase + "MatchRegEx", string.Empty)
+                    };
 
                     if (newRule.MatchRegEx.Length > 0)
                     {
