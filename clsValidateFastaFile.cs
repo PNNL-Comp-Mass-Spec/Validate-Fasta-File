@@ -813,7 +813,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameInvalidCharsToRemove
         {
-            get => CharArrayToString(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
+            get => new string(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -832,7 +832,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameFirstRefSepChars
         {
-            get => CharArrayToString(mProteinNameFirstRefSepChars);
+            get => new string(mProteinNameFirstRefSepChars);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -851,7 +851,7 @@ namespace ValidateFastaFile
 
         public string ProteinNameSubsequentRefSepChars
         {
-            get => CharArrayToString(mProteinNameSubsequentRefSepChars);
+            get => new string(mProteinNameSubsequentRefSepChars);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -870,7 +870,7 @@ namespace ValidateFastaFile
 
         public string LongProteinNameSplitChars
         {
-            get => CharArrayToString(mFixedFastaOptions.LongProteinNameSplitChars);
+            get => new string(mFixedFastaOptions.LongProteinNameSplitChars);
             set
             {
                 if (value != null)
@@ -1022,8 +1022,8 @@ namespace ValidateFastaFile
                 // or bob|845832 from  bob|845832;ref|384923
                 reProteinNameTruncation.reMatchGeneric =
                     new Regex(@"^(\w{2,}[" +
-                        CharArrayToString(mProteinNameFirstRefSepChars) + @"][\w\d._]{2,})[" +
-                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "](.+)",
+                        new string(mProteinNameFirstRefSepChars) + @"][\w\d._]{2,})[" +
+                        new string(mProteinNameSubsequentRefSepChars) + "](.+)",
                         RegexOptions.Singleline | RegexOptions.Compiled);
                 // The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
                 reProteinNameTruncation.reMatchJGIBaseAndID =
@@ -1033,9 +1033,9 @@ namespace ValidateFastaFile
                 // Note that this RegEx contains a group with captured text:
                 reProteinNameTruncation.reMatchDoubleBarOrColonAndBar =
                     new Regex("[" +
-                        CharArrayToString(mProteinNameFirstRefSepChars) + "][^" +
-                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "]*([" +
-                        CharArrayToString(mProteinNameSubsequentRefSepChars) + "])",
+                        new string(mProteinNameFirstRefSepChars) + "][^" +
+                        new string(mProteinNameSubsequentRefSepChars) + "]*([" +
+                        new string(mProteinNameSubsequentRefSepChars) + "])",
                         RegexOptions.Singleline | RegexOptions.Compiled);
 
                 // Non-letter characters in residues
@@ -2324,11 +2324,6 @@ namespace ValidateFastaFile
             {
                 return "0";
             }
-        }
-
-        private string CharArrayToString(IEnumerable<char> charArray)
-        {
-            return string.Join("", charArray);
         }
 
         private void ClearAllRules()
