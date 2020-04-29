@@ -132,27 +132,61 @@ namespace ValidateFastaFile
             DuplicateProteinNameRetained = 21
         }
 
-        public struct udtMsgInfoType
+        public class MsgInfo : IComparable<MsgInfo>
         {
-            public int LineNumber;
-            public int ColNumber;
-            public string ProteinName;
-            public int MessageCode;
-            public string ExtraInfo;
-            public string Context;
+            public int LineNumber { get; }
+            public int ColNumber { get; }
+            public string ProteinName { get; }
+            public int MessageCode { get; }
+            public string ExtraInfo { get; }
+            public string Context { get; }
+
+            public MsgInfo(int lineNumber, int colNumber, string proteinName, int messageCode, string extraInfo, string context)
+            {
+                LineNumber = lineNumber;
+                ColNumber = colNumber;
+                ProteinName = proteinName;
+                MessageCode = messageCode;
+                ExtraInfo = extraInfo;
+                Context = context;
+            }
+
+            public MsgInfo()
+            {
+                ProteinName = string.Empty;
+                ExtraInfo = string.Empty;
+                Context = string.Empty;
+            }
 
             public override string ToString()
             {
                 return string.Format("Line {0}, protein {1}, code {2}: {3}", LineNumber, ProteinName, MessageCode, ExtraInfo);
             }
+
+            public int CompareTo(MsgInfo other)
+            {
+                if (ReferenceEquals(this, other)) return 0;
+                if (ReferenceEquals(null, other)) return 1;
+                var messageCodeComparison = MessageCode.CompareTo(other.MessageCode);
+                if (messageCodeComparison != 0) return messageCodeComparison;
+                var lineNumberComparison = LineNumber.CompareTo(other.LineNumber);
+                if (lineNumberComparison != 0) return lineNumberComparison;
+                return ColNumber.CompareTo(other.ColNumber);
+            }
         }
 
-        public struct udtOutputOptionsType
+        public class OutputOptions
         {
-            public string SourceFile;
-            public bool OutputToStatsFile;
-            public StreamWriter OutFile;
-            public string SepChar;
+            public string SourceFile { get; set; }
+            public bool OutputToStatsFile { get; }
+            public StreamWriter OutFile { get; set; }
+            public string SepChar { get; set; }
+
+            public OutputOptions(bool outputToStatsFile, string sepChar)
+            {
+                OutputToStatsFile = outputToStatsFile;
+                SepChar = sepChar;
+            }
 
             public override string ToString()
             {
@@ -240,11 +274,16 @@ namespace ValidateFastaFile
 
         #region "Structures"
 
-        private struct udtErrorStatsType
+        private class ErrorStats
         {
-            public int MessageCode;               // Note: Custom rules start with message code CUSTOM_RULE_ID_START
-            public int CountSpecified;
-            public int CountUnspecified;
+            public int MessageCode { get; }          // Note: Custom rules start with message code CUSTOM_RULE_ID_START
+            public int CountSpecified { get; set; }
+            public int CountUnspecified { get; set; }
+
+            public ErrorStats(int messageCode)
+            {
+                MessageCode = messageCode;
+            }
 
             public override string ToString()
             {
@@ -252,21 +291,46 @@ namespace ValidateFastaFile
             }
         }
 
-        private struct udtItemSummaryIndexedType
+        private class MsgInfosAndSummary
         {
-            public int ErrorStatsCount;
-            public udtErrorStatsType[] ErrorStats;        // Note: This array ranges from 0 to .ErrorStatsCount since it is Dimmed with extra space
-            public Dictionary<int, int> MessageCodeToArrayIndex;
+            public List<MsgInfo> Messages { get; } = new List<MsgInfo>(10); // Initially reserve space for 10 errors
+            public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new Dictionary<int, ErrorStats>();
+
+            public MsgInfo this[int index] => Messages[index];
+
+            public int Count => Messages.Count;
+
+            public void Reset()
+            {
+                Messages.Clear();
+                Messages.Capacity = 10; // Initially reserve space for 10 errors
+                MessageCodeToErrorStats.Clear();
+            }
+
+            public int ComputeTotalSpecifiedCount()
+            {
+                return MessageCodeToErrorStats.Values.Sum(stat => stat.CountSpecified);
+            }
+
+            public int ComputeTotalUnspecifiedCount()
+            {
+                return MessageCodeToErrorStats.Values.Sum(stat => stat.CountUnspecified);
+            }
         }
 
-        public struct udtRuleDefinitionType
+        private class RuleDefinition
         {
-            public string MatchRegEx;
-            public bool MatchIndicatesProblem;        // True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
-            public string MessageWhenProblem;         // Message to display if a problem is present
-            public short Severity;                    // 0 is lowest severity, 9 is highest severity; value >= 5 means error
-            public bool DisplayMatchAsExtraInfo;      // If true, then the matching text is stored as the context info
-            public int CustomRuleID;                  // This value is auto-assigned
+            public string MatchRegEx { get; }
+            public bool MatchIndicatesProblem { get; set; }        // True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
+            public string MessageWhenProblem { get; set; }         // Message to display if a problem is present
+            public short Severity { get; set; }                    // 0 is lowest severity, 9 is highest severity; value >= 5 means error
+            public bool DisplayMatchAsExtraInfo { get; set; }      // If true, then the matching text is stored as the context info
+            public int CustomRuleID { get; set; }                  // This value is auto-assigned
+
+            public RuleDefinition(string matchRegEx)
+            {
+                MatchRegEx = matchRegEx;
+            }
 
             public override string ToString()
             {
@@ -274,13 +338,19 @@ namespace ValidateFastaFile
             }
         }
 
-        private struct udtRuleDefinitionExtendedType
+        private class RuleDefinitionExtended
         {
-            public udtRuleDefinitionType RuleDefinition;
-            public Regex reRule;
+            public RuleDefinition RuleDefinition { get; }
+            public Regex reRule { get; }
 
-            // ReSharper disable once NotAccessedField.Local
-            public bool Valid;
+            // ReSharper disable once UnusedAutoPropertyAccessor.Local
+            public bool Valid { get; set; }
+
+            public RuleDefinitionExtended(RuleDefinition ruleDefinition, Regex regexRule)
+            {
+                RuleDefinition = ruleDefinition;
+                reRule = regexRule;
+            }
 
             public override string ToString()
             {
@@ -288,40 +358,153 @@ namespace ValidateFastaFile
             }
         }
 
-        private struct udtFixedFastaOptionsType
+        private class FixedFastaOptions
         {
-            public bool SplitOutMultipleRefsInProteinName;
-            public bool SplitOutMultipleRefsForKnownAccession;
-            public char[] LongProteinNameSplitChars;
-            public char[] ProteinNameInvalidCharsToRemove;
-            public bool RenameProteinsWithDuplicateNames;
-            public bool KeepDuplicateNamedProteinsUnlessMatchingSequence;      // Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true
-            public bool ConsolidateProteinsWithDuplicateSeqs;
-            public bool ConsolidateDupsIgnoreILDiff;
-            public bool TruncateLongProteinNames;
-            public bool WrapLongResidueLines;
-            public bool RemoveInvalidResidues;
+            public bool SplitOutMultipleRefsInProteinName { get; set; }
+            public bool SplitOutMultipleRefsForKnownAccession { get; set; }
+            public char[] LongProteinNameSplitChars { get; set; }
+            public char[] ProteinNameInvalidCharsToRemove { get; set; }
+            public bool RenameProteinsWithDuplicateNames { get; set; }
+            public bool KeepDuplicateNamedProteinsUnlessMatchingSequence { get; set; }      // Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true
+            public bool ConsolidateProteinsWithDuplicateSeqs { get; set; }
+            public bool ConsolidateDupsIgnoreILDiff { get; set; }
+            public bool TruncateLongProteinNames { get; set; }
+            public bool WrapLongResidueLines { get; set; }
+            public bool RemoveInvalidResidues { get; set; }
+
+            public FixedFastaOptions()
+            {
+                LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
+                ProteinNameInvalidCharsToRemove = new char[] { };          // Default to an empty character array
+            }
         }
 
-        private struct udtFixedFastaStatsType
+        private class FixedFastaStats
         {
-            public int TruncatedProteinNameCount;
-            public int UpdatedResidueLines;
-            public int ProteinNamesInvalidCharsReplaced;
-            public int ProteinNamesMultipleRefsRemoved;
-            public int DuplicateNameProteinsSkipped;
-            public int DuplicateNameProteinsRenamed;
-            public int DuplicateSequenceProteinsSkipped;
+            public int TruncatedProteinNameCount { get; set; }
+            public int UpdatedResidueLines { get; set; }
+            public int ProteinNamesInvalidCharsReplaced { get; set; }
+            public int ProteinNamesMultipleRefsRemoved { get; set; }
+            public int DuplicateNameProteinsSkipped { get; set; }
+            public int DuplicateNameProteinsRenamed { get; set; }
+            public int DuplicateSequenceProteinsSkipped { get; set; }
+
+            public FixedFastaStats()
+            {
+                Reset();
+            }
+
+            public void Reset()
+            {
+                TruncatedProteinNameCount = 0;
+                UpdatedResidueLines = 0;
+                ProteinNamesInvalidCharsReplaced = 0;
+                ProteinNamesMultipleRefsRemoved = 0;
+                DuplicateNameProteinsSkipped = 0;
+                DuplicateNameProteinsRenamed = 0;
+                DuplicateSequenceProteinsSkipped = 0;
+            }
+
+            public int GetStat(FixedFASTAFileValues valueType)
+            {
+                switch (valueType)
+                {
+                    case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount:
+                        return DuplicateNameProteinsSkipped;
+                    case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced:
+                        return ProteinNamesInvalidCharsReplaced;
+                    case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved:
+                        return ProteinNamesMultipleRefsRemoved;
+                    case FixedFASTAFileValues.TruncatedProteinNameCount:
+                        return TruncatedProteinNameCount;
+                    case FixedFASTAFileValues.UpdatedResidueLines:
+                        return UpdatedResidueLines;
+                    case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount:
+                        return DuplicateNameProteinsRenamed;
+                    case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount:
+                        return DuplicateSequenceProteinsSkipped;
+                    default:
+                        return 0;
+                }
+            }
         }
 
-        private struct udtProteinNameTruncationRegex
+        private class ProteinNameTruncationRegex
         {
-            public Regex reMatchIPI;
-            public Regex reMatchGI;
-            public Regex reMatchJGI;
-            public Regex reMatchJGIBaseAndID;
-            public Regex reMatchGeneric;
-            public Regex reMatchDoubleBarOrColonAndBar;
+            /// <summary>
+            /// Extracts IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934 <br />
+            /// Second matching group contains everything after the first vertical bar
+            /// </summary>
+            public Regex reMatchIPI { get; }
+
+            /// <summary>
+            /// Extracts gi|169602219 from gi|169602219|ref|XP_001794531.1| <br />
+            /// Second matching group contains everything after the second vertical bar
+            /// </summary>
+            public Regex reMatchGI { get; }
+
+            /// <summary>
+            /// Extracts jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830 <br />
+            /// Second matching group contains everything after the third vertical bar
+            /// </summary>
+            public Regex reMatchJGI { get; }
+
+            /// <summary>
+            /// Extracts bob|234384 from bob|234384|ref|483293, or bob|845832 from bob|845832;ref|384923 <br />
+            /// Second matching group contains everything after the separator following the first matched group
+            /// </summary>
+            public Regex reMatchGeneric { get; }
+
+            /// <summary>
+            /// Matches jgi|Batde5|23435 ; it requires that there be a number after the second bar <br />
+            /// Contains no matching groups
+            /// </summary>
+            public Regex reMatchJGIBaseAndID { get; }
+
+            /// <summary>
+            /// Extracts the separator set following the first separator in the string
+            /// </summary>
+            public Regex reMatchDoubleBarOrColonAndBar { get; }
+
+            public ProteinNameTruncationRegex(char[] proteinNameFirstRefSepChars, char[] proteinNameSubsequentRefSepChars)
+            {
+                // Note that each of these RegEx tests contain two groups with captured text:
+
+                // The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
+                reMatchIPI =
+                    new Regex(@"^(IPI:IPI[\w.]{2,})\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
+                reMatchGI =
+                    new Regex(@"^(gi\|\d+)\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
+                reMatchJGI =
+                    new Regex(@"^(jgi\|[^|]+\|[^|]+)\|(.+)",
+                    RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // The following will extract bob|234384 from  bob|234384|ref|483293
+                // or bob|845832 from  bob|845832;ref|384923
+                reMatchGeneric =
+                    new Regex(@"^(\w{2,}[" +
+                        new string(proteinNameFirstRefSepChars) + @"][\w\d._]{2,})[" +
+                        new string(proteinNameSubsequentRefSepChars) + "](.+)",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
+                // The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
+                reMatchJGIBaseAndID =
+                    new Regex(@"^jgi\|[^|]+\|\d+",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
+
+                // Note that this RegEx contains a group with captured text:
+                reMatchDoubleBarOrColonAndBar =
+                    new Regex("[" +
+                        new string(proteinNameFirstRefSepChars) + "][^" +
+                        new string(proteinNameSubsequentRefSepChars) + "]*([" +
+                        new string(proteinNameSubsequentRefSepChars) + "])",
+                        RegexOptions.Singleline | RegexOptions.Compiled);
+            }
         }
 
         #endregion
@@ -333,26 +516,15 @@ namespace ValidateFastaFile
         /// </summary>
         /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
         protected string mFastaFilePath;
+        private readonly FixedFastaStats mFixedFastaStats = new FixedFastaStats();
 
-        private int mLineCount;
-        private int mProteinCount;
-        private long mResidueCount;
+        private readonly MsgInfosAndSummary mFileErrors = new MsgInfosAndSummary();
+        private readonly MsgInfosAndSummary mFileWarnings = new MsgInfosAndSummary();
 
-        private udtFixedFastaStatsType mFixedFastaStats;
-
-        private int mFileErrorCount;
-        private udtMsgInfoType[] mFileErrors;
-        private udtItemSummaryIndexedType mFileErrorStats;
-
-        private int mFileWarningCount;
-
-        private udtMsgInfoType[] mFileWarnings;
-        private udtItemSummaryIndexedType mFileWarningStats;
-
-        private udtRuleDefinitionType[] mHeaderLineRules;
-        private udtRuleDefinitionType[] mProteinNameRules;
-        private udtRuleDefinitionType[] mProteinDescriptionRules;
-        private udtRuleDefinitionType[] mProteinSequenceRules;
+        private readonly List<RuleDefinition> mHeaderLineRules = new List<RuleDefinition>();
+        private readonly List<RuleDefinition> mProteinNameRules = new List<RuleDefinition>();
+        private readonly List<RuleDefinition> mProteinDescriptionRules = new List<RuleDefinition>();
+        private readonly List<RuleDefinition> mProteinSequenceRules = new List<RuleDefinition>();
         private int mMasterCustomRuleID = CUSTOM_RULE_ID_START;
 
         private char[] mProteinNameFirstRefSepChars;
@@ -370,7 +542,7 @@ namespace ValidateFastaFile
         private int mMaximumProteinNameLength;
         private int mMaximumResiduesPerLine;
 
-        private udtFixedFastaOptionsType mFixedFastaOptions;     // Used if mGenerateFixedFastaFile = True
+        private readonly FixedFastaOptions mFixedFastaOptions = new FixedFastaOptions();     // Used if mGenerateFixedFastaFile = True
 
         private bool mOutputToStatsFile;
         private string mStatsFilePath;
@@ -579,59 +751,32 @@ namespace ValidateFastaFile
             eMsgTypeConstants messageType,
             ErrorWarningCountTypes CountType)
         {
-            var tmpValue = 0;
-            switch (CountType)
+            MsgInfosAndSummary msgSet;
+            switch (messageType)
             {
-                case ErrorWarningCountTypes.Total:
-                    switch (messageType)
-                    {
-                        case eMsgTypeConstants.ErrorMsg:
-                            tmpValue = mFileErrorCount + ComputeTotalUnspecifiedCount(mFileErrorStats);
-                            break;
-                        case eMsgTypeConstants.WarningMsg:
-                            tmpValue = mFileWarningCount + ComputeTotalUnspecifiedCount(mFileWarningStats);
-                            break;
-                        case eMsgTypeConstants.StatusMsg:
-                            tmpValue = 0;
-                            break;
-                    }
-
+                case eMsgTypeConstants.ErrorMsg:
+                    msgSet = mFileErrors;
                     break;
-
-                case ErrorWarningCountTypes.Unspecified:
-                    switch (messageType)
-                    {
-                        case eMsgTypeConstants.ErrorMsg:
-                            tmpValue = ComputeTotalUnspecifiedCount(mFileErrorStats);
-                            break;
-                        case eMsgTypeConstants.WarningMsg:
-                            tmpValue = ComputeTotalSpecifiedCount(mFileWarningStats);
-                            break;
-                        case eMsgTypeConstants.StatusMsg:
-                            tmpValue = 0;
-                            break;
-                    }
-
+                case eMsgTypeConstants.WarningMsg:
+                    msgSet = mFileWarnings;
                     break;
-
-                case ErrorWarningCountTypes.Specified:
-                    switch (messageType)
-                    {
-                        case eMsgTypeConstants.ErrorMsg:
-                            tmpValue = mFileErrorCount;
-                            break;
-                        case eMsgTypeConstants.WarningMsg:
-                            tmpValue = mFileWarningCount;
-                            break;
-                        case eMsgTypeConstants.StatusMsg:
-                            tmpValue = 0;
-                            break;
-                    }
-
-                    break;
+                case eMsgTypeConstants.StatusMsg:
+                default:
+                    return 0;
             }
 
-            return tmpValue;
+            var count = 0;
+            if (CountType == ErrorWarningCountTypes.Specified || CountType == ErrorWarningCountTypes.Total)
+            {
+                count += msgSet.Count;
+            }
+
+            if (CountType == ErrorWarningCountTypes.Unspecified || CountType == ErrorWarningCountTypes.Total)
+            {
+                count += msgSet.ComputeTotalUnspecifiedCount();
+            }
+
+            return count;
         }
 
         [Obsolete("Use GetFixedFASTAFileStats instead", true)]
@@ -642,42 +787,16 @@ namespace ValidateFastaFile
 
         public int GetFixedFASTAFileStats(FixedFASTAFileValues valueType)
         {
-            var tmpValue = 0;
-            switch (valueType)
-            {
-                case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount:
-                    tmpValue = mFixedFastaStats.DuplicateNameProteinsSkipped;
-                    break;
-                case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced:
-                    tmpValue = mFixedFastaStats.ProteinNamesInvalidCharsReplaced;
-                    break;
-                case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved:
-                    tmpValue = mFixedFastaStats.ProteinNamesMultipleRefsRemoved;
-                    break;
-                case FixedFASTAFileValues.TruncatedProteinNameCount:
-                    tmpValue = mFixedFastaStats.TruncatedProteinNameCount;
-                    break;
-                case FixedFASTAFileValues.UpdatedResidueLines:
-                    tmpValue = mFixedFastaStats.UpdatedResidueLines;
-                    break;
-                case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount:
-                    tmpValue = mFixedFastaStats.DuplicateNameProteinsRenamed;
-                    break;
-                case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount:
-                    tmpValue = mFixedFastaStats.DuplicateSequenceProteinsSkipped;
-                    break;
-            }
-
-            return tmpValue;
+            return mFixedFastaStats.GetStat(valueType);
         }
 
-        public int ProteinCount => mProteinCount;
+        public int ProteinCount { get; private set; }
 
-        public int LineCount => mLineCount;
+        public int LineCount { get; private set; }
 
         public eValidateFastaFileErrorCodes LocalErrorCode => mLocalErrorCode;
 
-        public long ResidueCount => mResidueCount;
+        public long ResidueCount { get; private set; }
 
         public string FastaFilePath => mFastaFilePath;
 
@@ -704,23 +823,23 @@ namespace ValidateFastaFile
         }
 
         [Obsolete("Use GetErrorsByIndex", true)]
-        public udtMsgInfoType get_ErrorsByIndex(int errorIndex)
+        public MsgInfo get_ErrorsByIndex(int errorIndex)
         {
             return GetErrorsByIndex(errorIndex);
         }
 
-        public udtMsgInfoType GetErrorsByIndex(int errorIndex)
+        public MsgInfo GetErrorsByIndex(int errorIndex)
         {
             return GetFileErrorByIndex(errorIndex);
         }
 
         [Obsolete("Use GetWarningsByIndex", true)]
-        public udtMsgInfoType get_WarningsByIndex(int warningIndex)
+        public MsgInfo get_WarningsByIndex(int warningIndex)
         {
             return GetWarningsByIndex(warningIndex);
         }
 
-        public udtMsgInfoType GetWarningsByIndex(int warningIndex)
+        public MsgInfo GetWarningsByIndex(int warningIndex)
         {
             return GetFileWarningByIndex(warningIndex);
         }
@@ -886,9 +1005,9 @@ namespace ValidateFastaFile
             }
         }
 
-        public List<udtMsgInfoType> FileWarningList => GetFileWarnings();
+        public List<MsgInfo> FileWarningList => GetFileWarnings();
 
-        public List<udtMsgInfoType> FileErrorList => GetFileErrors();
+        public List<MsgInfo> FileErrorList => GetFileErrors();
 
         #endregion
         public event ProgressCompletedEventHandler ProgressCompleted;
@@ -936,14 +1055,11 @@ namespace ValidateFastaFile
             var keepDuplicateNamedProteinsUnlessMatchingSequence = false;
             var consolidateDupsIgnoreILDiff = false;
 
-            // This array tracks protein hash details
-            var proteinSequenceHashCount = 0;
-
             try
             {
                 // Reset the data structures and variables
                 ResetStructures();
-                var proteinSeqHashInfo = new clsProteinHashInfo[1];
+                var proteinSeqHashInfo = new List<clsProteinHashInfo>(1);
 
                 // This is a dictionary of dictionaries, with one dictionary for each letter or number that a SHA-1 hash could start with
                 // This dictionary of dictionaries provides a quick lookup for existing protein hashes
@@ -998,45 +1114,16 @@ namespace ValidateFastaFile
                 var sbCurrentResidues = new StringBuilder();
 
                 // Initialize the RegEx objects
-
-                var reProteinNameTruncation = new udtProteinNameTruncationRegex();
-
+                // This object contains multiple regex, with the following capabilities:
                 // Note that each of these RegEx tests contain two groups with captured text:
-
-                // The following will extract IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
-                reProteinNameTruncation.reMatchIPI =
-                    new Regex(@"^(IPI:IPI[\w.]{2,})\|(.+)",
-                    RegexOptions.Singleline | RegexOptions.Compiled);
-
-                // The following will extract gi|169602219 from gi|169602219|ref|XP_001794531.1|
-                reProteinNameTruncation.reMatchGI =
-                    new Regex(@"^(gi\|\d+)\|(.+)",
-                    RegexOptions.Singleline | RegexOptions.Compiled);
-
-                // The following will extract jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
-                reProteinNameTruncation.reMatchJGI =
-                    new Regex(@"^(jgi\|[^|]+\|[^|]+)\|(.+)",
-                    RegexOptions.Singleline | RegexOptions.Compiled);
-
-                // The following will extract bob|234384 from  bob|234384|ref|483293
-                // or bob|845832 from  bob|845832;ref|384923
-                reProteinNameTruncation.reMatchGeneric =
-                    new Regex(@"^(\w{2,}[" +
-                        new string(mProteinNameFirstRefSepChars) + @"][\w\d._]{2,})[" +
-                        new string(mProteinNameSubsequentRefSepChars) + "](.+)",
-                        RegexOptions.Singleline | RegexOptions.Compiled);
-                // The following matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
-                reProteinNameTruncation.reMatchJGIBaseAndID =
-                    new Regex(@"^jgi\|[^|]+\|\d+",
-                        RegexOptions.Singleline | RegexOptions.Compiled);
-
-                // Note that this RegEx contains a group with captured text:
-                reProteinNameTruncation.reMatchDoubleBarOrColonAndBar =
-                    new Regex("[" +
-                        new string(mProteinNameFirstRefSepChars) + "][^" +
-                        new string(mProteinNameSubsequentRefSepChars) + "]*([" +
-                        new string(mProteinNameSubsequentRefSepChars) + "])",
-                        RegexOptions.Singleline | RegexOptions.Compiled);
+                // reMatchIPI extracts IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
+                // reMatchGI extracts gi|169602219 from gi|169602219|ref|XP_001794531.1|
+                // reMatchJGI extracts jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830
+                // reMatchGeneric extracts bob|234384 from  bob|234384|ref|483293
+                //                         or bob|845832 from  bob|845832;ref|384923
+                // reMatchJGIBaseAndID matches jgi|Batde5|23435 ; it requires that there be a number after the second bar
+                // reMatchDoubleBarOrColonAndBar contains a group with captured text
+                var reProteinNameTruncation = new ProteinNameTruncationRegex(mProteinNameFirstRefSepChars, mProteinNameSubsequentRefSepChars);
 
                 // Non-letter characters in residues
                 var allowedResidueChars = "A-Z";
@@ -1158,8 +1245,8 @@ namespace ValidateFastaFile
                     if (mCheckForDuplicateProteinSequences)
                     {
                         proteinSequenceHashes.Clear();
-                        proteinSequenceHashCount = 0;
-                        proteinSeqHashInfo = new clsProteinHashInfo[100];
+                        proteinSeqHashInfo.Clear();
+                        proteinSeqHashInfo.Capacity = 100;
                     }
 
                     // Parse each line in the file
@@ -1184,20 +1271,20 @@ namespace ValidateFastaFile
                             OnErrorEvent(string.Format(
                                 "Error in AnalyzeFastaFile reading line {0}; " +
                                 "it is most likely millions of characters long, " +
-                                "indicating a corrupt fasta file", mLineCount + 1), ex);
+                                "indicating a corrupt fasta file", LineCount + 1), ex);
                             exceptionCaught = true;
                             break;
                         }
                         catch (Exception ex)
                         {
-                            OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount + 1), ex);
+                            OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", LineCount + 1), ex);
                             exceptionCaught = true;
                             break;
                         }
 
                         bytesRead += lineIn.Length + terminatorSize;
 
-                        if (mLineCount % 250 == 0)
+                        if (LineCount % 250 == 0)
                         {
                             if (AbortProcessing)
                                 break;
@@ -1223,20 +1310,20 @@ namespace ValidateFastaFile
                             }
                         }
 
-                        mLineCount += 1;
+                        LineCount += 1;
 
                         if (lineIn.Length > 10000000)
                         {
-                            RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", string.Empty);
+                            RecordFastaFileError(LineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", string.Empty);
                             continue;
                         }
                         else if (lineIn.Length > 1000000)
                         {
-                            RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", string.Empty);
+                            RecordFastaFileWarning(LineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", string.Empty);
                         }
                         else if (lineIn.Length > 100000)
                         {
-                            RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", string.Empty);
+                            RecordFastaFileWarning(LineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", string.Empty);
                         }
 
                         if (lineIn == null)
@@ -1253,7 +1340,7 @@ namespace ValidateFastaFile
                         {
                             if (mWarnLineStartsWithSpace)
                             {
-                                RecordFastaFileError(mLineCount, 0, string.Empty,
+                                RecordFastaFileError(LineCount, 0, string.Empty,
                                                      (int)eMessageCodeConstants.LineStartsWithSpace, string.Empty, ExtractContext(lineIn, 0));
                             }
                         }
@@ -1270,7 +1357,7 @@ namespace ValidateFastaFile
                                 ProcessResiduesForPreviousProtein(
                                     proteinName, sbCurrentResidues,
                                     proteinSequenceHashes,
-                                    ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                                    proteinSeqHashInfo,
                                     consolidateDupsIgnoreILDiff,
                                     fixedFastaWriter,
                                     currentValidResidueLineLengthMax,
@@ -1280,7 +1367,7 @@ namespace ValidateFastaFile
                             }
 
                             // Now process this protein entry
-                            mProteinCount += 1;
+                            ProteinCount += 1;
                             proteinHeaderFound = true;
                             processingResidueBlock = false;
                             processingDuplicateOrInvalidProtein = false;
@@ -1304,7 +1391,7 @@ namespace ValidateFastaFile
                                 // The previous line was blank; raise a warning
                                 if (mWarnBlankLinesBetweenProteins)
                                 {
-                                    RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBeforeProteinName);
+                                    RecordFastaFileWarning(LineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBeforeProteinName);
                                 }
                             }
                         }
@@ -1320,28 +1407,28 @@ namespace ValidateFastaFile
 
                                     if (blankLineProcessed)
                                     {
-                                        RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues);
+                                        RecordFastaFileError(LineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineBetweenProteinNameAndResidues);
                                     }
                                 }
                                 else
                                 {
-                                    RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.ResiduesFoundWithoutProteinHeader);
+                                    RecordFastaFileError(LineCount, 0, string.Empty, (int)eMessageCodeConstants.ResiduesFoundWithoutProteinHeader);
                                 }
 
                                 processingResidueBlock = true;
                             }
                             else if (blankLineProcessed)
                             {
-                                RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineInMiddleOfResidues);
+                                RecordFastaFileError(LineCount, 0, proteinName, (int)eMessageCodeConstants.BlankLineInMiddleOfResidues);
                             }
 
                             var newResidueCount = lineIn.Length;
-                            mResidueCount += newResidueCount;
+                            ResidueCount += newResidueCount;
 
                             // Check the line length; raise a warning if longer than suggested
                             if (newResidueCount > mMaximumResiduesPerLine)
                             {
-                                RecordFastaFileWarning(mLineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, newResidueCount.ToString(), string.Empty);
+                                RecordFastaFileWarning(LineCount, 0, proteinName, (int)eMessageCodeConstants.ResiduesLineTooLong, newResidueCount.ToString(), string.Empty);
                             }
 
                             // Test the protein sequence rules
@@ -1401,7 +1488,7 @@ namespace ValidateFastaFile
                         ProcessResiduesForPreviousProtein(
                             proteinName, sbCurrentResidues,
                             proteinSequenceHashes,
-                            ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                            proteinSeqHashInfo,
                             consolidateDupsIgnoreILDiff,
                             fixedFastaWriter, currentValidResidueLineLengthMax,
                             sequenceHashWriter);
@@ -1410,12 +1497,12 @@ namespace ValidateFastaFile
                     if (mCheckForDuplicateProteinSequences)
                     {
                         // Step through proteinSeqHashInfo and look for duplicate sequences
-                        for (var index = 0; index <= proteinSequenceHashCount - 1; index++)
+                        for (var index = 0; index < proteinSeqHashInfo.Count; index++)
                         {
                             if (proteinSeqHashInfo[index].AdditionalProteins.Any())
                             {
                                 var proteinHashInfo = proteinSeqHashInfo[index];
-                                RecordFastaFileWarning(mLineCount, 0, proteinHashInfo.ProteinNameFirst, (int)eMessageCodeConstants.DuplicateProteinSequence,
+                                RecordFastaFileWarning(LineCount, 0, proteinHashInfo.ProteinNameFirst, (int)eMessageCodeConstants.DuplicateProteinSequence,
                                     proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ','), proteinHashInfo.SequenceStart);
                             }
                         }
@@ -1432,7 +1519,7 @@ namespace ValidateFastaFile
                 var totalSeconds = DateTime.UtcNow.Subtract(startTime).TotalSeconds;
                 if (totalSeconds > 5)
                 {
-                    var linesPerSecond = (int)Math.Round(mLineCount / totalSeconds);
+                    var linesPerSecond = (int)Math.Round(LineCount / totalSeconds);
                     Console.WriteLine();
                     ShowMessage(string.Format(
                         "Processing complete after {0:N0} seconds; read {1:N0} lines/second",
@@ -1443,13 +1530,13 @@ namespace ValidateFastaFile
                 fixedFastaWriter?.Close();
                 sequenceHashWriter?.Close();
 
-                if (mProteinCount == 0)
+                if (ProteinCount == 0)
                 {
-                    RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.ProteinEntriesNotFound);
+                    RecordFastaFileError(LineCount, 0, string.Empty, (int)eMessageCodeConstants.ProteinEntriesNotFound);
                 }
                 else if (proteinHeaderFound)
                 {
-                    RecordFastaFileError(mLineCount, 0, proteinName, (int)eMessageCodeConstants.FinalProteinEntryMissingResidues);
+                    RecordFastaFileError(LineCount, 0, proteinName, (int)eMessageCodeConstants.FinalProteinEntryMissingResidues);
                 }
                 else if (!blankLineProcessed)
                 {
@@ -1458,7 +1545,7 @@ namespace ValidateFastaFile
 
                     if (!VerifyLinefeedAtEOF(fastaFilePathToCheck, mAddMissingLinefeedAtEOF))
                     {
-                        RecordFastaFileError(mLineCount, 0, string.Empty, (int)eMessageCodeConstants.FileDoesNotEndWithLinefeed);
+                        RecordFastaFileError(LineCount, 0, string.Empty, (int)eMessageCodeConstants.FileDoesNotEndWithLinefeed);
                     }
                 }
 
@@ -1526,7 +1613,6 @@ namespace ValidateFastaFile
 
                     var hashInfoSuccess = AnalyzeFastaSaveHashInfo(
                         fastaFilePathToCheck,
-                        proteinSequenceHashCount,
                         proteinSeqHashInfo,
                         consolidateDuplicateProteinSeqsInFasta,
                         consolidateDupsIgnoreILDiff,
@@ -1551,7 +1637,7 @@ namespace ValidateFastaFile
             }
             catch (Exception ex)
             {
-                OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", mLineCount), ex);
+                OnErrorEvent(string.Format("Error in AnalyzeFastaFile reading line {0}", LineCount), ex);
                 success = false;
             }
             finally
@@ -1573,10 +1659,10 @@ namespace ValidateFastaFile
             out bool processingDuplicateOrInvalidProtein,
             clsNestedStringIntList preloadedProteinNamesToKeep,
             ISet<string> proteinNames,
-            IList<udtRuleDefinitionExtendedType> headerLineRuleDetails,
-            IList<udtRuleDefinitionExtendedType> proteinNameRuleDetails,
-            IList<udtRuleDefinitionExtendedType> proteinDescriptionRuleDetails,
-            udtProteinNameTruncationRegex reProteinNameTruncation)
+            IList<RuleDefinitionExtended> headerLineRuleDetails,
+            IList<RuleDefinitionExtended> proteinNameRuleDetails,
+            IList<RuleDefinitionExtended> proteinDescriptionRuleDetails,
+            ProteinNameTruncationRegex reProteinNameTruncation)
         {
             var proteinDescription = string.Empty;
 
@@ -1616,12 +1702,12 @@ namespace ValidateFastaFile
                     // Check for protein names that are too long or too short
                     if (proteinName.Length < mMinimumProteinNameLength)
                     {
-                        RecordFastaFileWarning(mLineCount, 1, proteinName,
+                        RecordFastaFileWarning(LineCount, 1, proteinName,
                             (int)eMessageCodeConstants.ProteinNameIsTooShort, proteinName.Length.ToString(), string.Empty);
                     }
                     else if (proteinName.Length > mMaximumProteinNameLength)
                     {
-                        RecordFastaFileError(mLineCount, 1, proteinName,
+                        RecordFastaFileError(LineCount, 1, proteinName,
                             (int)eMessageCodeConstants.ProteinNameIsTooLong, proteinName.Length.ToString(), string.Empty);
                     }
 
@@ -1704,7 +1790,6 @@ namespace ValidateFastaFile
 
         private bool AnalyzeFastaSaveHashInfo(
             string fastaFilePathToCheck,
-            int proteinSequenceHashCount,
             IList<clsProteinHashInfo> proteinSeqHashInfo,
             bool consolidateDuplicateProteinSeqsInFasta,
             bool consolidateDupsIgnoreILDiff,
@@ -1777,7 +1862,7 @@ namespace ValidateFastaFile
 
                 swUniqueProteinSeqsOut.WriteLine(FlattenList(headerColumns));
 
-                for (var index = 0; index <= proteinSequenceHashCount - 1; index++)
+                for (var index = 0; index < proteinSeqHashInfo.Count; index++)
                 {
                     var proteinHashInfo = proteinSeqHashInfo[index];
 
@@ -1852,11 +1937,11 @@ namespace ValidateFastaFile
                 success = false;
             }
 
-            if (success && proteinSequenceHashCount > 0 && duplicateProteinSeqsFound)
+            if (success && proteinSeqHashInfo.Count > 0 && duplicateProteinSeqsFound)
             {
                 if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
                 {
-                    success = CorrectForDuplicateProteinSeqsInFasta(consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff, fastaFilePathOut, proteinSequenceHashCount, proteinSeqHashInfo);
+                    success = CorrectForDuplicateProteinSeqsInFasta(consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff, fastaFilePathOut, proteinSeqHashInfo);
                 }
             }
 
@@ -2107,7 +2192,7 @@ namespace ValidateFastaFile
         private string AutoFixProteinNameAndDescription(
             ref string proteinName,
             ref string proteinDescription,
-            udtProteinNameTruncationRegex reProteinNameTruncation)
+            ProteinNameTruncationRegex reProteinNameTruncation)
         {
             bool proteinNameTooLong;
             Match reMatch;
@@ -2341,23 +2426,24 @@ namespace ValidateFastaFile
             switch (ruleType)
             {
                 case RuleTypes.HeaderLine:
-                    ClearRulesDataStructure(out mHeaderLineRules);
+                    ClearRulesDataStructure(mHeaderLineRules);
                     break;
                 case RuleTypes.ProteinDescription:
-                    ClearRulesDataStructure(out mProteinDescriptionRules);
+                    ClearRulesDataStructure(mProteinDescriptionRules);
                     break;
                 case RuleTypes.ProteinName:
-                    ClearRulesDataStructure(out mProteinNameRules);
+                    ClearRulesDataStructure(mProteinNameRules);
                     break;
                 case RuleTypes.ProteinSequence:
-                    ClearRulesDataStructure(out mProteinSequenceRules);
+                    ClearRulesDataStructure(mProteinSequenceRules);
                     break;
             }
         }
 
-        private void ClearRulesDataStructure(out udtRuleDefinitionType[] rules)
+        private void ClearRulesDataStructure(List<RuleDefinition> rules)
         {
-            rules = new udtRuleDefinitionType[0];
+            rules.Clear();
+            rules.Capacity = 10;
         }
 
         public string ComputeProteinHash(StringBuilder sbResidues, bool consolidateDupsIgnoreILDiff)
@@ -2380,24 +2466,6 @@ namespace ValidateFastaFile
             }
         }
 
-        private int ComputeTotalSpecifiedCount(udtItemSummaryIndexedType errorStats)
-        {
-            var total = 0;
-            for (var index = 0; index <= errorStats.ErrorStatsCount - 1; index++)
-                total += errorStats.ErrorStats[index].CountSpecified;
-
-            return total;
-        }
-
-        private int ComputeTotalUnspecifiedCount(udtItemSummaryIndexedType errorStats)
-        {
-            var total = 0;
-            for (var index = 0; index <= errorStats.ErrorStatsCount - 1; index++)
-                total += errorStats.ErrorStats[index].CountUnspecified;
-
-            return total;
-        }
-
         /// <summary>
         /// Looks for duplicate proteins in the Fasta file
         /// Creates a new fasta file that has exact duplicates removed
@@ -2413,7 +2481,6 @@ namespace ValidateFastaFile
             bool consolidateDuplicateProteinSeqsInFasta,
             bool consolidateDupsIgnoreILDiff,
             string fixedFastaFilePath,
-            int proteinSequenceHashCount,
             IList<clsProteinHashInfo> proteinSeqHashInfo)
         {
             StreamWriter consolidatedFastaWriter = null;
@@ -2431,7 +2498,7 @@ namespace ValidateFastaFile
 
             bool success;
 
-            if (proteinSequenceHashCount <= 0)
+            if (proteinSeqHashInfo.Count <= 0)
             {
                 return true;
             }
@@ -2519,7 +2586,7 @@ namespace ValidateFastaFile
                 // Populate htDuplicateProteinList with the protein names in proteinSeqHashInfo().AdditionalProteins
                 var duplicateProteinList = new clsNestedStringDictionary<string>(true, mProteinNameSpannerCharLength);
 
-                for (var index = 0; index <= proteinSequenceHashCount - 1; index++)
+                for (var index = 0; index < proteinSeqHashInfo.Count; index++)
                 {
                     var proteinHashInfo = proteinSeqHashInfo[index];
 
@@ -2938,7 +3005,7 @@ namespace ValidateFastaFile
         }
 
         private void EvaluateRules(
-            IList<udtRuleDefinitionExtendedType> ruleDetails,
+            IList<RuleDefinitionExtended> ruleDetails,
             string proteinName,
             string textToTest,
             int testTextOffsetInLine,
@@ -2967,13 +3034,13 @@ namespace ValidateFastaFile
                     var charIndexOfMatch = testTextOffsetInLine + reMatch.Index;
                     if (ruleDetail.RuleDefinition.Severity >= 5)
                     {
-                        RecordFastaFileError(mLineCount, charIndexOfMatch, proteinName,
+                        RecordFastaFileError(LineCount, charIndexOfMatch, proteinName,
                             ruleDetail.RuleDefinition.CustomRuleID, extraInfo,
                             ExtractContext(entireLine, charIndexOfMatch, contextLength));
                     }
                     else
                     {
-                        RecordFastaFileWarning(mLineCount, charIndexOfMatch, proteinName,
+                        RecordFastaFileWarning(LineCount, charIndexOfMatch, proteinName,
                             ruleDetail.RuleDefinition.CustomRuleID, extraInfo,
                             ExtractContext(entireLine, charIndexOfMatch, contextLength));
                     }
@@ -3027,7 +3094,7 @@ namespace ValidateFastaFile
                     }
                     while (duplicateName);
 
-                    RecordFastaFileWarning(mLineCount, 1, proteinName, (int)eMessageCodeConstants.RenamedProtein, "--> " + newProteinName, string.Empty);
+                    RecordFastaFileWarning(LineCount, 1, proteinName, (int)eMessageCodeConstants.RenamedProtein, "--> " + newProteinName, string.Empty);
 
                     proteinName = string.Copy(newProteinName);
                     mFixedFastaStats.DuplicateNameProteinsRenamed += 1;
@@ -3047,7 +3114,7 @@ namespace ValidateFastaFile
             {
                 if (skipDuplicateProtein || !mGenerateFixedFastaFile)
                 {
-                    RecordFastaFileError(mLineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
+                    RecordFastaFileError(LineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
                     if (mSaveBasicProteinHashInfoFile)
                     {
                         processingDuplicateOrInvalidProtein = false;
@@ -3060,7 +3127,7 @@ namespace ValidateFastaFile
                 }
                 else
                 {
-                    RecordFastaFileWarning(mLineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
+                    RecordFastaFileWarning(LineCount, 1, proteinName, (int)eMessageCodeConstants.DuplicateProteinName);
                     processingDuplicateOrInvalidProtein = false;
                 }
             }
@@ -3264,7 +3331,7 @@ namespace ValidateFastaFile
 
         private string GetFileErrorTextByIndex(int fileErrorIndex, string sepChar)
         {
-            if (mFileErrorCount <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrorCount)
+            if (mFileErrors.Count <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Count)
             {
                 return string.Empty;
             }
@@ -3289,11 +3356,11 @@ namespace ValidateFastaFile
             }
         }
 
-        private udtMsgInfoType GetFileErrorByIndex(int fileErrorIndex)
+        private MsgInfo GetFileErrorByIndex(int fileErrorIndex)
         {
-            if (mFileErrorCount <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrorCount)
+            if (mFileErrors.Count <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Count)
             {
-                return new udtMsgInfoType();
+                return new MsgInfo();
             }
             else
             {
@@ -3306,18 +3373,18 @@ namespace ValidateFastaFile
         /// </summary>
         /// <returns></returns>
         /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
-        protected List<udtMsgInfoType> GetFileErrors()
+        protected List<MsgInfo> GetFileErrors()
         {
-            var fileErrors = new List<udtMsgInfoType>();
+            var fileErrors = new List<MsgInfo>();
 
-            for (var i = 0; i <= mFileErrorCount - 1; i++)
+            for (var i = 0; i <= mFileErrors.Count - 1; i++)
                 fileErrors.Add(mFileErrors[i]);
             return fileErrors;
         }
 
         private string GetFileWarningTextByIndex(int fileWarningIndex, string sepChar)
         {
-            if (mFileWarningCount <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarningCount)
+            if (mFileWarnings.Count <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Count)
             {
                 return string.Empty;
             }
@@ -3343,11 +3410,11 @@ namespace ValidateFastaFile
             }
         }
 
-        private udtMsgInfoType GetFileWarningByIndex(int fileWarningIndex)
+        private MsgInfo GetFileWarningByIndex(int fileWarningIndex)
         {
-            if (mFileWarningCount <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarningCount)
+            if (mFileWarnings.Count <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Count)
             {
-                return new udtMsgInfoType();
+                return new MsgInfo();
             }
             else
             {
@@ -3360,11 +3427,11 @@ namespace ValidateFastaFile
         /// </summary>
         /// <returns></returns>
         /// <remarks>Used by clsCustomValidateFastaFiles</remarks>
-        protected List<udtMsgInfoType> GetFileWarnings()
+        protected List<MsgInfo> GetFileWarnings()
         {
-            var fileWarnings = new List<udtMsgInfoType>();
+            var fileWarnings = new List<MsgInfo>();
 
-            for (var i = 0; i <= mFileWarningCount - 1; i++)
+            for (var i = 0; i <= mFileWarnings.Count - 1; i++)
                 fileWarnings.Add(mFileWarnings[i]);
 
             return fileWarnings;
@@ -3424,9 +3491,6 @@ namespace ValidateFastaFile
             mProteinNameFirstRefSepChars = DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS.ToCharArray();
             mProteinNameSubsequentRefSepChars = DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS.ToCharArray();
 
-            mFixedFastaOptions.LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
-            mFixedFastaOptions.ProteinNameInvalidCharsToRemove = new char[] { };          // Default to an empty character array
-
             SetDefaultRules();
 
             ResetStructures();
@@ -3447,28 +3511,30 @@ namespace ValidateFastaFile
         }
 
         private void InitializeRuleDetails(
-            udtRuleDefinitionType[] ruleDefinitions,
-            out udtRuleDefinitionExtendedType[] ruleDetails)
+            List<RuleDefinition> ruleDefinitions,
+            out RuleDefinitionExtended[] ruleDetails)
         {
-            if (ruleDefinitions == null || ruleDefinitions.Length == 0)
+            if (ruleDefinitions == null || ruleDefinitions.Count == 0)
             {
-                ruleDetails = new udtRuleDefinitionExtendedType[0];
+                ruleDetails = new RuleDefinitionExtended[0];
             }
             else
             {
-                ruleDetails = new udtRuleDefinitionExtendedType[ruleDefinitions.Length];
+                ruleDetails = new RuleDefinitionExtended[ruleDefinitions.Count];
 
-                for (var index = 0; index <= ruleDefinitions.Length - 1; index++)
+                for (var index = 0; index <= ruleDefinitions.Count - 1; index++)
                 {
                     try
                     {
-                        ruleDetails[index] = new udtRuleDefinitionExtendedType();
-                        ruleDetails[index].RuleDefinition = ruleDefinitions[index];
-                        ruleDetails[index].reRule = new Regex(
-                            ruleDetails[index].RuleDefinition.MatchRegEx,
-                            RegexOptions.Singleline |
-                            RegexOptions.Compiled);
-                        ruleDetails[index].Valid = true;
+                        ruleDetails[index] = new RuleDefinitionExtended(
+                            ruleDefinitions[index],
+                            new Regex(
+                                ruleDetails[index].RuleDefinition.MatchRegEx,
+                                RegexOptions.Singleline |
+                                RegexOptions.Compiled))
+                        {
+                            Valid = true
+                        };
                     }
                     catch (Exception ex)
                     {
@@ -4169,16 +4235,16 @@ namespace ValidateFastaFile
                         // If all of the sections are missing, then use the default rules
                         customRulesLoaded = false;
 
-                        var success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, ref mHeaderLineRules);
+                        var success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules);
                         customRulesLoaded = customRulesLoaded || success;
 
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, ref mProteinNameRules);
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules);
                         customRulesLoaded = customRulesLoaded || success;
 
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, ref mProteinDescriptionRules);
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules);
                         customRulesLoaded = customRulesLoaded || success;
 
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, ref mProteinSequenceRules);
+                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules);
                         customRulesLoaded = customRulesLoaded || success;
                     }
                 }
@@ -4540,8 +4606,7 @@ namespace ValidateFastaFile
             string proteinName,
             StringBuilder sbCurrentResidues,
             clsNestedStringDictionary<int> proteinSequenceHashes,
-            ref int proteinSequenceHashCount,
-            ref clsProteinHashInfo[] proteinSeqHashInfo,
+            List<clsProteinHashInfo> proteinSeqHashInfo,
             bool consolidateDupsIgnoreILDiff,
             TextWriter fixedFastaWriter,
             int currentValidResidueLineLengthMax,
@@ -4561,7 +4626,7 @@ namespace ValidateFastaFile
                     ProcessSequenceHashInfo(
                         proteinName, sbCurrentResidues,
                         proteinSequenceHashes,
-                        ref proteinSequenceHashCount, ref proteinSeqHashInfo,
+                        proteinSeqHashInfo,
                         consolidateDupsIgnoreILDiff, sequenceHashWriter);
                 }
 
@@ -4600,8 +4665,7 @@ namespace ValidateFastaFile
             string proteinName,
             StringBuilder sbCurrentResidues,
             clsNestedStringDictionary<int> proteinSequenceHashes,
-            ref int proteinSequenceHashCount,
-            ref clsProteinHashInfo[] proteinSeqHashInfo,
+            List<clsProteinHashInfo> proteinSeqHashInfo,
             bool consolidateDupsIgnoreILDiff,
             TextWriter sequenceHashWriter)
         {
@@ -4616,7 +4680,7 @@ namespace ValidateFastaFile
                     {
                         var dataValues = new List<string>()
                         {
-                            mProteinCount.ToString(),
+                            ProteinCount.ToString(),
                             proteinName,
                             sbCurrentResidues.Length.ToString(),
                             computedHash
@@ -4637,12 +4701,11 @@ namespace ValidateFastaFile
                         else
                         {
                             // Value not yet present; add it
-                            CachedSequenceHashInfoUpdateAppend(
-                                proteinSequenceHashCount, ref proteinSeqHashInfo,
+                            var index = CachedSequenceHashInfoUpdateAppend(
+                                proteinSeqHashInfo,
                                 computedHash, sbCurrentResidues, proteinName);
 
-                            proteinSequenceHashes.Add(computedHash, proteinSequenceHashCount);
-                            proteinSequenceHashCount += 1;
+                            proteinSequenceHashes.Add(computedHash, index);
                         }
                     }
                 }
@@ -4667,38 +4730,36 @@ namespace ValidateFastaFile
             }
         }
 
-        private void CachedSequenceHashInfoUpdateAppend(
-            int proteinSequenceHashCount,
-            ref clsProteinHashInfo[] proteinSeqHashInfo,
+        private int CachedSequenceHashInfoUpdateAppend(
+            List<clsProteinHashInfo> proteinSeqHashInfo,
             string computedHash,
             StringBuilder sbCurrentResidues,
             string proteinName)
         {
-            if (proteinSequenceHashCount >= proteinSeqHashInfo.Length)
+            if (proteinSeqHashInfo.Count >= proteinSeqHashInfo.Capacity)
             {
                 // Need to reserve more space in proteinSeqHashInfo
-                if (proteinSeqHashInfo.Length < 1000000)
+                if (proteinSeqHashInfo.Capacity < 1000000)
                 {
-                    var oldProteinSeqHashInfo = proteinSeqHashInfo;
-                    proteinSeqHashInfo = new clsProteinHashInfo[(proteinSeqHashInfo.Length * 2)];
-                    Array.Copy(oldProteinSeqHashInfo, proteinSeqHashInfo, Math.Min(proteinSeqHashInfo.Length * 2, oldProteinSeqHashInfo.Length));
+                    proteinSeqHashInfo.Capacity *= 2;
                 }
                 else
                 {
-                    var oldProteinSeqHashInfo1 = proteinSeqHashInfo;
-                    proteinSeqHashInfo = new clsProteinHashInfo[((int)Math.Round(proteinSeqHashInfo.Length * 1.2))];
-                    Array.Copy(oldProteinSeqHashInfo1, proteinSeqHashInfo, Math.Min((int)Math.Round(proteinSeqHashInfo.Length * 1.2), oldProteinSeqHashInfo1.Length));
+                    proteinSeqHashInfo.Capacity = (int)Math.Round(proteinSeqHashInfo.Capacity * 1.2);
                 }
             }
 
             var newProteinHashInfo = new clsProteinHashInfo(computedHash, sbCurrentResidues, proteinName);
-            proteinSeqHashInfo[proteinSequenceHashCount] = newProteinHashInfo;
+            var addLocation = proteinSeqHashInfo.Count;
+            proteinSeqHashInfo.Add(newProteinHashInfo);
+
+            return addLocation;
         }
 
         private bool ReadRulesFromParameterFile(
             XmlSettingsFileAccessor settingsFile,
             string sectionName,
-            ref udtRuleDefinitionType[] rules)
+            List<RuleDefinition> rules)
         {
             // Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
             // Note: even if RuleCount = 0, this function will return True
@@ -4709,27 +4770,23 @@ namespace ValidateFastaFile
 
             if (ruleCount >= 0)
             {
-                ClearRulesDataStructure(out rules);
+                ClearRulesDataStructure(rules);
 
                 for (var ruleNumber = 1; ruleNumber <= ruleCount; ruleNumber++)
                 {
                     var ruleBase = "Rule" + ruleNumber.ToString();
 
-                    var newRule = new udtRuleDefinitionType
-                    {
-                        MatchRegEx = settingsFile.GetParam(sectionName, ruleBase + "MatchRegEx", string.Empty)
-                    };
+                    var newRule = new RuleDefinition(settingsFile.GetParam(sectionName, ruleBase + "MatchRegEx", string.Empty));
 
+                    // Only read the rule settings if MatchRegEx contains 1 or more characters
                     if (newRule.MatchRegEx.Length > 0)
                     {
-                        // Only read the rule settings if MatchRegEx contains 1 or more characters
-
                         newRule.MatchIndicatesProblem = settingsFile.GetParam(sectionName, ruleBase + "MatchIndicatesProblem", true);
                         newRule.MessageWhenProblem = settingsFile.GetParam(sectionName, ruleBase + "MessageWhenProblem", "Error found with RegEx " + newRule.MatchRegEx);
                         newRule.Severity = settingsFile.GetParam(sectionName, ruleBase + "Severity", (short)3);
                         newRule.DisplayMatchAsExtraInfo = settingsFile.GetParam(sectionName, ruleBase + "DisplayMatchAsExtraInfo", false);
 
-                        SetRule(ref rules, newRule.MatchRegEx, newRule.MatchIndicatesProblem, newRule.MessageWhenProblem, newRule.Severity, newRule.DisplayMatchAsExtraInfo);
+                        SetRule(rules, newRule.MatchRegEx, newRule.MatchIndicatesProblem, newRule.MessageWhenProblem, newRule.Severity, newRule.DisplayMatchAsExtraInfo);
                     }
                 }
 
@@ -4758,9 +4815,7 @@ namespace ValidateFastaFile
             string context)
         {
             RecordFastaFileProblemWork(
-                ref mFileErrorStats,
-                ref mFileErrorCount,
-                ref mFileErrors,
+                mFileErrors,
                 lineNumber,
                 charIndex,
                 proteinName,
@@ -4791,15 +4846,13 @@ namespace ValidateFastaFile
             int warningMessageCode,
             string extraInfo, string context)
         {
-            RecordFastaFileProblemWork(ref mFileWarningStats, ref mFileWarningCount,
-                ref mFileWarnings, lineNumber, charIndex, proteinName,
+            RecordFastaFileProblemWork(
+                mFileWarnings, lineNumber, charIndex, proteinName,
                 warningMessageCode, extraInfo, context);
         }
 
         private void RecordFastaFileProblemWork(
-            ref udtItemSummaryIndexedType itemSummaryIndexed,
-            ref int itemCountSpecified,
-            ref udtMsgInfoType[] items,
+            MsgInfosAndSummary items,
             int lineNumber,
             int charIndex,
             string proteinName,
@@ -4815,57 +4868,27 @@ namespace ValidateFastaFile
 
             try
             {
-                if (!itemSummaryIndexed.MessageCodeToArrayIndex.TryGetValue(messageCode, out var itemIndex))
+                if (!items.MessageCodeToErrorStats.TryGetValue(messageCode, out var errorStats))
                 {
-                    if (itemSummaryIndexed.ErrorStats.Length <= 0)
-                    {
-                        itemSummaryIndexed.ErrorStats = new udtErrorStatsType[2];
-                    }
-                    else if (itemSummaryIndexed.ErrorStatsCount == itemSummaryIndexed.ErrorStats.Length)
-                    {
-                        var oldErrorStats = itemSummaryIndexed.ErrorStats;
-                        itemSummaryIndexed.ErrorStats = new udtErrorStatsType[(itemSummaryIndexed.ErrorStats.Length * 2)];
-                        Array.Copy(oldErrorStats, itemSummaryIndexed.ErrorStats, Math.Min(itemSummaryIndexed.ErrorStats.Length * 2, oldErrorStats.Length));
-                    }
-
-                    itemIndex = itemSummaryIndexed.ErrorStatsCount;
-                    itemSummaryIndexed.ErrorStats[itemIndex].MessageCode = messageCode;
-                    itemSummaryIndexed.MessageCodeToArrayIndex.Add(messageCode, itemIndex);
-                    itemSummaryIndexed.ErrorStatsCount += 1;
+                    errorStats = new ErrorStats(messageCode);
+                    items.MessageCodeToErrorStats.Add(messageCode, errorStats);
                 }
 
-                var errorStats = itemSummaryIndexed.ErrorStats;
-                if (errorStats[itemIndex].CountSpecified >= mMaximumFileErrorsToTrack)
+                if (errorStats.CountSpecified >= mMaximumFileErrorsToTrack)
                 {
-                    errorStats[itemIndex].CountUnspecified += 1;
+                    errorStats.CountUnspecified += 1;
                 }
                 else
                 {
-                    if (items.Length <= 0)
-                    {
-                        // Initially reserve space for 10 errors
-                        items = new udtMsgInfoType[11];
-                    }
-                    else if (itemCountSpecified >= items.Length)
-                    {
-                        // Double the amount of space reserved for errors
-                        var oldItems = items;
-                        items = new udtMsgInfoType[(items.Length * 2)];
-                        Array.Copy(oldItems, items, Math.Min(items.Length * 2, oldItems.Length));
-                    }
+                    items.Messages.Add(new MsgInfo(
+                        lineNumber,
+                        charIndex + 1,
+                        proteinName ?? string.Empty,
+                        messageCode,
+                        extraInfo ?? string.Empty,
+                        context ?? string.Empty));
 
-                    items[itemCountSpecified].LineNumber = lineNumber;
-                    items[itemCountSpecified].ColNumber = charIndex + 1;
-                    items[itemCountSpecified].ProteinName = proteinName ?? string.Empty;
-
-                    items[itemCountSpecified].MessageCode = messageCode;
-                    items[itemCountSpecified].ExtraInfo = extraInfo ?? string.Empty;
-
-                    items[itemCountSpecified].Context = context ?? string.Empty;
-
-                    itemCountSpecified += 1;
-
-                    errorStats[itemIndex].CountSpecified += 1;
+                    errorStats.CountSpecified += 1;
                 }
             }
             catch (Exception ex)
@@ -4980,11 +5003,7 @@ namespace ValidateFastaFile
         {
             try
             {
-                var outputOptions = new udtOutputOptionsType()
-                {
-                    OutputToStatsFile = outputToStatsFile,
-                    SepChar = "\t"
-                };
+                var outputOptions = new OutputOptions(outputToStatsFile, "\t");
 
                 try
                 {
@@ -5064,26 +5083,25 @@ namespace ValidateFastaFile
 
                 ReportResultAddEntry(
                     outputOptions, eMsgTypeConstants.StatusMsg,
-                    "Protein count", mProteinCount.ToString("#,##0"));
+                    "Protein count", ProteinCount.ToString("#,##0"));
 
                 ReportResultAddEntry(
                     outputOptions, eMsgTypeConstants.StatusMsg,
-                    "Residue count", mResidueCount.ToString("#,##0"));
+                    "Residue count", ResidueCount.ToString("#,##0"));
 
                 string proteinName;
-                if (mFileErrorCount > 0)
+                if (mFileErrors.Count > 0)
                 {
                     ReportResultAddEntry(
                         outputOptions, eMsgTypeConstants.ErrorMsg,
                         "Error count", GetErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString());
 
-                    if (mFileErrorCount > 1)
+                    if (mFileErrors.Count > 1)
                     {
-                        var iErrorInfoComparerClass = new ErrorInfoComparerClass();
-                        Array.Sort(mFileErrors, 0, mFileErrorCount, iErrorInfoComparerClass);
+                        mFileErrors.Messages.Sort();
                     }
 
-                    for (var index = 0; index <= mFileErrorCount - 1; index++)
+                    for (var index = 0; index <= mFileErrors.Count - 1; index++)
                     {
                         var fileError = mFileErrors[index];
                         if (string.IsNullOrEmpty(fileError.ProteinName))
@@ -5107,20 +5125,19 @@ namespace ValidateFastaFile
                     }
                 }
 
-                if (mFileWarningCount > 0)
+                if (mFileWarnings.Count > 0)
                 {
                     ReportResultAddEntry(
                         outputOptions, eMsgTypeConstants.WarningMsg,
                         "Warning count",
                         GetErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString());
 
-                    if (mFileWarningCount > 1)
+                    if (mFileWarnings.Count > 1)
                     {
-                        var iErrorInfoComparerClass = new ErrorInfoComparerClass();
-                        Array.Sort(mFileWarnings, 0, mFileWarningCount, iErrorInfoComparerClass);
+                        mFileWarnings.Messages.Sort();
                     }
 
-                    for (var index = 0; index <= mFileWarningCount - 1; index++)
+                    for (var index = 0; index <= mFileWarnings.Count - 1; index++)
                     {
                         var fileWarning = mFileWarnings[index];
                         if (string.IsNullOrEmpty(fileWarning.ProteinName))
@@ -5148,7 +5165,7 @@ namespace ValidateFastaFile
                 ReportResultAddEntry(
                     outputOptions, eMsgTypeConstants.StatusMsg,
                     "Summary line",
-                    mProteinCount.ToString() + " proteins, " + mResidueCount.ToString() + " residues, " + (fastaFile.Length / 1024.0).ToString("0") + " KB");
+                    ProteinCount.ToString() + " proteins, " + ResidueCount.ToString() + " residues, " + (fastaFile.Length / 1024.0).ToString("0") + " KB");
 
                 if (outputToStatsFile)
                 {
@@ -5162,7 +5179,7 @@ namespace ValidateFastaFile
         }
 
         private void ReportResultAddEntry(
-            udtOutputOptionsType outputOptions,
+            OutputOptions outputOptions,
             eMsgTypeConstants entryType,
             string descriptionOrProteinName,
             string info,
@@ -5177,7 +5194,7 @@ namespace ValidateFastaFile
         }
 
         private void ReportResultAddEntry(
-            udtOutputOptionsType outputOptions,
+            OutputOptions outputOptions,
             eMsgTypeConstants entryType,
             int lineNumber,
             int colNumber,
@@ -5216,44 +5233,18 @@ namespace ValidateFastaFile
         {
             // This is used to reset the error arrays and stats variables
 
-            mLineCount = 0;
-            mProteinCount = 0;
-            mResidueCount = 0;
+            LineCount = 0;
+            ProteinCount = 0;
+            ResidueCount = 0;
 
-            mFixedFastaStats.TruncatedProteinNameCount = 0;
-            mFixedFastaStats.UpdatedResidueLines = 0;
-            mFixedFastaStats.ProteinNamesInvalidCharsReplaced = 0;
-            mFixedFastaStats.ProteinNamesMultipleRefsRemoved = 0;
-            mFixedFastaStats.DuplicateNameProteinsSkipped = 0;
-            mFixedFastaStats.DuplicateNameProteinsRenamed = 0;
-            mFixedFastaStats.DuplicateSequenceProteinsSkipped = 0;
-
-            mFileErrorCount = 0;
-            mFileErrors = new udtMsgInfoType[0];
-            ResetItemSummaryStructure(ref mFileErrorStats);
-
-            mFileWarningCount = 0;
-            mFileWarnings = new udtMsgInfoType[0];
-            ResetItemSummaryStructure(ref mFileWarningStats);
+            mFixedFastaStats.Reset();
+            mFileErrors.Reset();
+            mFileWarnings.Reset();
 
             AbortProcessing = false;
         }
 
-        private void ResetItemSummaryStructure(ref udtItemSummaryIndexedType itemSummary)
-        {
-            itemSummary.ErrorStatsCount = 0;
-            itemSummary.ErrorStats = new udtErrorStatsType[0];
-            if (itemSummary.MessageCodeToArrayIndex == null)
-            {
-                itemSummary.MessageCodeToArrayIndex = new Dictionary<int, int>();
-            }
-            else
-            {
-                itemSummary.MessageCodeToArrayIndex.Clear();
-            }
-        }
-
-        private void SaveRulesToParameterFile(XmlSettingsFileAccessor settingsFile, string sectionName, IList<udtRuleDefinitionType> rules)
+        private void SaveRulesToParameterFile(XmlSettingsFileAccessor settingsFile, string sectionName, IList<RuleDefinition> rules)
         {
             if (rules == null || rules.Count <= 0)
             {
@@ -5371,7 +5362,7 @@ namespace ValidateFastaFile
         }
 
         private bool SearchRulesForID(
-            IList<udtRuleDefinitionType> rules,
+            IList<RuleDefinition> rules,
             int errorMessageCode,
             out string message)
         {
@@ -5534,45 +5525,41 @@ namespace ValidateFastaFile
             switch (ruleType)
             {
                 case RuleTypes.HeaderLine:
-                    SetRule(ref mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    SetRule(mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
                     break;
                 case RuleTypes.ProteinDescription:
-                    SetRule(ref mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    SetRule(mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
                     break;
                 case RuleTypes.ProteinName:
-                    SetRule(ref mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    SetRule(mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
                     break;
                 case RuleTypes.ProteinSequence:
-                    SetRule(ref mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
+                    SetRule(mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
                     break;
             }
         }
 
         private void SetRule(
-            ref udtRuleDefinitionType[] rules,
+            List<RuleDefinition> rules,
             string matchRegEx,
             bool matchIndicatesProblem,
             string messageWhenProblem,
             short severity,
             bool displayMatchAsExtraInfo)
         {
-            if (rules == null || rules.Length == 0)
+            if (rules == null)
             {
-                rules = new udtRuleDefinitionType[1];
-            }
-            else
-            {
-                var oldRules = rules;
-                rules = new udtRuleDefinitionType[rules.Length + 1];
-                Array.Copy(oldRules, rules, Math.Min(rules.Length + 1, oldRules.Length));
+                throw new ArgumentNullException(nameof(rules));
             }
 
-            rules[rules.Length - 1].MatchRegEx = matchRegEx;
-            rules[rules.Length - 1].MatchIndicatesProblem = matchIndicatesProblem;
-            rules[rules.Length - 1].MessageWhenProblem = messageWhenProblem;
-            rules[rules.Length - 1].Severity = severity;
-            rules[rules.Length - 1].DisplayMatchAsExtraInfo = displayMatchAsExtraInfo;
-            rules[rules.Length - 1].CustomRuleID = mMasterCustomRuleID;
+            rules.Add(new RuleDefinition(matchRegEx)
+            {
+                MatchIndicatesProblem = matchIndicatesProblem,
+                MessageWhenProblem = messageWhenProblem,
+                Severity = severity,
+                DisplayMatchAsExtraInfo = displayMatchAsExtraInfo,
+                CustomRuleID = mMasterCustomRuleID,
+            });
 
             mMasterCustomRuleID += 1;
         }
@@ -5926,44 +5913,5 @@ namespace ValidateFastaFile
         }
 
         #endregion
-
-        // IComparer class to allow comparison of udtMsgInfoType items
-        private class ErrorInfoComparerClass : IComparer<udtMsgInfoType>
-        {
-            public int Compare(udtMsgInfoType x, udtMsgInfoType y)
-            {
-                var errorInfo1 = x;
-                var errorInfo2 = y;
-
-                if (errorInfo1.MessageCode > errorInfo2.MessageCode)
-                {
-                    return 1;
-                }
-                else if (errorInfo1.MessageCode < errorInfo2.MessageCode)
-                {
-                    return -1;
-                }
-                else if (errorInfo1.LineNumber > errorInfo2.LineNumber)
-                {
-                    return 1;
-                }
-                else if (errorInfo1.LineNumber < errorInfo2.LineNumber)
-                {
-                    return -1;
-                }
-                else if (errorInfo1.ColNumber > errorInfo2.ColNumber)
-                {
-                    return 1;
-                }
-                else if (errorInfo1.ColNumber < errorInfo2.ColNumber)
-                {
-                    return -1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-        }
     }
 }

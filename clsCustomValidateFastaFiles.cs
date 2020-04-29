@@ -6,9 +6,9 @@ namespace ValidateFastaFile
     public class clsCustomValidateFastaFiles : clsValidateFastaFile
     {
         #region "Structures and enums"
-        public struct udtErrorInfoExtended
+        public class ErrorInfoExtended
         {
-            public udtErrorInfoExtended(
+            public ErrorInfoExtended(
                 int lineNumber,
                 string proteinName,
                 string messageText,
@@ -44,8 +44,8 @@ namespace ValidateFastaFile
 
         #endregion
 
-        private readonly List<udtErrorInfoExtended> m_CurrentFileErrors;
-        private readonly List<udtErrorInfoExtended> m_CurrentFileWarnings;
+        private readonly List<ErrorInfoExtended> m_CurrentFileErrors;
+        private readonly List<ErrorInfoExtended> m_CurrentFileWarnings;
 
         private string m_CachedFastaFilePath;
 
@@ -58,11 +58,11 @@ namespace ValidateFastaFile
         /// </summary>
         public clsCustomValidateFastaFiles() : base()
         {
-            FullErrorCollection = new Dictionary<string, List<udtErrorInfoExtended>>();
-            FullWarningCollection = new Dictionary<string, List<udtErrorInfoExtended>>();
+            FullErrorCollection = new Dictionary<string, List<ErrorInfoExtended>>();
+            FullWarningCollection = new Dictionary<string, List<ErrorInfoExtended>>();
 
-            m_CurrentFileErrors = new List<udtErrorInfoExtended>();
-            m_CurrentFileWarnings = new List<udtErrorInfoExtended>();
+            m_CurrentFileErrors = new List<ErrorInfoExtended>();
+            m_CurrentFileWarnings = new List<ErrorInfoExtended>();
 
             // Reserve space for tracking up to 10 validation updates (expand later if needed)
             mValidationOptions = new bool[11];
@@ -78,13 +78,13 @@ namespace ValidateFastaFile
         /// Keys are fasta filename
         /// Values are the list of fasta file errors
         /// </summary>
-        public Dictionary<string, List<udtErrorInfoExtended>> FullErrorCollection { get; }
+        public Dictionary<string, List<ErrorInfoExtended>> FullErrorCollection { get; }
 
         /// <summary>
         /// Keys are fasta filename
         /// Values are the list of fasta file warnings
         /// </summary>
-        public Dictionary<string, List<udtErrorInfoExtended>> FullWarningCollection { get; }
+        public Dictionary<string, List<ErrorInfoExtended>> FullWarningCollection { get; }
 
         public bool FASTAFileValid(string FASTAFileName)
         {
@@ -110,24 +110,24 @@ namespace ValidateFastaFile
             }
         }
 
-        public List<udtErrorInfoExtended> RecordedFASTAFileErrors(string fastaFileName)
+        public List<ErrorInfoExtended> RecordedFASTAFileErrors(string fastaFileName)
         {
             if (FullErrorCollection.TryGetValue(fastaFileName, out var errorList))
             {
                 return errorList;
             }
 
-            return new List<udtErrorInfoExtended>();
+            return new List<ErrorInfoExtended>();
         }
 
-        public List<udtErrorInfoExtended> RecordedFASTAFileWarnings(string fastaFileName)
+        public List<ErrorInfoExtended> RecordedFASTAFileWarnings(string fastaFileName)
         {
             if (FullWarningCollection.TryGetValue(fastaFileName, out var warningList))
             {
                 return warningList;
             }
 
-            return new List<udtErrorInfoExtended>();
+            return new List<ErrorInfoExtended>();
         }
 
         public int NumFilesWithErrors
@@ -186,7 +186,7 @@ namespace ValidateFastaFile
             if (messageType == eValidationMessageTypes.WarningMsg)
             {
                 // Treat as warning
-                m_CurrentFileWarnings.Add(new udtErrorInfoExtended(
+                m_CurrentFileWarnings.Add(new ErrorInfoExtended(
                     lineNumber, proteinName, messageString, extraInfo, "Warning"));
 
                 FullWarningCollection[Path.GetFileName(m_CachedFastaFilePath)] = m_CurrentFileWarnings;
@@ -195,7 +195,7 @@ namespace ValidateFastaFile
             {
 
                 // Treat as error
-                m_CurrentFileErrors.Add(new udtErrorInfoExtended(
+                m_CurrentFileErrors.Add(new ErrorInfoExtended(
                     lineNumber, proteinName, messageString, extraInfo, "Error"));
 
                 FullErrorCollection[Path.GetFileName(m_CachedFastaFilePath)] = m_CurrentFileErrors;
