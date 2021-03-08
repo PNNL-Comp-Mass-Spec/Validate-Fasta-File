@@ -3,9 +3,8 @@ using System.Collections.Generic;
 
 namespace ValidateFastaFile
 {
-    public class clsProteinHashInfo
+    public class ProteinHashInfo
     {
-
         /// <summary>
         /// Additional protein names
         /// </summary>
@@ -61,7 +60,7 @@ namespace ValidateFastaFile
         /// <param name="sbResidues"></param>
         /// <param name="proteinName"></param>
         /// <remarks></remarks>
-        public clsProteinHashInfo(string seqHash, System.Text.StringBuilder sbResidues, string proteinName)
+        public ProteinHashInfo(string seqHash, System.Text.StringBuilder sbResidues, string proteinName)
         {
             SequenceHash = seqHash;
 

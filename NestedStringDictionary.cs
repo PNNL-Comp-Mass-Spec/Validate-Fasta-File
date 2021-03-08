@@ -12,7 +12,7 @@ namespace ValidateFastaFile
     /// </summary>
     /// <typeparam name="T">Type for values</typeparam>
     /// <remarks></remarks>
-    public class clsNestedStringDictionary<T>
+    public class NestedStringDictionary<T>
     {
         private readonly Dictionary<string, Dictionary<string, T>> mData;
         private readonly StringComparer mComparer;
@@ -45,12 +45,12 @@ namespace ValidateFastaFile
         public bool IgnoreCase { get; }
 
         /// <summary>
-        /// The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
+        /// The number of characters at the start of keyStrings to use when adding items to NestedStringDictionary instances
         /// </summary>
         /// <value></value>
         /// <returns></returns>
         /// <remarks>
-        /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
+        /// If this value is too short, all of the items added to the NestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
         public byte SpannerCharLength { get; }
@@ -64,7 +64,7 @@ namespace ValidateFastaFile
         /// If spannerCharLength is too small, all of the items added to this class instance using Add() will be
         /// tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
-        public clsNestedStringDictionary(bool ignoreCaseForKeys = false, byte spannerCharLength = 1)
+        public NestedStringDictionary(bool ignoreCaseForKeys = false, byte spannerCharLength = 1)
         {
             IgnoreCase = ignoreCaseForKeys;
             if (IgnoreCase)

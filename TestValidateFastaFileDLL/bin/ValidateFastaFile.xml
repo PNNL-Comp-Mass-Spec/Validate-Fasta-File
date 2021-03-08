@@ -1,571 +1,604 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <doc>
-<assembly>
-<name>
-ValidateFastaFile
-</name>
-</assembly>
-<members>
-<member name="M:ValidateFastaFile.clsCustomValidateFastaFiles.#ctor">
- <summary>
- Constructor
- </summary>
-</member>
-<member name="P:ValidateFastaFile.clsCustomValidateFastaFiles.FullErrorCollection">
- <summary>
- Keys are fasta filename
- Values are the list of fasta file errors
- </summary>
-</member>
-<member name="P:ValidateFastaFile.clsCustomValidateFastaFiles.FullWarningCollection">
- <summary>
- Keys are fasta filename
- Values are the list of fasta file warnings
- </summary>
-</member>
-<member name="M:ValidateFastaFile.clsCustomValidateFastaFiles.StartValidateFASTAFile(System.String)">
- <summary>
- Calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
- </summary>
- <param name="filePath"></param>
- <returns>True if the file was successfully processed (even if it contains errors)</returns>
-</member>
-<member name="P:ValidateFastaFile.clsMemoryUsageLogger.LogFolderPath">
- <summary>
- Output folder for the log file
- </summary>
- <value></value>
- <returns></returns>
- <remarks>If this is an empty string, the log file is created in the working directory</remarks>
-</member>
-<member name="P:ValidateFastaFile.clsMemoryUsageLogger.MinimumLogIntervalMinutes">
- <summary>
- The minimum interval between appending a new memory usage entry to the log
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.#ctor(System.String,System.Single)">
- <summary>
- Constructor
- </summary>
- <param name="logFolderPath">Folder in which to write the memory log file(s); if this is an empty string, the log file is created in the working directory</param>
- <param name="minLogIntervalMinutes">Minimum log interval, in minutes</param>
- <remarks>
- Use WriteMemoryUsageLogEntry to append an entry to the log file.
- Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.GetFreeMemoryMB">
- <summary>
- Returns the amount of free memory on the current machine
- </summary>
- <returns>Free memory, in MB</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.GetPoolNonpagedMemory">
- <summary>
- Returns the amount of pool nonpaged memory on the current machine
- </summary>
- <returns>Pool Nonpaged memory, in MB</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.GetPoolPagedMemory">
- <summary>
- Returns the amount of pool paged memory on the current machine
- </summary>
- <returns>Pool Paged memory, in MB</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.GetProcessMemoryUsageMB">
- <summary>
- Returns the amount of memory that the currently running process is using
- </summary>
- <returns>Memory usage, in MB</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.InitializePerfCounters">
- <summary>
- Initializes the performance counters
- </summary>
- <returns>Any errors that occur; empty string if no errors</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsMemoryUsageLogger.WriteMemoryUsageLogEntry">
- <summary>
- Writes a status file tracking memory usage
- </summary>
- <remarks></remarks>
-</member>
-<member name="T:ValidateFastaFile.clsNestedStringIntList">
- <summary>
- This class keeps track of a list of strings that each has an associated integer value
- Internally it uses a dictionary to track several lists, storing each added string/integer pair to one of the lists
- based on the first few letters of the newly added string
- </summary>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsNestedStringIntList.Count">
- <summary>
- Number of items stored with Add()
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsNestedStringIntList.SpannerCharLength">
- <summary>
- The number of characters at the start of stored items to use when adding items to clsNestedStringDictionary instances
- </summary>
- <value></value>
- <returns></returns>
- <remarks>
- If this value is too short, all of the items added to the clsNestedStringDictionary instance
- will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.#ctor(System.Byte,System.Boolean)">
- <summary>
- Constructor
- </summary>
- <param name="spannerCharLength"></param>
- <remarks>
- If spannerCharLength is too small, all of the items added to this class instance using Add() will be
- tracked by the same list, which could result in a list surpassing the 2 GB boundary
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.Add(System.String,System.Int32)">
- <summary>
- Appends an item to the list
- </summary>
- <param name="item">String to add</param>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.AutoDetermineSpannerCharLength(System.IO.FileInfo,System.Int32,System.Boolean)">
- <summary>
- Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines
- to determine the appropriate spanner length when instantiating a new instance of this class
- </summary>
- <param name="fiDataFile"></param>
- <param name="keyColumnIndex"></param>
- <param name="hasHeaderLine"></param>
- <returns>The appropriate spanner length</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(System.Collections.Generic.Dictionary{System.String,System.Int32})">
- <summary>
- Determine the appropriate spanner length given the observation counts of the base names
- </summary>
- <param name="keyStartLetters">
- Dictionary where keys are base names (characters in common between adjacent items)
- and values are the observation count of each base name</param>
- <returns>Spanner key length that fits the majority of the entries in keyStartLetters</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.Clear">
- <summary>
- Remove the stored items
- </summary>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.Contains(System.String)">
- <summary>
- Check for the existence of a string item (ignoring the associated integer)
- </summary>
- <param name="item">String to find</param>
- <returns>True if the item exists, otherwise false</returns>
- <remarks>For large lists call Sort() prior to calling this function</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.GetSizeSummary">
- <summary>
- Return a string summarizing the number of items in the List associated with each spanning key
- </summary>
- <returns>String description of the stored data</returns>
- <remarks>
- Example return strings:
-   1 spanning key:  'a' with 1 item
-   2 spanning keys: 'a' with 1 item and 'o' with 1 item
-   3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
-   5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.GetListForSpanningKey(System.String)">
- <summary>
- Retrieve the List associated with the given spanner key
- </summary>
- <param name="keyName"></param>
- <returns>The list, or nothing if the key is not found</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.GetSpanningKeys">
- <summary>
- Retrieve the list of spanning keys in use
- </summary>
- <returns>List of keys</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.GetValueForItem(System.String,System.Int32)">
- <summary>
- Return the integer associated with the given string item
- </summary>
- <param name="item">String to find</param>
- <returns>Integer value if found, otherwise nothing</returns>
- <remarks>For large lists call Sort() prior to calling this function</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.IsSorted">
- <summary>
- Checks whether the items are sorted
- </summary>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.Remove(System.String)">
- <summary>
- Removes all occurrences of the item from the list
- </summary>
- <param name="item">String to remove</param>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.SetValueForItem(System.String,System.Int32)">
- <summary>
- Update the integer associated with the given string item
- </summary>
- <param name="item">String to find</param>
- <remarks>For large lists call Sort() prior to calling this function</remarks>
- <returns>True item was found and updated, false if the item does not exist</returns>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringIntList.Sort">
- <summary>
- Sorts all of the stored items
- </summary>
- <remarks></remarks>
-</member>
-<member name="T:ValidateFastaFile.clsNestedStringDictionary`1">
- <summary>
- This class implements a dictionary where keys are strings and values are type T (for example string or integer)
- Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries
- based on the first few letters of the keys of an added key/value pair
- </summary>
- <typeparam name="T">Type for values</typeparam>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsNestedStringDictionary`1.Count">
- <summary>
- Number of items stored with Add()
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsNestedStringDictionary`1.IgnoreCase">
- <summary>
- True when we are ignoring case for stored keys
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsNestedStringDictionary`1.SpannerCharLength">
- <summary>
- The number of characters at the start of keyStrings to use when adding items to clsNestedStringDictionary instances
- </summary>
- <value></value>
- <returns></returns>
- <remarks>
- If this value is too short, all of the items added to the clsNestedStringDictionary instance
- will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.#ctor(System.Boolean,System.Byte)">
- <summary>
- Constructor
- </summary>
- <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
- <param name="spannerCharLength"></param>
- <remarks>
- If spannerCharLength is too small, all of the items added to this class instance using Add() will be
- tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.Add(System.String,`0)">
- <summary>
- Store a key and its associated value
- </summary>
- <param name="key">String to store</param>
- <param name="value">Value of type T</param>
- <remarks></remarks>
- <exception cref="T:System.ArgumentException">Thrown if the key has already been stored</exception>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.Clear">
- <summary>
- Remove the stored items
- </summary>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.ContainsKey(System.String)">
- <summary>
- Check for the existence of a key
- </summary>
- <param name="key"></param>
- <returns>True if the key exists, otherwise false</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.GetSizeSummary">
- <summary>
- Return a string summarizing the number of items in the dictionary associated with each spanning key
- </summary>
- <returns>String description of the stored data</returns>
- <remarks>
- Example return strings:
-   1 spanning key:  'a' with 1 item
-   2 spanning keys: 'a' with 1 item and 'o' with 1 item
-   3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
-   5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.GetDictionaryForSpanningKey(System.String)">
- <summary>
- Retrieve the dictionary associated with the given spanner key
- </summary>
- <param name="keyName"></param>
- <returns>The dictionary, or nothing if the key is not found</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.GetSpanningKeys">
- <summary>
- Retrieve the list of spanning keys in use
- </summary>
- <returns>List of keys</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsNestedStringDictionary`1.TryGetValue(System.String,`0@)">
- <summary>
- Try to get the value associated with the key
- </summary>
- <param name="key">Key to find</param>
- <param name="value">Value found, or nothing if no match</param>
- <returns>True if a match was found, otherwise nothing</returns>
- <remarks></remarks>
-</member>
-<member name="F:ValidateFastaFile.clsProteinHashInfo.mAdditionalProteins">
- <summary>
- Additional protein names
- </summary>
- <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
-</member>
-<member name="P:ValidateFastaFile.clsProteinHashInfo.SequenceHash">
- <summary>
- SHA-1 has of the protein sequence
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsProteinHashInfo.SequenceLength">
- <summary>
- Number of residues in the protein sequence
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsProteinHashInfo.SequenceStart">
- <summary>
- The first 20 residues of the protein sequence
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsProteinHashInfo.ProteinNameFirst">
- <summary>
- First protein associated with this hash value
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="P:ValidateFastaFile.clsProteinHashInfo.DuplicateProteinNameCount">
- <summary>
- Greater than 0 if multiple entries have the same name and same sequence
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsProteinHashInfo.#ctor(System.String,System.Text.StringBuilder,System.String)">
- <summary>
- Constructor
- </summary>
- <param name="seqHash"></param>
- <param name="sbResidues"></param>
- <param name="proteinName"></param>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.#ctor">
- <summary>
- Constructor
- </summary>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.#ctor(System.String)">
- <summary>
- Constructor that takes a parameter file
- </summary>
- <param name="parameterFilePath"></param>
-</member>
-<member name="F:ValidateFastaFile.clsValidateFastaFile.DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH">
- <summary>
- The maximum suggested value when using SEQUEST is 34 characters
- In contrast, MS-GF+ supports long protein names
- </summary>
- <remarks></remarks>
-</member>
-<member name="F:ValidateFastaFile.clsValidateFastaFile.mFastaFilePath">
- <summary>
- Fasta file path being examined
- </summary>
- <remarks>Used by clsCustomValidateFastaFiles</remarks>
-</member>
-<member name="F:ValidateFastaFile.clsValidateFastaFile.mProteinNameSpannerCharLength">
- <summary>
- The number of characters at the start of key strings to use when adding items to clsNestedStringDictionary instances
- </summary>
- <remarks>
- If this value is too short, all of the items added to the clsNestedStringDictionary instance
- will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
- </remarks>
-</member>
-<member name="P:ValidateFastaFile.clsValidateFastaFile.OptionSwitch(ValidateFastaFile.clsValidateFastaFile.SwitchOptions)">
- <summary>
- Gets or sets a processing option
- </summary>
- <param name="SwitchName"></param>
- <value></value>
- <returns></returns>
- <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.SetOptionSwitch(ValidateFastaFile.clsValidateFastaFile.SwitchOptions,System.Boolean)">
- <summary>
- Set a processing option
- </summary>
- <param name="SwitchName"></param>
- <param name="State"></param>
- <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-</member>
-<member name="P:ValidateFastaFile.clsValidateFastaFile.ExistingProteinHashFile">
- <summary>
- Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
- </summary>
- <value></value>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.AnalyzeFastaFile(System.String,ValidateFastaFile.clsNestedStringIntList)">
- <summary>
- Examine the given fasta file to look for problems.
- Optionally create a new, fixed fasta file
- Optionally also consolidate proteins with duplicate sequences
- </summary>
- <param name="fastaFilePathToCheck"></param>
- <param name="preloadedProteinNamesToKeep">
- Preloaded list of protein names to include in the fixed fasta file
- Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
- </param>
- <returns>True if the file was successfully analyzed (even if errors were found)</returns>
- <remarks>Assumes fastaFilePathToCheck exists</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.AutoDetermineFastaProteinNameSpannerCharLength(System.String,System.Int32)">
- <summary>
- Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
- </summary>
- <param name="fastaFilePathToTest">Fasta file to examine</param>
- <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
- <remarks>
- Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
- Keeps track of the portion of protein names in common between adjacent proteins
- Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.AutoDetermineFastaProteinNameSpannerCharLength(System.IO.FileInfo,System.Int32,System.Collections.Generic.IDictionary{System.String,System.Int32},System.Int64,System.Int64)">
- <summary>
- Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
- </summary>
- <param name="fastaFile"></param>
- <param name="terminatorSize"></param>
- <param name="proteinStartLetters"></param>
- <param name="startOffset"></param>
- <param name="bytesToRead"></param>
- <returns>The number of lines read</returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.CorrectForDuplicateProteinSeqsInFasta(System.Boolean,System.Boolean,System.String,System.Int32,System.Collections.Generic.IList{ValidateFastaFile.clsProteinHashInfo})">
- <summary>
- Looks for duplicate proteins in the Fasta file
- Creates a new fasta file that has exact duplicates removed
- Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
- </summary>
- <param name="consolidateDuplicateProteinSeqsInFasta"></param>
- <param name="fixedFastaFilePath"></param>
- <param name="proteinSequenceHashCount"></param>
- <param name="proteinSeqHashInfo"></param>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.FlattenList(System.Collections.Generic.IEnumerable{System.String})">
- <summary>
- Convert a list of strings to a tab-delimited string
- </summary>
- <param name="dataValues"></param>
- <returns></returns>
- <remarks></remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.GetBestSpaceIndex(System.String)">
- <summary>
- Find the first space (or first tab) in the protein header line
- </summary>
- <param name="headerLine"></param>
- <returns></returns>
- <remarks>Used for determining protein name</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.GetFileErrors">
- <summary>
- Retrieve the errors reported by the validator
- </summary>
- <returns></returns>
- <remarks>Used by clsCustomValidateFastaFiles</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.GetFileWarnings">
- <summary>
- Retrieve the warnings reported by the validator
- </summary>
- <returns></returns>
- <remarks>Used by clsCustomValidateFastaFiles</remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.SimpleProcessFile(System.String)">
- <summary>
- Validate a single fasta file
- </summary>
- <returns>True if success; false if a fatal error</returns>
- <remarks>
- Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
- Used by clsCustomValidateFastaFiles
- </remarks>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.ProcessFile(System.String,System.String,System.String,System.Boolean)">
- <summary>
- Main processing function
- </summary>
- <param name="inputFilePath"></param>
- <param name="outputFolderPath"></param>
- <param name="parameterFilePath"></param>
- <param name="resetErrorCode"></param>
- <returns>True if success, False if failure</returns>
-</member>
-<member name="M:ValidateFastaFile.clsValidateFastaFile.SetDefaultRules">
- <summary>
- Updates the validation rules using the current options
- </summary>
- <remarks>Call this function after setting new options using SetOptionSwitch</remarks>
-</member>
-</members>
+    <assembly>
+        <name>ValidateFastaFile</name>
+    </assembly>
+    <members>
+        <member name="M:ValidateFastaFile.CustomFastaValidator.#ctor">
+            <summary>
+            Constructor
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.CustomFastaValidator.FullErrorCollection">
+            <summary>
+            Keys are fasta filename
+            Values are the list of fasta file errors
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.CustomFastaValidator.FullWarningCollection">
+            <summary>
+            Keys are fasta filename
+            Values are the list of fasta file warnings
+            </summary>
+        </member>
+        <member name="M:ValidateFastaFile.CustomFastaValidator.StartValidateFASTAFile(System.String)">
+            <summary>
+            Calls SimpleProcessFile(), which calls ValidateFastaFile.ProcessFile to validate filePath
+            </summary>
+            <param name="filePath"></param>
+            <returns>True if the file was successfully processed (even if it contains errors)</returns>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.#ctor">
+            <summary>
+            Constructor
+            </summary>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.#ctor(System.String)">
+            <summary>
+            Constructor that takes a parameter file
+            </summary>
+            <param name="parameterFilePath"></param>
+        </member>
+        <member name="F:ValidateFastaFile.FastaValidator.DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH">
+            <summary>
+            The maximum suggested value when using SEQUEST is 34 characters
+            In contrast, MS-GF+ supports long protein names
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchIPI">
+            <summary>
+            Extracts IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934 <br />
+            Second matching group contains everything after the first vertical bar
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchGI">
+            <summary>
+            Extracts gi|169602219 from gi|169602219|ref|XP_001794531.1| <br />
+            Second matching group contains everything after the second vertical bar
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchJGI">
+            <summary>
+            Extracts jgi|Batde5|906240 from jgi|Batde5|90624|GP3.061830 <br />
+            Second matching group contains everything after the third vertical bar
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchGeneric">
+            <summary>
+            Extracts bob|234384 from bob|234384|ref|483293, or bob|845832 from bob|845832;ref|384923 <br />
+            Second matching group contains everything after the separator following the first matched group
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchJGIBaseAndID">
+            <summary>
+            Matches jgi|Batde5|23435 ; it requires that there be a number after the second bar <br />
+            Contains no matching groups
+            </summary>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ProteinNameTruncationRegex.reMatchDoubleBarOrColonAndBar">
+            <summary>
+            Extracts the separator set following the first separator in the string
+            </summary>
+        </member>
+        <member name="F:ValidateFastaFile.FastaValidator.mFastaFilePath">
+            <summary>
+            Fasta file path being examined
+            </summary>
+            <remarks>Used by CustomValidateFastaFiles</remarks>
+        </member>
+        <member name="F:ValidateFastaFile.FastaValidator.mProteinNameSpannerCharLength">
+            <summary>
+            The number of characters at the start of key strings to use when adding items to NestedStringDictionary instances
+            </summary>
+            <remarks>
+            If this value is too short, all of the items added to the NestedStringDictionary instance
+            will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.get_OptionSwitch(ValidateFastaFile.FastaValidator.SwitchOptions)">
+            <summary>
+            Gets or sets a processing option
+            </summary>
+            <param name="SwitchName"></param>
+            <value></value>
+            <returns></returns>
+            <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.SetOptionSwitch(ValidateFastaFile.FastaValidator.SwitchOptions,System.Boolean)">
+            <summary>
+            Set a processing option
+            </summary>
+            <param name="SwitchName"></param>
+            <param name="State"></param>
+            <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
+        </member>
+        <member name="P:ValidateFastaFile.FastaValidator.ExistingProteinHashFile">
+            <summary>
+            Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.AnalyzeFastaFile(System.String,ValidateFastaFile.NestedStringIntList)">
+            <summary>
+            Examine the given fasta file to look for problems.
+            Optionally create a new, fixed fasta file
+            Optionally also consolidate proteins with duplicate sequences
+            </summary>
+            <param name="fastaFilePathToCheck"></param>
+            <param name="preloadedProteinNamesToKeep">
+            Preloaded list of protein names to include in the fixed fasta file
+            Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+            </param>
+            <returns>True if the file was successfully analyzed (even if errors were found)</returns>
+            <remarks>Assumes fastaFilePathToCheck exists</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.AutoDetermineFastaProteinNameSpannerCharLength(System.String,System.Int32)">
+            <summary>
+            Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+            </summary>
+            <param name="fastaFilePathToTest">Fasta file to examine</param>
+            <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
+            <remarks>
+            Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
+            Keeps track of the portion of protein names in common between adjacent proteins
+            Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.AutoDetermineFastaProteinNameSpannerCharLength(System.IO.FileInfo,System.Int32,System.Collections.Generic.IDictionary{System.String,System.Int32},System.Int64,System.Int64)">
+            <summary>
+            Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
+            </summary>
+            <param name="fastaFile"></param>
+            <param name="terminatorSize"></param>
+            <param name="proteinStartLetters"></param>
+            <param name="startOffset"></param>
+            <param name="bytesToRead"></param>
+            <returns>The number of lines read</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.CorrectForDuplicateProteinSeqsInFasta(System.Boolean,System.Boolean,System.String,System.Collections.Generic.IList{ValidateFastaFile.ProteinHashInfo})">
+            <summary>
+            Looks for duplicate proteins in the Fasta file
+            Creates a new fasta file that has exact duplicates removed
+            Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
+            </summary>
+            <param name="consolidateDuplicateProteinSeqsInFasta"></param>
+            <param name="fixedFastaFilePath"></param>
+            <param name="proteinSequenceHashCount"></param>
+            <param name="proteinSeqHashInfo"></param>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.FlattenList(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Convert a list of strings to a tab-delimited string
+            </summary>
+            <param name="dataValues"></param>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.GetBestSpaceIndex(System.String)">
+            <summary>
+            Find the first space (or first tab) in the protein header line
+            </summary>
+            <param name="headerLine"></param>
+            <returns></returns>
+            <remarks>Used for determining protein name</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.GetFileErrors">
+            <summary>
+            Retrieve the errors reported by the validator
+            </summary>
+            <returns></returns>
+            <remarks>Used by CustomValidateFastaFiles</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.GetFileWarnings">
+            <summary>
+            Retrieve the warnings reported by the validator
+            </summary>
+            <returns></returns>
+            <remarks>Used by CustomValidateFastaFiles</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.SimpleProcessFile(System.String)">
+            <summary>
+            Validate a single fasta file
+            </summary>
+            <returns>True if success; false if a fatal error</returns>
+            <remarks>
+            Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
+            Used by CustomValidateFastaFiles
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.ProcessFile(System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Main processing function
+            </summary>
+            <param name="inputFilePath"></param>
+            <param name="outputFolderPath"></param>
+            <param name="parameterFilePath"></param>
+            <param name="resetErrorCode"></param>
+            <returns>True if success, False if failure</returns>
+        </member>
+        <member name="M:ValidateFastaFile.FastaValidator.SetDefaultRules">
+            <summary>
+            Updates the validation rules using the current options
+            </summary>
+            <remarks>Call this function after setting new options using SetOptionSwitch</remarks>
+        </member>
+        <member name="P:ValidateFastaFile.MemoryUsageLogger.LogFolderPath">
+            <summary>
+            Output folder for the log file
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks>If this is an empty string, the log file is created in the working directory</remarks>
+        </member>
+        <member name="P:ValidateFastaFile.MemoryUsageLogger.MinimumLogIntervalMinutes">
+            <summary>
+            The minimum interval between appending a new memory usage entry to the log
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.#ctor(System.String,System.Single)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="logFolderPath">Folder in which to write the memory log file(s); if this is an empty string, the log file is created in the working directory</param>
+            <param name="minLogIntervalMinutes">Minimum log interval, in minutes</param>
+            <remarks>
+            Use WriteMemoryUsageLogEntry to append an entry to the log file.
+            Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.GetFreeMemoryMB">
+            <summary>
+            Returns the amount of free memory on the current machine
+            </summary>
+            <returns>Free memory, in MB</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.GetPoolNonpagedMemory">
+            <summary>
+            Returns the amount of pool nonpaged memory on the current machine
+            </summary>
+            <returns>Pool Nonpaged memory, in MB</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.GetPoolPagedMemory">
+            <summary>
+            Returns the amount of pool paged memory on the current machine
+            </summary>
+            <returns>Pool Paged memory, in MB</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.GetProcessMemoryUsageMB">
+            <summary>
+            Returns the amount of memory that the currently running process is using
+            </summary>
+            <returns>Memory usage, in MB</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.InitializePerfCounters">
+            <summary>
+            Initializes the performance counters
+            </summary>
+            <returns>Any errors that occur; empty string if no errors</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.MemoryUsageLogger.WriteMemoryUsageLogEntry">
+            <summary>
+            Writes a status file tracking memory usage
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:ValidateFastaFile.NestedStringIntList">
+            <summary>
+            This class keeps track of a list of strings that each has an associated integer value
+            Internally it uses a dictionary to track several lists, storing each added string/integer pair to one of the lists
+            based on the first few letters of the newly added string
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.NestedStringIntList.Count">
+            <summary>
+            Number of items stored with Add()
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.NestedStringIntList.SpannerCharLength">
+            <summary>
+            The number of characters at the start of stored items to use when adding items to NestedStringDictionary instances
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks>
+            If this value is too short, all of the items added to the NestedStringDictionary instance
+            will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.#ctor(System.Byte,System.Boolean)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="spannerCharLength"></param>
+            <remarks>
+            If spannerCharLength is too small, all of the items added to this class instance using Add() will be
+            tracked by the same list, which could result in a list surpassing the 2 GB boundary
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.Add(System.String,System.Int32)">
+            <summary>
+            Appends an item to the list
+            </summary>
+            <param name="item">String to add</param>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.AutoDetermineSpannerCharLength(System.IO.FileInfo,System.Int32,System.Boolean)">
+            <summary>
+            Read a tab-delimited file, comparing the value of the text in a given column on adjacent lines
+            to determine the appropriate spanner length when instantiating a new instance of this class
+            </summary>
+            <param name="fiDataFile"></param>
+            <param name="keyColumnIndex"></param>
+            <param name="hasHeaderLine"></param>
+            <returns>The appropriate spanner length</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.DetermineSpannerLengthUsingStartLetterStats(System.Collections.Generic.Dictionary{System.String,System.Int32})">
+            <summary>
+            Determine the appropriate spanner length given the observation counts of the base names
+            </summary>
+            <param name="keyStartLetters">
+            Dictionary where keys are base names (characters in common between adjacent items)
+            and values are the observation count of each base name</param>
+            <returns>Spanner key length that fits the majority of the entries in keyStartLetters</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.Clear">
+            <summary>
+            Remove the stored items
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.Contains(System.String)">
+            <summary>
+            Check for the existence of a string item (ignoring the associated integer)
+            </summary>
+            <param name="item">String to find</param>
+            <returns>True if the item exists, otherwise false</returns>
+            <remarks>For large lists call Sort() prior to calling this function</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.GetSizeSummary">
+            <summary>
+            Return a string summarizing the number of items in the List associated with each spanning key
+            </summary>
+            <returns>String description of the stored data</returns>
+            <remarks>
+            Example return strings:
+            1 spanning key:  'a' with 1 item
+            2 spanning keys: 'a' with 1 item and 'o' with 1 item
+            3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
+            5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.GetListForSpanningKey(System.String)">
+            <summary>
+            Retrieve the List associated with the given spanner key
+            </summary>
+            <param name="keyName"></param>
+            <returns>The list, or nothing if the key is not found</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.GetSpanningKeys">
+            <summary>
+            Retrieve the list of spanning keys in use
+            </summary>
+            <returns>List of keys</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.GetValueForItem(System.String,System.Int32)">
+            <summary>
+            Return the integer associated with the given string item
+            </summary>
+            <param name="item">String to find</param>
+            <returns>Integer value if found, otherwise nothing</returns>
+            <remarks>For large lists call Sort() prior to calling this function</remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.IsSorted">
+            <summary>
+            Checks whether the items are sorted
+            </summary>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.Remove(System.String)">
+            <summary>
+            Removes all occurrences of the item from the list
+            </summary>
+            <param name="item">String to remove</param>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.SetValueForItem(System.String,System.Int32)">
+            <summary>
+            Update the integer associated with the given string item
+            </summary>
+            <param name="item">String to find</param>
+            <remarks>For large lists call Sort() prior to calling this function</remarks>
+            <returns>True item was found and updated, false if the item does not exist</returns>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringIntList.Sort">
+            <summary>
+            Sorts all of the stored items
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="T:ValidateFastaFile.NestedStringDictionary`1">
+            <summary>
+            This class implements a dictionary where keys are strings and values are type T (for example string or integer)
+            Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries
+            based on the first few letters of the keys of an added key/value pair
+            </summary>
+            <typeparam name="T">Type for values</typeparam>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.NestedStringDictionary`1.Count">
+            <summary>
+            Number of items stored with Add()
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.NestedStringDictionary`1.IgnoreCase">
+            <summary>
+            True when we are ignoring case for stored keys
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.NestedStringDictionary`1.SpannerCharLength">
+            <summary>
+            The number of characters at the start of keyStrings to use when adding items to NestedStringDictionary instances
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks>
+            If this value is too short, all of the items added to the NestedStringDictionary instance
+            will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.#ctor(System.Boolean,System.Byte)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
+            <param name="spannerCharLength"></param>
+            <remarks>
+            If spannerCharLength is too small, all of the items added to this class instance using Add() will be
+            tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.Add(System.String,`0)">
+            <summary>
+            Store a key and its associated value
+            </summary>
+            <param name="key">String to store</param>
+            <param name="value">Value of type T</param>
+            <remarks></remarks>
+            <exception cref="T:System.ArgumentException">Thrown if the key has already been stored</exception>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.Clear">
+            <summary>
+            Remove the stored items
+            </summary>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.ContainsKey(System.String)">
+            <summary>
+            Check for the existence of a key
+            </summary>
+            <param name="key"></param>
+            <returns>True if the key exists, otherwise false</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.GetSizeSummary">
+            <summary>
+            Return a string summarizing the number of items in the dictionary associated with each spanning key
+            </summary>
+            <returns>String description of the stored data</returns>
+            <remarks>
+            Example return strings:
+            1 spanning key:  'a' with 1 item
+            2 spanning keys: 'a' with 1 item and 'o' with 1 item
+            3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
+            5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
+            </remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.GetDictionaryForSpanningKey(System.String)">
+            <summary>
+            Retrieve the dictionary associated with the given spanner key
+            </summary>
+            <param name="keyName"></param>
+            <returns>The dictionary, or nothing if the key is not found</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.GetSpanningKeys">
+            <summary>
+            Retrieve the list of spanning keys in use
+            </summary>
+            <returns>List of keys</returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.NestedStringDictionary`1.TryGetValue(System.String,`0@)">
+            <summary>
+            Try to get the value associated with the key
+            </summary>
+            <param name="key">Key to find</param>
+            <param name="value">Value found, or nothing if no match</param>
+            <returns>True if a match was found, otherwise nothing</returns>
+            <remarks></remarks>
+        </member>
+        <member name="F:ValidateFastaFile.ProteinHashInfo.mAdditionalProteins">
+            <summary>
+            Additional protein names
+            </summary>
+            <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
+        </member>
+        <member name="P:ValidateFastaFile.ProteinHashInfo.SequenceHash">
+            <summary>
+            SHA-1 has of the protein sequence
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.ProteinHashInfo.SequenceLength">
+            <summary>
+            Number of residues in the protein sequence
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.ProteinHashInfo.SequenceStart">
+            <summary>
+            The first 20 residues of the protein sequence
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.ProteinHashInfo.ProteinNameFirst">
+            <summary>
+            First protein associated with this hash value
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="P:ValidateFastaFile.ProteinHashInfo.DuplicateProteinNameCount">
+            <summary>
+            Greater than 0 if multiple entries have the same name and same sequence
+            </summary>
+            <value></value>
+            <returns></returns>
+            <remarks></remarks>
+        </member>
+        <member name="M:ValidateFastaFile.ProteinHashInfo.#ctor(System.String,System.Text.StringBuilder,System.String)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="seqHash"></param>
+            <param name="sbResidues"></param>
+            <param name="proteinName"></param>
+            <remarks></remarks>
+        </member>
+    </members>
 </doc>

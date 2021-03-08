@@ -1,19 +1,17 @@
-﻿
-/// <summary>
-/// This class keeps track of a list of strings that each has an associated integer value
-/// Internally it uses a dictionary to track several lists, storing each added string/integer pair to one of the lists
-/// based on the first few letters of the newly added string
-/// </summary>
-/// <remarks></remarks>
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace ValidateFastaFile
 {
-    public class clsNestedStringIntList
+    /// <summary>
+    /// This class keeps track of a list of strings that each has an associated integer value
+    /// Internally it uses a dictionary to track several lists, storing each added string/integer pair to one of the lists
+    /// based on the first few letters of the newly added string
+    /// </summary>
+    /// <remarks></remarks>
+    public class NestedStringIntList
     {
         private readonly Dictionary<string, List<KeyValuePair<string, int>>> mData;
         private readonly bool mRaiseExceptionIfAddedDataNotSorted;
@@ -21,7 +19,7 @@ namespace ValidateFastaFile
         private bool mDataIsSorted;
 
         // mSearchComparer uses StringComparison.Ordinal
-        private readonly clsKeySearchComparer mSearchComparer;
+        private readonly KeySearchComparer mSearchComparer;
 
         /// <summary>
         /// Number of items stored with Add()
@@ -42,12 +40,12 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// The number of characters at the start of stored items to use when adding items to clsNestedStringDictionary instances
+        /// The number of characters at the start of stored items to use when adding items to NestedStringDictionary instances
         /// </summary>
         /// <value></value>
         /// <returns></returns>
         /// <remarks>
-        /// If this value is too short, all of the items added to the clsNestedStringDictionary instance
+        /// If this value is too short, all of the items added to the NestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
         public byte SpannerCharLength { get; }
@@ -60,7 +58,7 @@ namespace ValidateFastaFile
         /// If spannerCharLength is too small, all of the items added to this class instance using Add() will be
         /// tracked by the same list, which could result in a list surpassing the 2 GB boundary
         /// </remarks>
-        public clsNestedStringIntList(byte spannerCharLength = 1, bool raiseExceptionIfAddedDataNotSorted = false)
+        public NestedStringIntList(byte spannerCharLength = 1, bool raiseExceptionIfAddedDataNotSorted = false)
         {
             mData = new Dictionary<string, List<KeyValuePair<string, int>>>(StringComparer.InvariantCulture);
 
@@ -77,7 +75,7 @@ namespace ValidateFastaFile
 
             mDataIsSorted = true;
 
-            mSearchComparer = new clsKeySearchComparer();
+            mSearchComparer = new KeySearchComparer();
         }
 
         /// <summary>
@@ -540,7 +538,7 @@ namespace ValidateFastaFile
             return key.Substring(0, SpannerCharLength);
         }
 
-        private class clsKeySearchComparer : IComparer<KeyValuePair<string, int>>, IEqualityComparer<KeyValuePair<string, int>>
+        private class KeySearchComparer : IComparer<KeyValuePair<string, int>>, IEqualityComparer<KeyValuePair<string, int>>
         {
             public int Compare(KeyValuePair<string, int> x, KeyValuePair<string, int> y)
             {

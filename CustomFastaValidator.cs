@@ -1,9 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace ValidateFastaFile
 {
-    public class clsCustomValidateFastaFiles : clsValidateFastaFile
+    [Obsolete("Renamed to 'CustomFastaValidator'", true)]
+    public class clsCustomValidateFastaFiles : CustomFastaValidator
+    {
+        // Intentionally empty
+    }
+
+    public class CustomFastaValidator : FastaValidator
     {
         #region "Structures and enums"
         public class ErrorInfoExtended
@@ -29,14 +36,14 @@ namespace ValidateFastaFile
             public string Type;
         }
 
-        public enum eValidationOptionConstants : int
+        public enum ValidationOptionConstants : int
         {
             AllowAsterisksInResidues = 0,
             AllowDashInResidues = 1,
             AllowAllSymbolsInProteinNames = 2
         }
 
-        public enum eValidationMessageTypes : int
+        public enum ValidationMessageTypes : int
         {
             ErrorMsg = 0,
             WarningMsg = 1
@@ -50,13 +57,13 @@ namespace ValidateFastaFile
         private string m_CachedFastaFilePath;
 
         // Note: this array gets initialized with space for 10 items
-        // If eValidationOptionConstants gets more than 10 entries, then this array will need to be expanded
+        // If ValidationOptionConstants gets more than 10 entries, then this array will need to be expanded
         private readonly bool[] mValidationOptions;
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public clsCustomValidateFastaFiles() : base()
+        public CustomFastaValidator() : base()
         {
             FullErrorCollection = new Dictionary<string, List<ErrorInfoExtended>>();
             FullWarningCollection = new Dictionary<string, List<ErrorInfoExtended>>();
@@ -150,7 +157,7 @@ namespace ValidateFastaFile
             string proteinName,
             int errorMessageCode,
             string extraInfo,
-            eValidationMessageTypes messageType)
+            ValidationMessageTypes messageType)
         {
             var msgString = LookupMessageDescription(errorMessageCode, extraInfo);
 
@@ -162,7 +169,7 @@ namespace ValidateFastaFile
             string proteinName,
             string errorMessage,
             string extraInfo,
-            eValidationMessageTypes messageType)
+            ValidationMessageTypes messageType)
         {
             RecordFastaFileProblemToHash(lineNumber, proteinName, errorMessage, extraInfo, messageType);
         }
@@ -172,7 +179,7 @@ namespace ValidateFastaFile
             string proteinName,
             string messageString,
             string extraInfo,
-            eValidationMessageTypes messageType)
+            ValidationMessageTypes messageType)
         {
             if (!mFastaFilePath.Equals(m_CachedFastaFilePath))
             {
@@ -183,7 +190,7 @@ namespace ValidateFastaFile
                 m_CachedFastaFilePath = string.Copy(mFastaFilePath);
             }
 
-            if (messageType == eValidationMessageTypes.WarningMsg)
+            if (messageType == ValidationMessageTypes.WarningMsg)
             {
                 // Treat as warning
                 m_CurrentFileWarnings.Add(new ErrorInfoExtended(
@@ -202,13 +209,13 @@ namespace ValidateFastaFile
             }
         }
 
-        public void SetValidationOptions(eValidationOptionConstants eValidationOptionName, bool enabled)
+        public void SetValidationOptions(ValidationOptionConstants eValidationOptionName, bool enabled)
         {
             mValidationOptions[(int)eValidationOptionName] = enabled;
         }
 
         /// <summary>
-        /// Calls SimpleProcessFile(), which calls clsValidateFastaFile.ProcessFile to validate filePath
+        /// Calls SimpleProcessFile(), which calls ValidateFastaFile.ProcessFile to validate filePath
         /// </summary>
         /// <param name="filePath"></param>
         /// <returns>True if the file was successfully processed (even if it contains errors)</returns>
@@ -218,17 +225,17 @@ namespace ValidateFastaFile
 
             if (success)
             {
-                if (GetErrorWarningCounts(eMsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
+                if (GetErrorWarningCounts(MsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
                 {
                     // The file has warnings; we need to record them using RecordFastaFileProblem
 
                     var warnings = GetFileWarnings();
 
                     foreach (var item in warnings)
-                        RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, eValidationMessageTypes.WarningMsg);
+                        RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, ValidationMessageTypes.WarningMsg);
                 }
 
-                if (GetErrorWarningCounts(eMsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) > 0)
+                if (GetErrorWarningCounts(MsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) > 0)
                 {
                     // The file has errors; we need to record them using RecordFastaFileProblem
                     // However, we might ignore some of the errors
@@ -243,7 +250,7 @@ namespace ValidateFastaFile
                         switch (errorMessage)
                         {
                             case MESSAGE_TEXT_ASTERISK_IN_RESIDUES:
-                                if (mValidationOptions[(int)eValidationOptionConstants.AllowAsterisksInResidues])
+                                if (mValidationOptions[(int)ValidationOptionConstants.AllowAsterisksInResidues])
                                 {
                                     ignoreError = true;
                                 }
@@ -251,7 +258,7 @@ namespace ValidateFastaFile
                                 break;
 
                             case MESSAGE_TEXT_DASH_IN_RESIDUES:
-                                if (mValidationOptions[(int)eValidationOptionConstants.AllowDashInResidues])
+                                if (mValidationOptions[(int)ValidationOptionConstants.AllowDashInResidues])
                                 {
                                     ignoreError = true;
                                 }
@@ -261,7 +268,7 @@ namespace ValidateFastaFile
 
                         if (!ignoreError)
                         {
-                            RecordFastaFileProblem(item.LineNumber, item.ProteinName, errorMessage, item.ExtraInfo, eValidationMessageTypes.ErrorMsg);
+                            RecordFastaFileProblem(item.LineNumber, item.ProteinName, errorMessage, item.ExtraInfo, ValidationMessageTypes.ErrorMsg);
                         }
                     }
                 }

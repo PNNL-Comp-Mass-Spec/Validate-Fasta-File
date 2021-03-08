@@ -7,7 +7,7 @@ namespace TestValidateFastaFileDLL
     // Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
     // Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
 
-    // This program can be used to test the use of the clsValidateFastaFiles in the ValidateFastaFiles.Dll file
+    // This program can be used to test the use of the ValidateFastaFiles in the ValidateFastaFiles.Dll file
     // Last modified May 8, 2007
 
     static class Program
@@ -41,26 +41,26 @@ namespace TestValidateFastaFileDLL
 
                 Console.WriteLine("Examining file: " + testFilePath);
 
-                var fastaFileValidator = new clsValidateFastaFile();
+                var fastaFileValidator = new FastaValidator();
 
-                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.OutputToStatsFile, true);
+                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, true);
 
                 // Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
-                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AddMissingLineFeedAtEOF, false);
-                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.AllowAsteriskInResidues, true);
+                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AddMissingLineFeedAtEOF, false);
+                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, true);
 
                 fastaFileValidator.MaximumFileErrorsToTrack = 5;               // The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
                 fastaFileValidator.MinimumProteinNameLength = 3;
                 fastaFileValidator.MaximumProteinNameLength = 34;
 
-                fastaFileValidator.SetOptionSwitch(clsValidateFastaFile.SwitchOptions.WarnBlankLinesBetweenProteins, false);
+                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, false);
 
                 // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
                 var success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
 
                 if (success)
                 {
-                    var count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.ErrorMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    var count = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.ErrorMsg, FastaValidator.ErrorWarningCountTypes.Total);
                     if (count == 0)
                     {
                         Console.WriteLine(" No errors were found");
@@ -70,7 +70,7 @@ namespace TestValidateFastaFileDLL
                         Console.WriteLine(" " + count.ToString() + " errors were found");
                     }
 
-                    count = fastaFileValidator.GetErrorWarningCounts(clsValidateFastaFile.eMsgTypeConstants.WarningMsg, clsValidateFastaFile.ErrorWarningCountTypes.Total);
+                    count = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.WarningMsg, FastaValidator.ErrorWarningCountTypes.Total);
                     if (count == 0)
                     {
                         Console.WriteLine(" No warnings were found");

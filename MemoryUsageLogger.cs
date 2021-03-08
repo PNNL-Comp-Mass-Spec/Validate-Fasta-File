@@ -11,7 +11,7 @@ using System.IO;
 
 namespace ValidateFastaFile
 {
-    public class clsMemoryUsageLogger
+    public class MemoryUsageLogger
     {
         #region "Module variables"
 
@@ -66,7 +66,7 @@ namespace ValidateFastaFile
         /// <remarks>
         /// Use WriteMemoryUsageLogEntry to append an entry to the log file.
         /// Alternatively use GetMemoryUsageSummary() to retrieve the memory usage as a string</remarks>
-        public clsMemoryUsageLogger(string logFolderPath, float minLogIntervalMinutes = 5)
+        public MemoryUsageLogger(string logFolderPath, float minLogIntervalMinutes = 5)
         {
             if (string.IsNullOrWhiteSpace(logFolderPath))
             {
