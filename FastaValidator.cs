@@ -3536,7 +3536,7 @@ namespace ValidateFastaFile
                         ruleDetails[index] = new RuleDefinitionExtended(
                             ruleDefinitions[index],
                             new Regex(
-                                ruleDetails[index].RuleDefinition.MatchRegEx,
+                                ruleDefinitions[index].MatchRegEx,
                                 RegexOptions.Singleline |
                                 RegexOptions.Compiled))
                         {
