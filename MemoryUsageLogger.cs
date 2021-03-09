@@ -13,7 +13,6 @@ namespace ValidateFastaFile
 {
     public class MemoryUsageLogger
     {
-        #region "Module variables"
 
         private const char COL_SEP = '\t';
 
@@ -26,9 +25,6 @@ namespace ValidateFastaFile
         private PerformanceCounter m_PerfCounterPoolNonpagedBytes;
 
         private bool m_PerfCountersInitialized = false;
-        #endregion
-
-        #region "Properties"
 
         /// <summary>
         /// Output folder for the log file
@@ -54,9 +50,6 @@ namespace ValidateFastaFile
                 m_MinimumMemoryUsageLogIntervalMinutes = value;
             }
         }
-        #endregion
-
-        #region "Methods"
 
         /// <summary>
         /// Constructor
@@ -296,7 +289,5 @@ namespace ValidateFastaFile
                 // Ignore errors here
             }
         }
-
-        #endregion
     }
 }

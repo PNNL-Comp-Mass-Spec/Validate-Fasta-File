@@ -12,7 +12,6 @@ namespace ValidateFastaFile
 
     public class CustomFastaValidator : FastaValidator
     {
-        #region "Structures and enums"
         public class ErrorInfoExtended
         {
             public ErrorInfoExtended(
@@ -48,8 +47,6 @@ namespace ValidateFastaFile
             ErrorMsg = 0,
             WarningMsg = 1
         }
-
-        #endregion
 
         private readonly List<ErrorInfoExtended> m_CurrentFileErrors;
         private readonly List<ErrorInfoExtended> m_CurrentFileWarnings;

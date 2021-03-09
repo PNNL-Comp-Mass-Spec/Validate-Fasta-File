@@ -49,7 +49,6 @@ namespace ValidateFastaFile
             LoadParameterFileSettings(parameterFilePath);
         }
 
-        #region "Constants and Enums"
         private const int DEFAULT_MINIMUM_PROTEIN_NAME_LENGTH = 3;
 
         /// <summary>
@@ -277,9 +276,7 @@ namespace ValidateFastaFile
             LF,    // Unix/Linux/OS X
             LFCR,  // Oddball (Just for completeness!)
         }
-        #endregion
 
-        #region "Structures"
 
         private class ErrorStats
         {
@@ -514,10 +511,6 @@ namespace ValidateFastaFile
             }
         }
 
-        #endregion
-
-        #region "Classwide Variables"
-
         /// <summary>
         /// Fasta file path being examined
         /// </summary>
@@ -591,9 +584,6 @@ namespace ValidateFastaFile
 
         private List<string> mTempFilesToDelete;
 
-        #endregion
-
-        #region "Properties"
 
         /// <summary>
         /// Gets or sets a processing option
@@ -1016,7 +1006,8 @@ namespace ValidateFastaFile
 
         public List<MsgInfo> FileErrorList => GetFileErrors();
 
-        #endregion
+        #region "Events and delegates"
+
         public event ProgressCompletedEventHandler ProgressCompleted;
 
         public delegate void ProgressCompletedEventHandler();
@@ -1035,6 +1026,8 @@ namespace ValidateFastaFile
         {
             WroteLineEndNormalizedFASTA?.Invoke(newFilePath);
         }
+
+        #endregion
 
         /// <summary>
         /// Examine the given fasta file to look for problems.
