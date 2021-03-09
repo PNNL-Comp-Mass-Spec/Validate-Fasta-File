@@ -1132,8 +1132,9 @@ namespace ValidateFastaFile
                 case MsgTypeConstants.WarningMsg:
                     msgSet = mFileWarnings;
                     break;
-                case MsgTypeConstants.StatusMsg:
+
                 default:
+                    // Includes MsgTypeConstants.StatusMsg
                     return 0;
             }
 
