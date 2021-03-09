@@ -936,8 +936,6 @@ namespace ValidateFastaFile
         /// </summary>
         private bool mSaveBasicProteinHashInfoFile;
 
-        private char mProteinLineStartChar;
-
         private bool mAllowAsteriskInResidues;
         private bool mAllowDashInResidues;
         private bool mAllowAllSymbolsInProteinNames;
@@ -1350,11 +1348,7 @@ namespace ValidateFastaFile
         /// <summary>
         /// Protein line start character
         /// </summary>
-        public char ProteinLineStartChar
-        {
-            get => mProteinLineStartChar;
-            set => mProteinLineStartChar = value;
-        }
+        public char ProteinLineStartChar { get; set; }
 
         /// <summary>
         /// Stats file path
@@ -1827,7 +1821,7 @@ namespace ValidateFastaFile
                         // Note: Only trim the start of the line; do not trim the end of the line since Sequest incorrectly notates the peptide terminal state if a residue has a space after it
                         lineIn = lineIn.TrimStart();
 
-                        if (lineIn[0] == mProteinLineStartChar)
+                        if (lineIn[0] == ProteinLineStartChar)
                         {
                             // Protein entry
 
@@ -2571,7 +2565,7 @@ namespace ValidateFastaFile
                                 break;
                             }
 
-                            if (lineIn[0] != mProteinLineStartChar)
+                            if (lineIn[0] != ProteinLineStartChar)
                             {
                                 continue;
                             }
@@ -3148,7 +3142,7 @@ namespace ValidateFastaFile
                             // Note: Trim the start of the line (however, since this is a fixed fasta file it should not start with a space)
                             lineIn = lineIn.TrimStart();
 
-                            if (lineIn[0] == mProteinLineStartChar)
+                            if (lineIn[0] == ProteinLineStartChar)
                             {
                                 // Protein entry line
 
@@ -3231,11 +3225,11 @@ namespace ValidateFastaFile
 
             if (string.IsNullOrWhiteSpace(proteinDescription))
             {
-                return mProteinLineStartChar + proteinName;
+                return ProteinLineStartChar + proteinName;
             }
             else
             {
-                return mProteinLineStartChar + proteinName + " " + proteinDescription;
+                return ProteinLineStartChar + proteinName + " " + proteinDescription;
             }
         }
 
