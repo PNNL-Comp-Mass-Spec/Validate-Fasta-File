@@ -6254,7 +6254,7 @@ namespace ValidateFastaFile
                             {
                                 skipDupProtein = true;
                             }
-                            else if (additionalProtein.ToLower() == cachedProteinName.ToLower())
+                            else if (string.Equals(additionalProtein, cachedProteinName, StringComparison.OrdinalIgnoreCase))
                             {
                                 // Names match; do not add to the list
                                 skipDupProtein = true;
@@ -6269,7 +6269,7 @@ namespace ValidateFastaFile
 
                                 if (match.Success)
                                 {
-                                    if (cachedProteinName.ToLower() == reMatch.Groups[1].Value.ToLower())
+                                    if (string.Equals(cachedProteinName, match.Groups[1].Value, StringComparison.OrdinalIgnoreCase))
                                     {
                                         // Base names match; do not add to the list
                                         // For example, ProteinX and ProteinX-b
