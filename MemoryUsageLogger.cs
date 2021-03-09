@@ -6,8 +6,12 @@
 // *********************************************************************************************************
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
+using PRISM;
 
 namespace ValidateFastaFile
 {
@@ -18,7 +22,6 @@ namespace ValidateFastaFile
     {
         // Ignore Spelling: yyyy-MM-dd, hh:mm:ss tt, nonpaged
 
-        private const char COL_SEP = '\t';
         // The minimum interval between appending a new memory usage entry to the log
         private float mMinimumMemoryUsageLogIntervalMinutes = 1;
 
@@ -29,6 +32,9 @@ namespace ValidateFastaFile
 
         private bool mPerfCountersInitialized;
 
+        private readonly List<string> mHeaderNames;
+
+        private readonly List<int> mHeaderNameLengths;
 
         /// <summary>
         /// Output folder for the log file
@@ -70,6 +76,22 @@ namespace ValidateFastaFile
             }
 
             MinimumLogIntervalMinutes = minLogIntervalMinutes;
+
+            mHeaderNames = new List<string>
+            {
+                "Date".PadRight(10),
+                "Time".PadRight(11),
+                "ProcessMemoryUsage_MB",
+                "FreeMemory_MB",
+                "PoolPaged_MB",
+                "PoolNonpaged_MB"
+            };
+
+            mHeaderNameLengths = new List<int>();
+            foreach (var item in mHeaderNames)
+            {
+                mHeaderNameLengths.Add(item.Length + 2);
+            }
         }
 
         /// <summary>
@@ -94,25 +116,20 @@ namespace ValidateFastaFile
             }
         }
 
-        public string GetMemoryUsageHeader()
         /// <summary>
         /// Return the memory usage columns as a space or tab-separated list
         /// </summary>
         /// <param name="tabSeparated"></param>
+        public string GetMemoryUsageHeader(bool tabSeparated = false)
         {
-            return "Date" + COL_SEP +
-                   "Time" + COL_SEP +
-                   "ProcessMemoryUsage_MB" + COL_SEP +
-                   "FreeMemory_MB" + COL_SEP +
-                   "PoolPaged_MB" + COL_SEP +
-                   "PoolNonpaged_MB";
+            return GetFormattedValues(mHeaderNames, mHeaderNameLengths, tabSeparated);
         }
 
-        public string GetMemoryUsageSummary()
         /// <summary>
         /// Get memory usage data as a space or tab-separated list
         /// </summary>
         /// <param name="tabSeparated"></param>
+        public string GetMemoryUsageSummary(bool tabSeparated = false)
         {
             if (!mPerfCountersInitialized)
             {
@@ -121,12 +138,17 @@ namespace ValidateFastaFile
 
             var currentTime = DateTime.Now;
 
-            return currentTime.ToString("yyyy-MM-dd") + COL_SEP +
-                   currentTime.ToString("hh:mm:ss tt") + COL_SEP +
-                   GetProcessMemoryUsageMB().ToString("0.0") + COL_SEP +
-                   GetFreeMemoryMB().ToString("0.0") + COL_SEP +
-                   GetPoolPagedMemory().ToString("0.0") + COL_SEP +
-                   GetPoolNonpagedMemory().ToString("0.0");
+            var dataValues = new List<string>
+            {
+                currentTime.ToString("yyyy-MM-dd"),
+                currentTime.ToString("hh:mm:ss tt"),
+                GetProcessMemoryUsageMB().ToString("0.0"),
+                GetFreeMemoryMB().ToString("0.0"),
+                GetPoolPagedMemory().ToString("0.0"),
+                GetPoolNonpagedMemory().ToString("0.0")
+            };
+
+            return GetFormattedValues(dataValues, mHeaderNameLengths, tabSeparated);
         }
 
         /// <summary>
@@ -245,9 +267,31 @@ namespace ValidateFastaFile
 
         private DateTime dtLastWriteTime = DateTime.UtcNow.Subtract(TimeSpan.FromHours(1));
 
+        private string GetFormattedValues(
+            IReadOnlyList<string> values,
+            IReadOnlyList<int> headerNameLengths,
+            bool tabSeparated = false)
+        {
+            if (tabSeparated)
+            {
+                var trimmedValues = values.Select(item => item.Trim()).ToList();
+                return string.Join("\t", trimmedValues);
+            }
+
+            var dataLine = new StringBuilder();
+
+            for (var i = 0; i < headerNameLengths.Count; i++)
+            {
+                dataLine.Append(values[i].PadRight(headerNameLengths[i]));
+            }
+
+            return dataLine.ToString();
+        }
+
         /// <summary>
         /// Writes a status file tracking memory usage
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public void WriteMemoryUsageLogEntry()
         {
             try
@@ -279,10 +323,10 @@ namespace ValidateFastaFile
 
                 if (writeHeader)
                 {
-                    GetMemoryUsageHeader();
+                    GetMemoryUsageHeader(true);
                 }
 
-                writer.WriteLine(GetMemoryUsageSummary());
+                writer.WriteLine(GetMemoryUsageSummary(true));
             }
             catch
             {
