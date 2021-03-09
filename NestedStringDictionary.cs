@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace ValidateFastaFile
 {
-
     /// <summary>
     /// This class implements a dictionary where keys are strings and values are type T (for example string or integer)
     /// Internally it uses a set of dictionaries to track the data, binning the data into separate dictionaries

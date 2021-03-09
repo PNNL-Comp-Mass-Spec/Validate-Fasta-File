@@ -31,6 +31,9 @@ namespace ValidateFastaFile
         /// </summary>
         public string ProteinNameFirst { get; }
 
+        /// <summary>
+        /// Additional protein names for this sequence
+        /// </summary>
         public IEnumerable<string> AdditionalProteins => mAdditionalProteins;
 
         /// <summary>

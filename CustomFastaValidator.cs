@@ -7,6 +7,7 @@ namespace ValidateFastaFile
     // Ignore Spelling: Validator
 
     [Obsolete("Renamed to 'CustomFastaValidator'", true)]
+    // ReSharper disable once InconsistentNaming
     public class clsCustomValidateFastaFiles : CustomFastaValidator
     {
         // Intentionally empty
@@ -199,7 +200,6 @@ namespace ValidateFastaFile
             }
             else
             {
-
                 // Treat as error
                 m_CurrentFileErrors.Add(new ErrorInfoExtended(
                     lineNumber, proteinName, messageString, extraInfo, "Error"));

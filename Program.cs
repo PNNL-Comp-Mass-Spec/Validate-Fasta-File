@@ -27,7 +27,7 @@ namespace ValidateFastaFile
     /// http://www.apache.org/licenses/LICENSE-2.0
     /// </para>
     /// </remarks>
-    static class Program
+    internal static class Program
     {
         // Ignore Spelling: parseable
 
@@ -134,8 +134,8 @@ namespace ValidateFastaFile
                 else
                 {
                     mValidateFastaFile = new FastaValidator();
-                    mValidateFastaFile.ProgressUpdate += mValidateFastaFile_ProgressChanged;
-                    mValidateFastaFile.ProgressReset += mValidateFastaFile_ProgressReset;
+                    mValidateFastaFile.ProgressUpdate += ValidateFastaFile_ProgressChanged;
+                    mValidateFastaFile.ProgressReset += ValidateFastaFile_ProgressReset;
 
                     mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, mUseStatsFile);
                     mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile);
@@ -257,68 +257,68 @@ namespace ValidateFastaFile
                         (from item in commandLineParser.InvalidParameters(validParameters) select ("/" + item)).ToList());
                     return false;
                 }
-                else
+
+                // Query commandLineParser to see if various parameters are present
+                if (commandLineParser.RetrieveValueForParameter("I", out var inputFile))
                 {
-                    string value;
-                    // Query commandLineParser to see if various parameters are present
-                    if (commandLineParser.RetrieveValueForParameter("I", out value))
-                    {
-                        mInputFilePath = value;
-                    }
-                    else if (commandLineParser.NonSwitchParameterCount > 0)
-                    {
-                        mInputFilePath = commandLineParser.RetrieveNonSwitchParameter(0);
-                    }
-
-                    if (commandLineParser.RetrieveValueForParameter("O", out value))
-                        mOutputDirectoryPath = value;
-                    if (commandLineParser.RetrieveValueForParameter("P", out value))
-                        mParameterFilePath = value;
-                    if (commandLineParser.IsParameterPresent("C"))
-                        mUseStatsFile = true;
-
-                    if (commandLineParser.IsParameterPresent("SkipDupeNameCheck"))
-                        mCheckForDuplicateProteinNames = false;
-                    if (commandLineParser.IsParameterPresent("SkipDupeSeqCheck"))
-                        mCheckForDuplicateProteinSequences = false;
-
-                    if (commandLineParser.IsParameterPresent("F"))
-                        mGenerateFixedFastaFile = true;
-                    if (commandLineParser.IsParameterPresent("R"))
-                        mFixedFastaRenameDuplicateNameProteins = true;
-                    if (commandLineParser.IsParameterPresent("D"))
-                        mFixedFastaConsolidateDuplicateProteinSeqs = true;
-                    if (commandLineParser.IsParameterPresent("L"))
-                        mFixedFastaConsolidateDupsIgnoreILDiff = true;
-                    if (commandLineParser.IsParameterPresent("V"))
-                        mFixedFastaRemoveInvalidResidues = true;
-                    if (commandLineParser.IsParameterPresent("KeepSameName"))
-                        mFixedFastaKeepDuplicateNamedProteins = true;
-
-                    if (commandLineParser.IsParameterPresent("AllowAsterisk"))
-                        mAllowAsterisk = true;
-                    if (commandLineParser.IsParameterPresent("AllowDash"))
-                        mAllowDash = true;
-
-                    if (commandLineParser.IsParameterPresent("B"))
-                        mSaveBasicProteinHashInfoFile = true;
-                    if (commandLineParser.RetrieveValueForParameter("HashFile", out value))
-                        mProteinHashFilePath = value;
-
-                    if (commandLineParser.IsParameterPresent("X"))
-                        mCreateModelXMLParameterFile = true;
-
-                    if (commandLineParser.RetrieveValueForParameter("S", out value))
-                    {
-                        mRecurseDirectories = true;
-                        if (int.TryParse(value, out var valueInteger))
-                        {
-                            mMaxLevelsToRecurse = valueInteger;
-                        }
-                    }
-
-                    return true;
+                    mInputFilePath = inputFile;
                 }
+                else if (commandLineParser.NonSwitchParameterCount > 0)
+                {
+                    mInputFilePath = commandLineParser.RetrieveNonSwitchParameter(0);
+                }
+
+                if (commandLineParser.RetrieveValueForParameter("O", out var outputDirectory))
+                    mOutputDirectoryPath = outputDirectory;
+
+                if (commandLineParser.RetrieveValueForParameter("P", out var parameterFile))
+                    mParameterFilePath = parameterFile;
+
+                if (commandLineParser.IsParameterPresent("C"))
+                    mUseStatsFile = true;
+
+                if (commandLineParser.IsParameterPresent("SkipDupeNameCheck"))
+                    mCheckForDuplicateProteinNames = false;
+                if (commandLineParser.IsParameterPresent("SkipDupeSeqCheck"))
+                    mCheckForDuplicateProteinSequences = false;
+
+                if (commandLineParser.IsParameterPresent("F"))
+                    mGenerateFixedFastaFile = true;
+                if (commandLineParser.IsParameterPresent("R"))
+                    mFixedFastaRenameDuplicateNameProteins = true;
+                if (commandLineParser.IsParameterPresent("D"))
+                    mFixedFastaConsolidateDuplicateProteinSeqs = true;
+                if (commandLineParser.IsParameterPresent("L"))
+                    mFixedFastaConsolidateDupsIgnoreILDiff = true;
+                if (commandLineParser.IsParameterPresent("V"))
+                    mFixedFastaRemoveInvalidResidues = true;
+                if (commandLineParser.IsParameterPresent("KeepSameName"))
+                    mFixedFastaKeepDuplicateNamedProteins = true;
+
+                if (commandLineParser.IsParameterPresent("AllowAsterisk"))
+                    mAllowAsterisk = true;
+                if (commandLineParser.IsParameterPresent("AllowDash"))
+                    mAllowDash = true;
+
+                if (commandLineParser.IsParameterPresent("B"))
+                    mSaveBasicProteinHashInfoFile = true;
+
+                if (commandLineParser.RetrieveValueForParameter("HashFile", out var createHashFile))
+                    mProteinHashFilePath = createHashFile;
+
+                if (commandLineParser.IsParameterPresent("X"))
+                    mCreateModelXMLParameterFile = true;
+
+                if (commandLineParser.RetrieveValueForParameter("S", out var recurse))
+                {
+                    mRecurseDirectories = true;
+                    if (int.TryParse(recurse, out var recurseDepth))
+                    {
+                        mMaxLevelsToRecurse = recurseDepth;
+                    }
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -333,7 +333,7 @@ namespace ValidateFastaFile
             ConsoleMsgUtils.ShowError(message, ex);
         }
 
-        private static void ShowErrorMessage(string title, List<string> items)
+        private static void ShowErrorMessage(string title, IEnumerable<string> items)
         {
             ConsoleMsgUtils.ShowErrors(title, items);
         }
@@ -453,7 +453,7 @@ namespace ValidateFastaFile
             }
         }
 
-        private static void mValidateFastaFile_ProgressChanged(string taskDescription, float percentComplete)
+        private static void ValidateFastaFile_ProgressChanged(string taskDescription, float percentComplete)
         {
             const int PERCENT_REPORT_INTERVAL = 25;
             const int PROGRESS_DOT_INTERVAL_MSEC = 500;
@@ -489,7 +489,7 @@ namespace ValidateFastaFile
             }
         }
 
-        private static void mValidateFastaFile_ProgressReset()
+        private static void ValidateFastaFile_ProgressReset()
         {
             mLastProgressReportTime = DateTime.UtcNow;
             mLastProgressReportPctTime = DateTime.UtcNow;

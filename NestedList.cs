@@ -27,7 +27,7 @@ namespace ValidateFastaFile
         {
             get
             {
-                int totalItems = 0;
+                var totalItems = 0;
                 foreach (var subList in mData.Values)
                     totalItems += subList.Count;
 
@@ -78,7 +78,7 @@ namespace ValidateFastaFile
         /// <param name="item">String to add</param>
         public void Add(string item, int value)
         {
-            string spannerKey = GetSpannerKey(item);
+            var spannerKey = GetSpannerKey(item);
 
             if (!mData.TryGetValue(spannerKey, out var subList))
             {
@@ -86,13 +86,13 @@ namespace ValidateFastaFile
                 mData.Add(spannerKey, subList);
             }
 
-            int lastIndexBeforeUpdate = subList.Count - 1;
+            var lastIndexBeforeUpdate = subList.Count - 1;
             subList.Add(new KeyValuePair<string, int>(item, value));
 
             if (mDataIsSorted && subList.Count > 1)
             {
                 // Check whether the list is still sorted
-                if (string.Compare(subList[lastIndexBeforeUpdate].Key, subList[lastIndexBeforeUpdate + 1].Key, StringComparison.Ordinal) > 0)
+                if (string.CompareOrdinal(subList[lastIndexBeforeUpdate].Key, subList[lastIndexBeforeUpdate + 1].Key) > 0)
                 {
                     if (mRaiseExceptionIfAddedDataNotSorted)
                     {
@@ -118,14 +118,14 @@ namespace ValidateFastaFile
             bool hasHeaderLine)
         {
             // ReSharper disable once NotAccessedVariable
-            long linesRead = 0L;
+            var linesRead = 0L;
 
             try
             {
                 var keyStartLetters = new Dictionary<string, int>();
 
-                int previousKeyLength = 0;
-                string previousKey = string.Empty;
+                var previousKeyLength = 0;
+                var previousKey = string.Empty;
 
                 using (var dataReader = new StreamReader(new FileStream(fiDataFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
@@ -136,8 +136,8 @@ namespace ValidateFastaFile
 
                     while (!dataReader.EndOfStream)
                     {
-                        string dataLine = dataReader.ReadLine();
-                        linesRead += 1;
+                        var dataLine = dataReader.ReadLine();
+                        linesRead++;
 
                         if (string.IsNullOrEmpty(dataLine))
                         {
@@ -150,7 +150,7 @@ namespace ValidateFastaFile
                             continue;
                         }
 
-                        string currentKey = dataValues[keyColumnIndex];
+                        var currentKey = dataValues[keyColumnIndex];
 
                         if (previousKeyLength == 0)
                         {
@@ -159,8 +159,8 @@ namespace ValidateFastaFile
                             continue;
                         }
 
-                        int currentKeyLength = currentKey.Length;
-                        int charIndex = 0;
+                        var currentKeyLength = currentKey.Length;
+                        var charIndex = 0;
 
                         while (charIndex < previousKeyLength)
                         {
@@ -175,13 +175,13 @@ namespace ValidateFastaFile
                                 break;
                             }
 
-                            charIndex += 1;
+                            charIndex++;
                         }
 
-                        int charsInCommon = charIndex;
+                        var charsInCommon = charIndex;
                         if (charsInCommon > 0)
                         {
-                            string baseName = previousKey.Substring(0, charsInCommon);
+                            var baseName = previousKey.Substring(0, charsInCommon);
 
                             if (keyStartLetters.TryGetValue(baseName, out var matchCount))
                             {
@@ -196,7 +196,7 @@ namespace ValidateFastaFile
                 }
 
                 // Determine the appropriate spanner length given the observation counts of the base names
-                byte idealSpannerCharLength = DetermineSpannerLengthUsingStartLetterStats(keyStartLetters);
+                var idealSpannerCharLength = DetermineSpannerLengthUsingStartLetterStats(keyStartLetters);
                 return idealSpannerCharLength;
             }
             catch (Exception ex)
@@ -215,10 +215,10 @@ namespace ValidateFastaFile
         public static byte DetermineSpannerLengthUsingStartLetterStats(Dictionary<string, int> keyStartLetters)
         {
             // Compute the average observation count in keyStartLetters
-            double averageCount = (from item in keyStartLetters select item.Value).Average();
+            var averageCount = (from item in keyStartLetters select item.Value).Average();
 
             // Determine the shortest base name in proteinStartLetters for items with a count of the average or higher
-            int minimumLength = (from item in keyStartLetters where item.Value >= averageCount select item.Key.Length).Min();
+            var minimumLength = (from item in keyStartLetters where item.Value >= averageCount select item.Key.Length).Min();
 
             byte optimalSpannerCharLength = 1;
 
@@ -272,25 +272,19 @@ namespace ValidateFastaFile
         /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public bool Contains(string item)
         {
-            string spannerKey = GetSpannerKey(item);
+            var spannerKey = GetSpannerKey(item);
 
-            if (mData.TryGetValue(spannerKey, out var subList))
+            if (!mData.TryGetValue(spannerKey, out var subList))
+                return false;
+
+            var searchItem = new KeyValuePair<string, int>(item, 0);
+
+            if (mDataIsSorted)
             {
-                var searchItem = new KeyValuePair<string, int>(item, 0);
-
-                if (mDataIsSorted)
-                {
-                    if (subList.BinarySearch(searchItem, mSearchComparer) >= 0)
-                        return true;
-                    return false;
-                }
-                else
-                {
-                    return subList.Contains(searchItem, mSearchComparer);
-                }
+                return subList.BinarySearch(searchItem, mSearchComparer) >= 0;
             }
 
-            return false;
+            return subList.Contains(searchItem, mSearchComparer);
         }
 
         /// <summary>
@@ -306,7 +300,7 @@ namespace ValidateFastaFile
         /// </remarks>
         public string GetSizeSummary()
         {
-            string summary = mData.Keys.Count + " spanning keys";
+            var summary = mData.Keys.Count + " spanning keys";
 
             var keyNames = mData.Keys.ToList();
 
@@ -325,7 +319,7 @@ namespace ValidateFastaFile
             }
             else if (keyNames.Count > 2)
             {
-                int midPoint = keyNames.Count / 2;
+                var midPoint = keyNames.Count / 2;
 
                 summary += ": including " +
                     GetSpanningKeyDescription(keyNames[0]) + ", " +
@@ -338,15 +332,13 @@ namespace ValidateFastaFile
 
         private string GetSpanningKeyDescription(string keyName)
         {
-            string keyDescription = "'" + keyName + "' with " + mData[keyName].Count + " item";
+            var keyDescription = "'" + keyName + "' with " + mData[keyName].Count + " item";
             if (mData[keyName].Count == 1)
             {
                 return keyDescription;
             }
-            else
-            {
-                return keyDescription + "s";
-            }
+
+            return keyDescription + "s";
         }
 
         /// <summary>
@@ -381,7 +373,7 @@ namespace ValidateFastaFile
         /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public int GetValueForItem(string item, int valueIfNotFound = -1)
         {
-            string spannerKey = GetSpannerKey(item);
+            var spannerKey = GetSpannerKey(item);
 
             if (mData.TryGetValue(spannerKey, out var subList))
             {
@@ -390,7 +382,7 @@ namespace ValidateFastaFile
                 if (mDataIsSorted)
                 {
                     // mSearchComparer uses StringComparison.Ordinal
-                    int matchIndex = subList.BinarySearch(searchItem, mSearchComparer);
+                    var matchIndex = subList.BinarySearch(searchItem, mSearchComparer);
                     if (matchIndex >= 0)
                     {
                         return subList[matchIndex].Value;
@@ -399,7 +391,7 @@ namespace ValidateFastaFile
                 else
                 {
                     // Use a brute-force search
-                    for (int intIndex = 0; intIndex <= subList.Count - 1; intIndex++)
+                    for (var intIndex = 0; intIndex <= subList.Count - 1; intIndex++)
                     {
                         if (string.Equals(subList[intIndex].Key, item))
                         {
@@ -419,9 +411,9 @@ namespace ValidateFastaFile
         {
             foreach (var subList in mData.Values)
             {
-                for (int index = 1; index <= subList.Count - 1; index++)
+                for (var index = 1; index <= subList.Count - 1; index++)
                 {
-                    if (string.Compare(subList[index - 1].Key, subList[index].Key, StringComparison.Ordinal) > 0)
+                    if (string.CompareOrdinal(subList[index - 1].Key, subList[index].Key) > 0)
                     {
                         return false;
                     }
@@ -438,7 +430,7 @@ namespace ValidateFastaFile
         /// <param name="item">String to remove</param>
         public void Remove(string item)
         {
-            string spannerKey = GetSpannerKey(item);
+            var spannerKey = GetSpannerKey(item);
 
             if (mData.TryGetValue(spannerKey, out var subList))
             {
@@ -454,7 +446,7 @@ namespace ValidateFastaFile
         /// <returns>True item was found and updated, false if the item does not exist</returns>
         public bool SetValueForItem(string item, int value)
         {
-            string spannerKey = GetSpannerKey(item);
+            var spannerKey = GetSpannerKey(item);
 
             if (mData.TryGetValue(spannerKey, out var subList))
             {
@@ -463,7 +455,7 @@ namespace ValidateFastaFile
                 if (mDataIsSorted)
                 {
                     // mSearchComparer uses StringComparison.Ordinal
-                    int matchIndex = subList.BinarySearch(searchItem, mSearchComparer);
+                    var matchIndex = subList.BinarySearch(searchItem, mSearchComparer);
                     if (matchIndex >= 0)
                     {
                         subList[matchIndex] = new KeyValuePair<string, int>(item, value);
@@ -473,13 +465,13 @@ namespace ValidateFastaFile
                 else
                 {
                     // Use a brute-force search
-                    int matchCount = 0;
-                    for (int intIndex = 0; intIndex <= subList.Count - 1; intIndex++)
+                    var matchCount = 0;
+                    for (var intIndex = 0; intIndex <= subList.Count - 1; intIndex++)
                     {
                         if (string.Equals(subList[intIndex].Key, item))
                         {
                             subList[intIndex] = new KeyValuePair<string, int>(item, value);
-                            matchCount += 1;
+                            matchCount++;
                         }
                     }
 
@@ -501,8 +493,10 @@ namespace ValidateFastaFile
             if (mDataIsSorted)
                 return;
             foreach (var subList in mData.Values)
+            {
                 // mSearchComparer uses StringComparison.Ordinal
                 subList.Sort(mSearchComparer);
+            }
 
             mDataIsSorted = true;
         }
@@ -526,7 +520,7 @@ namespace ValidateFastaFile
         {
             public int Compare(KeyValuePair<string, int> x, KeyValuePair<string, int> y)
             {
-                return string.Compare(x.Key, y.Key, StringComparison.Ordinal);
+                return string.CompareOrdinal(x.Key, y.Key);
             }
 
             public bool Equals(KeyValuePair<string, int> x, KeyValuePair<string, int> y)

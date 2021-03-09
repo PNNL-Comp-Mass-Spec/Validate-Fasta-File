@@ -10,7 +10,7 @@ namespace TestValidateFastaFileDLL
     /// <remarks>
     /// Program written by Matthew Monroe in 2005 for the Department of Energy (PNNL, Richland, WA)
     /// </remarks>
-    static class Program
+    internal static class Program
     {
         /// <summary>
         /// Entry method
@@ -30,7 +30,7 @@ namespace TestValidateFastaFileDLL
                     // This command will fail if the program is called from a network share
                     var parameters = Environment.GetCommandLineArgs();
 
-                    if (parameters != null && parameters.Length > 1)
+                    if (parameters.Length > 1)
                     {
                         // Note that parameters(0) is the path to the Executable for the calling program
                         testFilePath = parameters[1];
@@ -56,6 +56,8 @@ namespace TestValidateFastaFileDLL
                 fastaFileValidator.MaximumProteinNameLength = 34;
 
                 fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, false);
+
+                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, true);
 
                 // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
                 var success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
