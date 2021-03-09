@@ -509,12 +509,12 @@ namespace ValidateFastaFile
             /// <summary>
             /// Error messages
             /// </summary>
-            public List<MsgInfo> Messages { get; } = new List<MsgInfo>(10); // Initially reserve space for 10 errors
+            public List<MsgInfo> Messages { get; } = new(10); // Initially reserve space for 10 errors
 
             /// <summary>
             /// Stats dictionary
             /// </summary>
-            public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new Dictionary<int, ErrorStats>();
+            public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new();
 
             /// <summary>
             /// Number of items in Messages
@@ -884,15 +884,15 @@ namespace ValidateFastaFile
         /// <remarks>Used by CustomValidateFastaFiles</remarks>
         protected string mFastaFilePath;
 
-        private readonly FixedFastaStats mFixedFastaStats = new FixedFastaStats();
+        private readonly FixedFastaStats mFixedFastaStats = new();
 
-        private readonly MsgInfosAndSummary mFileErrors = new MsgInfosAndSummary();
-        private readonly MsgInfosAndSummary mFileWarnings = new MsgInfosAndSummary();
+        private readonly MsgInfosAndSummary mFileErrors = new();
+        private readonly MsgInfosAndSummary mFileWarnings = new();
 
-        private readonly List<RuleDefinition> mHeaderLineRules = new List<RuleDefinition>();
-        private readonly List<RuleDefinition> mProteinNameRules = new List<RuleDefinition>();
-        private readonly List<RuleDefinition> mProteinDescriptionRules = new List<RuleDefinition>();
-        private readonly List<RuleDefinition> mProteinSequenceRules = new List<RuleDefinition>();
+        private readonly List<RuleDefinition> mHeaderLineRules = new();
+        private readonly List<RuleDefinition> mProteinNameRules = new();
+        private readonly List<RuleDefinition> mProteinDescriptionRules = new();
+        private readonly List<RuleDefinition> mProteinSequenceRules = new();
         private int mMasterCustomRuleID = CUSTOM_RULE_ID_START;
 
         private char[] mProteinNameFirstRefSepChars;
@@ -921,7 +921,7 @@ namespace ValidateFastaFile
         /// <summary>
         /// Options used when mGenerateFixedFastaFile is True
         /// </summary>
-        private readonly FixedFastaOptions mFixedFastaOptions = new FixedFastaOptions();
+        private readonly FixedFastaOptions mFixedFastaOptions = new();
 
         private bool mOutputToStatsFile;
         private string mStatsFilePath;
@@ -1373,7 +1373,7 @@ namespace ValidateFastaFile
         /// </summary>
         public string ProteinNameInvalidCharsToRemove
         {
-            get => new string(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
+            get => new(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -1395,7 +1395,7 @@ namespace ValidateFastaFile
         /// </summary>
         public string ProteinNameFirstRefSepChars
         {
-            get => new string(mProteinNameFirstRefSepChars);
+            get => new(mProteinNameFirstRefSepChars);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -1417,7 +1417,7 @@ namespace ValidateFastaFile
         /// </summary>
         public string ProteinNameSubsequentRefSepChars
         {
-            get => new string(mProteinNameSubsequentRefSepChars);
+            get => new(mProteinNameSubsequentRefSepChars);
             set
             {
                 // Check for and remove any spaces from Value, since
@@ -1439,7 +1439,7 @@ namespace ValidateFastaFile
         /// </summary>
         public string LongProteinNameSplitChars
         {
-            get => new string(mFixedFastaOptions.LongProteinNameSplitChars);
+            get => new(mFixedFastaOptions.LongProteinNameSplitChars);
             set
             {
                 if (value != null)
@@ -6183,7 +6183,7 @@ namespace ValidateFastaFile
             return blnSuccess;
         }
 
-        private readonly Regex reAdditionalProtein = new Regex(@"(.+)-[a-z]\d*", RegexOptions.Compiled);
+        private readonly Regex reAdditionalProtein = new(@"(.+)-[a-z]\d*", RegexOptions.Compiled);
 
         private void WriteCachedProtein(
             string cachedProteinName,
