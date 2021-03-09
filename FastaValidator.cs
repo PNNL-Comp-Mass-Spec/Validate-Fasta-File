@@ -4017,6 +4017,8 @@ namespace ValidateFastaFile
                     {
                         // Ignore the error, but mark .Valid = false
                         ruleDetails[index].Valid = false;
+
+                        OnWarningEvent(string.Format("Invalid RegEx '{0}: {1} ", ruleDefinitions[index].MatchRegEx ?? "null", ex));
                     }
                 }
             }
