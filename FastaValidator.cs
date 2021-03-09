@@ -2543,114 +2543,113 @@ namespace ValidateFastaFile
 
                 var firstLineDiscarded = startOffset == 0;
 
-                using (var inStream = new FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using var inStream = new FileStream(fastaFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite) 
                 {
-                    inStream.Position = startOffset;
+                    Position = startOffset
+                };
 
-                    using (var reader = new StreamReader(inStream))
+                using var reader = new StreamReader(inStream);
+
+                while (!reader.EndOfStream)
+                {
+                    var lineIn = reader.ReadLine();
+                    bytesRead += terminatorSize;
+                    linesRead += 1;
+
+                    if (string.IsNullOrEmpty(lineIn))
                     {
-                        while (!reader.EndOfStream)
+                        continue;
+                    }
+
+                    bytesRead += lineIn.Length;
+                    if (!firstLineDiscarded)
+                    {
+                        // We can't trust that this was a full line of text; skip it
+                        firstLineDiscarded = true;
+                        continue;
+                    }
+
+                    if (bytesRead > bytesToRead)
+                    {
+                        break;
+                    }
+
+                    if (lineIn[0] != ProteinLineStartChar)
+                    {
+                        continue;
+                    }
+
+                    // Make sure the protein name and description are valid
+                    // Find the first space and/or tab
+                    var spaceIndex = GetBestSpaceIndex(lineIn);
+                    string proteinName;
+
+                    if (spaceIndex > 1)
+                    {
+                        proteinName = lineIn.Substring(1, spaceIndex - 1);
+                    }
+                    else if (spaceIndex <= 0)
+                    {
+                        // Line does not contain a description
+                        if (lineIn.Trim().Length <= 1)
                         {
-                            var lineIn = reader.ReadLine();
-                            bytesRead += terminatorSize;
-                            linesRead += 1;
-
-                            if (string.IsNullOrEmpty(lineIn))
-                            {
-                                continue;
-                            }
-
-                            bytesRead += lineIn.Length;
-                            if (!firstLineDiscarded)
-                            {
-                                // We can't trust that this was a full line of text; skip it
-                                firstLineDiscarded = true;
-                                continue;
-                            }
-
-                            if (bytesRead > bytesToRead)
-                            {
-                                break;
-                            }
-
-                            if (lineIn[0] != ProteinLineStartChar)
-                            {
-                                continue;
-                            }
-
-                            // Make sure the protein name and description are valid
-                            // Find the first space and/or tab
-                            var spaceIndex = GetBestSpaceIndex(lineIn);
-                            string proteinName;
-
-                            if (spaceIndex > 1)
-                            {
-                                proteinName = lineIn.Substring(1, spaceIndex - 1);
-                            }
-                            else if (spaceIndex <= 0)
-                            {
-                                // Line does not contain a description
-                                if (lineIn.Trim().Length <= 1)
-                                {
-                                    continue;
-                                }
-                                else
-                                {
-                                    // The line contains a protein name, but not a description
-                                    proteinName = lineIn.Substring(1);
-                                }
-                            }
-                            else
-                            {
-                                // Space or tab found directly after the > symbol
-                                continue;
-                            }
-
-                            if (previousProteinLength == 0)
-                            {
-                                previousProteinName = string.Copy(proteinName);
-                                previousProteinLength = previousProteinName.Length;
-                                continue;
-                            }
-
-                            var currentNameLength = proteinName.Length;
-                            var charIndex = 0;
-
-                            while (charIndex < previousProteinLength)
-                            {
-                                if (charIndex >= currentNameLength)
-                                {
-                                    break;
-                                }
-
-                                if (previousProteinName[charIndex] != proteinName[charIndex])
-                                {
-                                    // Difference found; add/update the dictionary
-                                    break;
-                                }
-
-                                charIndex += 1;
-                            }
-
-                            var charsInCommon = charIndex;
-                            if (charsInCommon > 0)
-                            {
-                                var baseName = previousProteinName.Substring(0, charsInCommon);
-
-                                if (proteinStartLetters.TryGetValue(baseName, out var matchCount))
-                                {
-                                    proteinStartLetters[baseName] = matchCount + 1;
-                                }
-                                else
-                                {
-                                    proteinStartLetters.Add(baseName, 1);
-                                }
-                            }
-
-                            previousProteinName = string.Copy(proteinName);
-                            previousProteinLength = previousProteinName.Length;
+                            continue;
+                        }
+                        else
+                        {
+                            // The line contains a protein name, but not a description
+                            proteinName = lineIn.Substring(1);
                         }
                     }
+                    else
+                    {
+                        // Space or tab found directly after the > symbol
+                        continue;
+                    }
+
+                    if (previousProteinLength == 0)
+                    {
+                        previousProteinName = string.Copy(proteinName);
+                        previousProteinLength = previousProteinName.Length;
+                        continue;
+                    }
+
+                    var currentNameLength = proteinName.Length;
+                    var charIndex = 0;
+
+                    while (charIndex < previousProteinLength)
+                    {
+                        if (charIndex >= currentNameLength)
+                        {
+                            break;
+                        }
+
+                        if (previousProteinName[charIndex] != proteinName[charIndex])
+                        {
+                            // Difference found; add/update the dictionary
+                            break;
+                        }
+
+                        charIndex += 1;
+                    }
+
+                    var charsInCommon = charIndex;
+                    if (charsInCommon > 0)
+                    {
+                        var baseName = previousProteinName.Substring(0, charsInCommon);
+
+                        if (proteinStartLetters.TryGetValue(baseName, out var matchCount))
+                        {
+                            proteinStartLetters[baseName] = matchCount + 1;
+                        }
+                        else
+                        {
+                            proteinStartLetters.Add(baseName, 1);
+                        }
+                    }
+
+                    previousProteinName = string.Copy(proteinName);
+                    previousProteinLength = previousProteinName.Length;
                 }
             }
             catch (OutOfMemoryException ex)
@@ -3305,61 +3304,60 @@ namespace ValidateFastaFile
             try
             {
                 // Open the input file and look for the first carriage return or line feed
-                using (var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    while (fsInFile.Position < fsInFile.Length && fsInFile.Position < 100000)
-                    {
-                        var oneByte = fsInFile.ReadByte();
+                using var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-                        if (oneByte == 10)
+                while (fsInFile.Position < fsInFile.Length && fsInFile.Position < 100000)
+                {
+                    var oneByte = fsInFile.ReadByte();
+
+                    if (oneByte == 10)
+                    {
+                        // Found linefeed
+                        if (fsInFile.Position < fsInFile.Length)
                         {
-                            // Found linefeed
-                            if (fsInFile.Position < fsInFile.Length)
+                            oneByte = fsInFile.ReadByte();
+                            if (oneByte == 13)
                             {
-                                oneByte = fsInFile.ReadByte();
-                                if (oneByte == 13)
-                                {
-                                    // LfCr
-                                    endCharacterType = LineEndingCharacters.LFCR;
-                                }
-                                else
-                                {
-                                    // Lf only
-                                    endCharacterType = LineEndingCharacters.LF;
-                                }
+                                // LfCr
+                                endCharacterType = LineEndingCharacters.LFCR;
                             }
                             else
                             {
+                                // Lf only
                                 endCharacterType = LineEndingCharacters.LF;
                             }
-
-                            break;
+                        }
+                        else
+                        {
+                            endCharacterType = LineEndingCharacters.LF;
                         }
 
-                        if (oneByte == 13)
+                        break;
+                    }
+
+                    if (oneByte == 13)
+                    {
+                        // Found carriage return
+                        if (fsInFile.Position < fsInFile.Length)
                         {
-                            // Found carriage return
-                            if (fsInFile.Position < fsInFile.Length)
+                            oneByte = fsInFile.ReadByte();
+                            if (oneByte == 10)
                             {
-                                oneByte = fsInFile.ReadByte();
-                                if (oneByte == 10)
-                                {
-                                    // CrLf
-                                    endCharacterType = LineEndingCharacters.CRLF;
-                                }
-                                else
-                                {
-                                    // Cr only
-                                    endCharacterType = LineEndingCharacters.CR;
-                                }
+                                // CrLf
+                                endCharacterType = LineEndingCharacters.CRLF;
                             }
                             else
                             {
+                                // Cr only
                                 endCharacterType = LineEndingCharacters.CR;
                             }
-
-                            break;
                         }
+                        else
+                        {
+                            endCharacterType = LineEndingCharacters.CR;
+                        }
+
+                        break;
                     }
                 }
             }
@@ -3443,33 +3441,32 @@ namespace ValidateFastaFile
 
                 var reader = targetFile.OpenText();
 
-                using (var writer = new StreamWriter(new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                using var writer = new StreamWriter(new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+
+                this.OnProgressUpdate("Normalizing Line Endings...", 0.0F);
+
+                var dataLine = reader.ReadLine();
+                long linesRead = 0;
+                while (dataLine != null)
                 {
-                    this.OnProgressUpdate("Normalizing Line Endings...", 0.0F);
+                    writer.Write(dataLine);
+                    writer.Write(newEndChar);
 
-                    var dataLine = reader.ReadLine();
-                    long linesRead = 0;
-                    while (dataLine != null)
+                    var currentFilePos = dataLine.Length + origEndCharCount;
+                    linesRead += 1;
+
+                    if (linesRead % 1000 == 0)
                     {
-                        writer.Write(dataLine);
-                        writer.Write(newEndChar);
+                        var percentComplete = currentFilePos / (float)fileSizeBytes * 100;
+                        var progressMessage = string.Format("Normalizing Line Endings ({0:F1} % complete", percentComplete);
 
-                        var currentFilePos = dataLine.Length + origEndCharCount;
-                        linesRead += 1;
-
-                        if (linesRead % 1000 == 0)
-                        {
-                            var percentComplete = currentFilePos / (float)fileSizeBytes * 100;
-                            var progressMessage = string.Format("Normalizing Line Endings ({0:F1} % complete", percentComplete);
-
-                            OnProgressUpdate(progressMessage, percentComplete);
-                        }
-
-                        dataLine = reader.ReadLine();
+                        OnProgressUpdate(progressMessage, percentComplete);
                     }
 
-                    reader.Close();
+                    dataLine = reader.ReadLine();
                 }
+
+                reader.Close();
 
                 return newFileName;
             }
@@ -6078,29 +6075,28 @@ namespace ValidateFastaFile
             try
             {
                 // Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
-                using (var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+                using var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                if (fsInFile.Length > 2)
                 {
-                    if (fsInFile.Length > 2)
+                    fsInFile.Seek(-1, SeekOrigin.End);
+
+                    var lastByte = fsInFile.ReadByte();
+
+                    if (lastByte == 10 || lastByte == 13)
                     {
-                        fsInFile.Seek(-1, SeekOrigin.End);
-
-                        var lastByte = fsInFile.ReadByte();
-
-                        if (lastByte == 10 || lastByte == 13)
-                        {
-                            // File ends in a linefeed or carriage return character; that's good
-                            return true;
-                        }
-                    }
-
-                    if (!addCrLfIfMissing)
+                        // File ends in a linefeed or carriage return character; that's good
                         return true;
-
-                    ShowMessage("Appending CrLf return to: " + Path.GetFileName(inputFilePath));
-                    fsInFile.WriteByte(13);
-
-                    fsInFile.WriteByte(10);
+                    }
                 }
+
+                if (!addCrLfIfMissing)
+                    return true;
+
+                ShowMessage("Appending CrLf return to: " + Path.GetFileName(inputFilePath));
+                fsInFile.WriteByte(13);
+
+                fsInFile.WriteByte(10);
 
                 return true;
             }

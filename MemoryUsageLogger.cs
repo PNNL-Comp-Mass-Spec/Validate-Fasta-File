@@ -268,15 +268,14 @@ namespace ValidateFastaFile
 
                 var writeHeader = !File.Exists(logFilePath);
 
-                using (var writer = new StreamWriter(new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read)))
-                {
-                    if (writeHeader)
-                    {
-                        GetMemoryUsageHeader();
-                    }
+                using var writer = new StreamWriter(new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read));
 
-                    writer.WriteLine(GetMemoryUsageSummary());
+                if (writeHeader)
+                {
+                    GetMemoryUsageHeader();
                 }
+
+                writer.WriteLine(GetMemoryUsageSummary());
             }
             catch
             {
