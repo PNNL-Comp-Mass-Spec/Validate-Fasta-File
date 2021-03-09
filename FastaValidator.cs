@@ -504,7 +504,6 @@ namespace ValidateFastaFile
             /// </summary>
             public List<MsgInfo> Messages { get; } = new List<MsgInfo>(10); // Initially reserve space for 10 errors
 
-            public MsgInfo this[int index] => Messages[index];
             /// <summary>
             /// Stats dictionary
             /// </summary>
@@ -3798,7 +3797,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                var fileError = mFileErrors[fileErrorIndex];
+                var fileError = mFileErrors.Messages[fileErrorIndex];
                 string proteinName;
                 if (string.IsNullOrEmpty(fileError.ProteinName))
                 {
@@ -3825,7 +3824,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                return mFileErrors[fileErrorIndex];
+                return mFileErrors.Messages[fileErrorIndex];
             }
         }
 
@@ -3838,7 +3837,7 @@ namespace ValidateFastaFile
             var fileErrors = new List<MsgInfo>();
 
             for (var i = 0; i <= mFileErrors.Count - 1; i++)
-                fileErrors.Add(mFileErrors[i]);
+                fileErrors.Add(mFileErrors.Messages[i]);
             return fileErrors;
         }
 
@@ -3850,7 +3849,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                var fileWarning = mFileWarnings[fileWarningIndex];
+                var fileWarning = mFileWarnings.Messages[fileWarningIndex];
                 string proteinName;
                 if (string.IsNullOrEmpty(fileWarning.ProteinName))
                 {
@@ -3878,7 +3877,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                return mFileWarnings[fileWarningIndex];
+                return mFileWarnings.Messages[fileWarningIndex];
             }
         }
 
@@ -3891,7 +3890,7 @@ namespace ValidateFastaFile
             var fileWarnings = new List<MsgInfo>();
 
             for (var i = 0; i <= mFileWarnings.Count - 1; i++)
-                fileWarnings.Add(mFileWarnings[i]);
+                fileWarnings.Add(mFileWarnings.Messages[i]);
 
             return fileWarnings;
         }
@@ -5581,7 +5580,7 @@ namespace ValidateFastaFile
 
                     for (var index = 0; index <= mFileErrors.Count - 1; index++)
                     {
-                        var fileError = mFileErrors[index];
+                        var fileError = mFileErrors.Messages[index];
                         if (string.IsNullOrEmpty(fileError.ProteinName))
                         {
                             proteinName = "N/A";
@@ -5617,7 +5616,7 @@ namespace ValidateFastaFile
 
                     for (var index = 0; index <= mFileWarnings.Count - 1; index++)
                     {
-                        var fileWarning = mFileWarnings[index];
+                        var fileWarning = mFileWarnings.Messages[index];
                         if (string.IsNullOrEmpty(fileWarning.ProteinName))
                         {
                             proteinName = "N/A";
