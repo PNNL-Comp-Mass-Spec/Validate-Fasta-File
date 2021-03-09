@@ -287,8 +287,10 @@ namespace ValidateFastaFile
             /// <returns>0 if the two instances match, otherwise -1 or 1 based on sort order</returns>
             public int CompareTo(MsgInfo other)
             {
-                if (ReferenceEquals(this, other)) return 0;
-                if (ReferenceEquals(null, other)) return 1;
+                if (ReferenceEquals(this, other))
+                    return 0;
+                if (other is null)
+                    return 1;
 
                 var messageCodeComparison = MessageCode.CompareTo(other.MessageCode);
                 if (messageCodeComparison != 0)
