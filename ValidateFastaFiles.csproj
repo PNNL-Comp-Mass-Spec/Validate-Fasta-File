@@ -50,6 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomFastaValidator.cs" />
     <Compile Include="FastaValidator.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="MemoryUsageLogger.cs" />
