@@ -117,10 +117,10 @@ namespace ValidateFastaFile
             WarningMsg = 1
         }
 
-        private readonly List<ErrorInfoExtended> m_CurrentFileErrors;
-        private readonly List<ErrorInfoExtended> m_CurrentFileWarnings;
+        private readonly List<ErrorInfoExtended> mCurrentFileErrors;
+        private readonly List<ErrorInfoExtended> mCurrentFileWarnings;
 
-        private string m_CachedFastaFilePath;
+        private string mCachedFastaFilePath;
 
         // Note: this array gets initialized with space for 10 items
         // If ValidationOptionConstants gets more than 10 entries, then this array will need to be expanded
@@ -134,8 +134,8 @@ namespace ValidateFastaFile
             FullErrorCollection = new Dictionary<string, List<ErrorInfoExtended>>();
             FullWarningCollection = new Dictionary<string, List<ErrorInfoExtended>>();
 
-            m_CurrentFileErrors = new List<ErrorInfoExtended>();
-            m_CurrentFileWarnings = new List<ErrorInfoExtended>();
+            mCurrentFileErrors = new List<ErrorInfoExtended>();
+            mCurrentFileWarnings = new List<ErrorInfoExtended>();
 
             // Reserve space for tracking up to 10 validation updates (expand later if needed)
             mValidationOptions = new bool[11];
@@ -269,30 +269,32 @@ namespace ValidateFastaFile
             string extraInfo,
             ValidationMessageTypes messageType)
         {
-            if (!mFastaFilePath.Equals(m_CachedFastaFilePath))
+            if (!mFastaFilePath.Equals(mCachedFastaFilePath))
             {
                 // New File being analyzed
-                m_CurrentFileErrors.Clear();
-                m_CurrentFileWarnings.Clear();
+                mCurrentFileErrors.Clear();
+                mCurrentFileWarnings.Clear();
 
-                m_CachedFastaFilePath = string.Copy(mFastaFilePath);
+                mCachedFastaFilePath = string.Copy(mFastaFilePath);
             }
 
             if (messageType == ValidationMessageTypes.WarningMsg)
             {
                 // Treat as warning
-                m_CurrentFileWarnings.Add(new ErrorInfoExtended(
+                mCurrentFileWarnings.Add(new ErrorInfoExtended(
                     lineNumber, proteinName, messageString, extraInfo, "Warning"));
 
-                FullWarningCollection[Path.GetFileName(m_CachedFastaFilePath)] = m_CurrentFileWarnings;
+                // Add/update the dictionary
+                FullWarningCollection[Path.GetFileName(mCachedFastaFilePath)] = mCurrentFileWarnings;
             }
             else
             {
                 // Treat as error
-                m_CurrentFileErrors.Add(new ErrorInfoExtended(
+                mCurrentFileErrors.Add(new ErrorInfoExtended(
                     lineNumber, proteinName, messageString, extraInfo, "Error"));
 
-                FullErrorCollection[Path.GetFileName(m_CachedFastaFilePath)] = m_CurrentFileErrors;
+                // Add/update the dictionary
+                FullErrorCollection[Path.GetFileName(mCachedFastaFilePath)] = mCurrentFileErrors;
             }
         }
 

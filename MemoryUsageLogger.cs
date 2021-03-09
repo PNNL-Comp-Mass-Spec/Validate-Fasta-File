@@ -19,16 +19,16 @@ namespace ValidateFastaFile
         // Ignore Spelling: yyyy-MM-dd, hh:mm:ss tt, nonpaged
 
         private const char COL_SEP = '\t';
-
         // The minimum interval between appending a new memory usage entry to the log
-        private float m_MinimumMemoryUsageLogIntervalMinutes = 1;
+        private float mMinimumMemoryUsageLogIntervalMinutes = 1;
 
         // Used to determine the amount of free memory
-        private PerformanceCounter m_PerfCounterFreeMemory;
-        private PerformanceCounter m_PerfCounterPoolPagedBytes;
-        private PerformanceCounter m_PerfCounterPoolNonpagedBytes;
+        private PerformanceCounter mPerfCounterFreeMemory;
+        private PerformanceCounter mPerfCounterPoolPagedBytes;
+        private PerformanceCounter mPerfCounterPoolNonpagedBytes;
 
-        private bool m_PerfCountersInitialized = false;
+        private bool mPerfCountersInitialized;
+
 
         /// <summary>
         /// Output folder for the log file
@@ -41,12 +41,12 @@ namespace ValidateFastaFile
         /// </summary>
         public float MinimumLogIntervalMinutes
         {
-            get => m_MinimumMemoryUsageLogIntervalMinutes;
+            get => mMinimumMemoryUsageLogIntervalMinutes;
             set
             {
                 if (value < 0)
                     value = 0;
-                m_MinimumMemoryUsageLogIntervalMinutes = value;
+                mMinimumMemoryUsageLogIntervalMinutes = value;
             }
         }
 
@@ -80,14 +80,12 @@ namespace ValidateFastaFile
         {
             try
             {
-                if (m_PerfCounterFreeMemory == null)
+                if (mPerfCounterFreeMemory == null)
                 {
                     return 0;
                 }
-                else
-                {
-                    return m_PerfCounterFreeMemory.NextValue();
-                }
+
+                return mPerfCounterFreeMemory.NextValue();
             }
             catch (Exception)
             {
@@ -116,7 +114,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="tabSeparated"></param>
         {
-            if (!m_PerfCountersInitialized)
+            if (!mPerfCountersInitialized)
             {
                 InitializePerfCounters();
             }
@@ -139,13 +137,13 @@ namespace ValidateFastaFile
         {
             try
             {
-                if (m_PerfCounterPoolNonpagedBytes == null)
+                if (mPerfCounterPoolNonpagedBytes == null)
                 {
                     return 0;
                 }
                 else
                 {
-                    return (float)(m_PerfCounterPoolNonpagedBytes.NextValue() / 1024.0 / 1024);
+                    return (float)(mPerfCounterPoolNonpagedBytes.NextValue() / 1024.0 / 1024);
                 }
             }
             catch (Exception)
@@ -163,14 +161,12 @@ namespace ValidateFastaFile
         {
             try
             {
-                if (m_PerfCounterPoolPagedBytes == null)
+                if (mPerfCounterPoolPagedBytes == null)
                 {
                     return 0;
                 }
-                else
-                {
-                    return (float)(m_PerfCounterPoolPagedBytes.NextValue() / 1024.0 / 1024);
-                }
+
+                return (float)(mPerfCounterPoolPagedBytes.NextValue() / 1024.0 / 1024);
             }
             catch (Exception)
             {
@@ -210,7 +206,7 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterFreeMemory = new PerformanceCounter("Memory", "Available MBytes") {ReadOnly = true};
+                mPerfCounterFreeMemory = new PerformanceCounter("Memory", "Available MBytes") { ReadOnly = true };
             }
             catch (Exception ex)
             {
@@ -221,7 +217,7 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterPoolPagedBytes = new PerformanceCounter("Memory", "Pool Paged Bytes") {ReadOnly = true};
+                mPerfCounterPoolPagedBytes = new PerformanceCounter("Memory", "Pool Paged Bytes") { ReadOnly = true };
             }
             catch (Exception ex)
             {
@@ -232,8 +228,8 @@ namespace ValidateFastaFile
 
             try
             {
-                m_PerfCounterPoolNonpagedBytes =
-                    new PerformanceCounter("Memory", "Pool NonPaged Bytes") {ReadOnly = true};
+                mPerfCounterPoolNonpagedBytes =
+                    new PerformanceCounter("Memory", "Pool NonPaged Bytes") { ReadOnly = true };
             }
             catch (Exception ex)
             {
@@ -242,7 +238,7 @@ namespace ValidateFastaFile
                 msgErrors += "Error instantiating the Memory: 'Pool NonPaged Bytes' performance counter: " + ex.Message;
             }
 
-            m_PerfCountersInitialized = true;
+            mPerfCountersInitialized = true;
 
             return msgErrors;
         }
@@ -256,7 +252,7 @@ namespace ValidateFastaFile
         {
             try
             {
-                if (DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < m_MinimumMemoryUsageLogIntervalMinutes)
+                if (DateTime.UtcNow.Subtract(dtLastWriteTime).TotalMinutes < mMinimumMemoryUsageLogIntervalMinutes)
                 {
                     // Not enough time has elapsed since the last write; exit sub
                     return;
