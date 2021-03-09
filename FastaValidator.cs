@@ -3972,12 +3972,14 @@ namespace ValidateFastaFile
             mMemoryUsageLogger = new MemoryUsageLogger(string.Empty);
             mProcessMemoryUsageMBAtStart = MemoryUsageLogger.GetProcessMemoryUsageMB();
 
-            // ReSharper disable once VbUnreachableCode
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             if (REPORT_DETAILED_MEMORY_USAGE)
             {
+#pragma warning disable CS0162 // Unreachable code detected
                 // mMemoryUsageMBAtStart = mMemoryUsageLogger.GetFreeMemoryMB()
                 Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageHeader());
                 Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageSummary());
+#pragma warning restore CS0162 // Unreachable code detected
             }
 
             mTempFilesToDelete = new List<string>();
@@ -5436,10 +5438,12 @@ namespace ValidateFastaFile
         private void ReportMemoryUsage()
         {
 
-            // ReSharper disable once VbUnreachableCode
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             if (REPORT_DETAILED_MEMORY_USAGE)
             {
+#pragma warning disable CS0162 // Unreachable code detected
                 Console.WriteLine(MEM_USAGE_PREFIX + mMemoryUsageLogger.GetMemoryUsageSummary());
+#pragma warning restore CS0162 // Unreachable code detected
             }
             else
             {
