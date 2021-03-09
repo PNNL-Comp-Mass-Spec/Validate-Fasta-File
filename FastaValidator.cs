@@ -6078,7 +6078,7 @@ namespace ValidateFastaFile
             try
             {
                 // Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
-                using (var fsInFile = new FileStream(strInputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     if (fsInFile.Length > 2)
                     {
