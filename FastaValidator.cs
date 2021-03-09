@@ -5402,38 +5402,32 @@ namespace ValidateFastaFile
                 // Define the output file path
                 var timeStamp = GetTimeStamp().Replace(" ", "_").Replace(":", "_").Replace("/", "_");
 
-                var outputFilePath = parameterFilePath + "_" + timeStamp + ".fixed";
+                var inputFile = new FileInfo(parameterFilePath);
+
+                var outputFile = new FileInfo(parameterFilePath + "_" + timeStamp + ".fixed");
 
                 // Open the input file and output file
-                using (var srInFile = new StreamReader(parameterFilePath))
-                using (var swOutFile = new StreamWriter(new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
+                using (var reader = new StreamReader(inputFile.FullName))
+                using (var writer = new StreamWriter(new FileStream(outputFile.FullName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)))
                 {
                     // Parse each line in the file
-                    while (!srInFile.EndOfStream)
+                    while (!reader.EndOfStream)
                     {
-                        var lineIn = srInFile.ReadLine();
+                        var lineIn = reader.ReadLine();
 
                         if (lineIn != null)
                         {
                             lineIn = lineIn.Replace("&gt;", ">").Replace("&lt;", "<");
-                            swOutFile.WriteLine(lineIn);
+                            writer.WriteLine(lineIn);
                         }
                     }
-
-                    // Close the input and output files
                 }
 
-                // Wait 100 msec
-                System.Threading.Thread.Sleep(100);
-
                 // Delete the input file
-                File.Delete(parameterFilePath);
-
-                // Wait 250 msec
-                System.Threading.Thread.Sleep(250);
+                inputFile.Delete();
 
                 // Rename the output file to the input file
-                File.Move(outputFilePath, parameterFilePath);
+                outputFile.MoveTo(parameterFilePath);
             }
             catch (Exception ex)
             {
