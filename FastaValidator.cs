@@ -534,6 +534,7 @@ namespace ValidateFastaFile
             /// <summary>
             /// Return the sum of CountSpecified for all tracked messages
             /// </summary>
+            // ReSharper disable once UnusedMember.Local
             public int ComputeTotalSpecifiedCount()
             {
                 return MessageCodeToErrorStats.Values.Sum(stat => stat.CountSpecified);
@@ -617,6 +618,7 @@ namespace ValidateFastaFile
             /// <summary>
             /// True if the rule is valid, false if a problem
             /// </summary>
+            // ReSharper disable once UnusedAutoPropertyAccessor.Local
             public bool Valid { get; set; }
 
             /// <summary>
@@ -705,7 +707,7 @@ namespace ValidateFastaFile
             /// </summary>
             public FixedFastaOptions()
             {
-                LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
+                LongProteinNameSplitChars = new[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
 
                 // Default to an empty character array for invalid characters
                 ProteinNameInvalidCharsToRemove = new char[] { };
@@ -969,6 +971,7 @@ namespace ValidateFastaFile
         /// <param name="switchName"></param>
         /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
         [Obsolete("Use GetOptionSwitchValue instead", true)]
+        // ReSharper disable once UnusedMember.Global
         public bool get_OptionSwitch(SwitchOptions switchName)
         {
             return GetOptionSwitchValue(switchName);
@@ -979,6 +982,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="switchName"></param>
         [Obsolete("Use SetOptionSwitch instead", true)]
+        // ReSharper disable once UnusedMember.Global
         public void set_OptionSwitch(SwitchOptions switchName, bool value)
         {
             SetOptionSwitch(switchName, value);
@@ -1104,6 +1108,7 @@ namespace ValidateFastaFile
         /// <param name="messageType"></param>
         /// <param name="countType"></param>
         [Obsolete("Use GetErrorWarningCounts instead", true)]
+        // ReSharper disable once UnusedMember.Global
         public int get_ErrorWarningCounts(
             MsgTypeConstants messageType,
             ErrorWarningCountTypes countType)
@@ -1155,6 +1160,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="statCategory"></param>
         [Obsolete("Use GetFixedFASTAFileStats instead", true)]
+        // ReSharper disable once UnusedMember.Global
         public int get_FixedFASTAFileStats(FixedFASTAFileValues statCategory)
         {
             return GetFixedFASTAFileStats(statCategory);
@@ -1182,6 +1188,7 @@ namespace ValidateFastaFile
         /// <summary>
         /// Local error code
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public ValidateFastaFileErrorCodes LocalErrorCode => mLocalErrorCode;
 
         /// <summary>
@@ -1192,6 +1199,7 @@ namespace ValidateFastaFile
         /// <summary>
         /// FASTA file path
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public string FastaFilePath => mFastaFilePath;
 
         /// <summary>
@@ -1200,6 +1208,7 @@ namespace ValidateFastaFile
         /// <param name="index"></param>
         /// <param name="valueSeparator"></param>
         [Obsolete("Use GetErrorMessageTextByIndex", true)]
+        // ReSharper disable once UnusedMember.Global
         public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
         {
             return GetErrorMessageTextByIndex(index, valueSeparator);
@@ -1221,6 +1230,7 @@ namespace ValidateFastaFile
         /// <param name="index"></param>
         /// <param name="valueSeparator"></param>
         [Obsolete("Use GetWarningMessageTextByIndex", true)]
+        // ReSharper disable once UnusedMember.Global
         public string get_WarningMessageTextByIndex(int index, string valueSeparator)
         {
             return GetWarningMessageTextByIndex(index, valueSeparator);
@@ -1241,6 +1251,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="errorIndex"></param>
         [Obsolete("Use GetErrorsByIndex", true)]
+        // ReSharper disable once UnusedMember.Global
         public MsgInfo get_ErrorsByIndex(int errorIndex)
         {
             return GetErrorsByIndex(errorIndex);
@@ -1260,6 +1271,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="warningIndex"></param>
         [Obsolete("Use GetWarningsByIndex", true)]
+        // ReSharper disable once UnusedMember.Global
         public MsgInfo get_WarningsByIndex(int warningIndex)
         {
             return GetWarningsByIndex(warningIndex);
@@ -1353,20 +1365,8 @@ namespace ValidateFastaFile
         /// <summary>
         /// Stats file path
         /// </summary>
-        public string StatsFilePath
-        {
-            get
-            {
-                if (mStatsFilePath == null)
-                {
-                    return string.Empty;
-                }
-                else
-                {
-                    return mStatsFilePath;
-                }
-            }
-        }
+        // ReSharper disable once UnusedMember.Global
+        public string StatsFilePath => mStatsFilePath ?? string.Empty;
 
         /// <summary>
         /// Invalid characters to remove from protein names
@@ -1458,11 +1458,13 @@ namespace ValidateFastaFile
         /// <summary>
         /// List of warnings
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public List<MsgInfo> FileWarningList => GetFileWarnings();
 
         /// <summary>
         /// List of errors
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public List<MsgInfo> FileErrorList => GetFileErrors();
 
         #region "Events and delegates"
@@ -1538,6 +1540,7 @@ namespace ValidateFastaFile
                 // This dictionary is not used if preloadedProteinNamesToKeep contains data
                 const int SPANNER_CHAR_LENGTH = 1;
                 var proteinSequenceHashes = new NestedStringDictionary<int>(false, SPANNER_CHAR_LENGTH);
+
                 var usingPreloadedProteinNames = false;
 
                 if (preloadedProteinNamesToKeep != null && preloadedProteinNamesToKeep.Count > 0)
@@ -1565,7 +1568,9 @@ namespace ValidateFastaFile
                         "CRLF_" + Path.GetFileName(fastaFilePathToCheck),
                         LineEndingCharacters.CRLF);
 
-                    if ((mFastaFilePath ?? "") != (fastaFilePathToCheck ?? ""))
+                    if (!string.IsNullOrWhiteSpace(mFastaFilePath) &&
+                        !string.IsNullOrWhiteSpace(fastaFilePathToCheck) &&
+                        !mFastaFilePath.Equals(fastaFilePathToCheck))
                     {
                         fastaFilePathToCheck = string.Copy(mFastaFilePath);
                         OnWroteLineEndNormalizedFASTA(fastaFilePathToCheck);
@@ -1611,7 +1616,7 @@ namespace ValidateFastaFile
                 // Make sure mFixedFastaOptions.LongProteinNameSplitChars contains at least one character
                 if (mFixedFastaOptions.LongProteinNameSplitChars == null || mFixedFastaOptions.LongProteinNameSplitChars.Length == 0)
                 {
-                    mFixedFastaOptions.LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
+                    mFixedFastaOptions.LongProteinNameSplitChars = new[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
                 }
 
                 // Initialize the rule details UDTs, which contain a RegEx object for each rule
@@ -1636,8 +1641,8 @@ namespace ValidateFastaFile
                     {
                         try
                         {
-                            fastaFilePathOut =
-                                Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                            fastaFilePathOut = Path.Combine(
+                                Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
                                 Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_new.fasta");
                             fixedFastaWriter = new StreamWriter(new FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
                         }
@@ -1658,8 +1663,8 @@ namespace ValidateFastaFile
 
                         try
                         {
-                            basicProteinHashInfoFilePath =
-                                Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                            basicProteinHashInfoFilePath = Path.Combine(
+                                Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
                                 Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + PROTEIN_HASHES_FILENAME_SUFFIX);
 
                             sequenceHashWriter = new StreamWriter(new FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
@@ -1790,7 +1795,8 @@ namespace ValidateFastaFile
                             RecordFastaFileError(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesLineTooLong, "Line is over 10 million residues long; skipping", string.Empty);
                             continue;
                         }
-                        else if (lineIn.Length > 1000000)
+
+                        if (lineIn.Length > 1000000)
                         {
                             RecordFastaFileWarning(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this is very suspicious", string.Empty);
                         }
@@ -1818,7 +1824,7 @@ namespace ValidateFastaFile
                             }
                         }
 
-                        // Note: Only trim the start of the line; do not trim the end of the line since Sequest incorrectly notates the peptide terminal state if a residue has a space after it
+                        // Note: Only trim the start of the line; do not trim the end of the line since SEQUEST incorrectly notates the peptide terminal state if a residue has a space after it
                         lineIn = lineIn.TrimStart();
 
                         if (lineIn[0] == ProteinLineStartChar)
@@ -1970,11 +1976,11 @@ namespace ValidateFastaFile
                     if (mCheckForDuplicateProteinSequences)
                     {
                         // Step through proteinSeqHashInfo and look for duplicate sequences
-                        for (var index = 0; index < proteinSeqHashInfo.Count; index++)
+                        foreach (var hashItem in proteinSeqHashInfo)
                         {
-                            if (proteinSeqHashInfo[index].AdditionalProteins.Any())
+                            if (hashItem.AdditionalProteins.Any())
                             {
-                                var proteinHashInfo = proteinSeqHashInfo[index];
+                                var proteinHashInfo = hashItem;
                                 RecordFastaFileWarning(LineCount, 0, proteinHashInfo.ProteinNameFirst, (int)MessageCodeConstants.DuplicateProteinSequence,
                                     proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ','), proteinHashInfo.SequenceStart);
                             }
@@ -2106,6 +2112,8 @@ namespace ValidateFastaFile
                 else
                 {
                     UpdateProgress("Parsing complete", 100);
+
+                    OnProgressComplete();
                 }
             }
             catch (Exception ex)
@@ -2116,9 +2124,11 @@ namespace ValidateFastaFile
             finally
             {
                 // These close statements will typically be redundant,
-                // However, if an exception occurs, then they will be needed to close the files
+                // However, if an exception occurs, they will be needed to close the files
 
                 fixedFastaWriter?.Close();
+
+                // ReSharper disable once ConstantConditionalAccessQualifier
                 sequenceHashWriter?.Close();
             }
 
@@ -2137,8 +2147,6 @@ namespace ValidateFastaFile
             IList<RuleDefinitionExtended> proteinDescriptionRuleDetails,
             ProteinNameTruncationRegex reProteinNameTruncation)
         {
-            var proteinDescription = string.Empty;
-
             var skipDuplicateProtein = false;
 
             proteinName = string.Empty;
@@ -2146,7 +2154,7 @@ namespace ValidateFastaFile
 
             try
             {
-                SplitFastaProteinHeaderLine(lineIn, out proteinName, out proteinDescription, out var descriptionStartIndex);
+                SplitFastaProteinHeaderLine(lineIn, out proteinName, out var proteinDescription, out var descriptionStartIndex);
 
                 if (proteinName.Length == 0)
                 {
@@ -2224,7 +2232,7 @@ namespace ValidateFastaFile
                             // Make sure proteinDescription doesn't start with a | or space
                             if (proteinDescription.Length > 0)
                             {
-                                proteinDescription = proteinDescription.TrimStart(new char[] { '|', ' ' });
+                                proteinDescription = proteinDescription.TrimStart('|', ' ');
                             }
                         }
                     }
@@ -2283,8 +2291,8 @@ namespace ValidateFastaFile
 
             try
             {
-                uniqueProteinSeqsFileOut =
-                    Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                uniqueProteinSeqsFileOut = Path.Combine(
+                    Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
                     Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqs.txt");
 
                 // Create uniqueProteinSeqsWriter
@@ -2303,8 +2311,8 @@ namespace ValidateFastaFile
             {
                 // Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
                 // We'll only create it if two or more proteins have the same protein sequence
-                duplicateProteinMappingFileOut =
-                    Path.Combine(Path.GetDirectoryName(fastaFilePathToCheck),
+                duplicateProteinMappingFileOut = Path.Combine(
+                    Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
                     Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqDuplicates.txt");                       // Look for duplicateProteinMappingFileOut and erase it if it exists
 
                 if (File.Exists(duplicateProteinMappingFileOut))
@@ -2865,7 +2873,7 @@ namespace ValidateFastaFile
             // Make sure proteinDescription doesn't start with a | or space
             if (proteinDescription.Length > 0)
             {
-                proteinDescription = proteinDescription.TrimStart(new char[] { '|', ' ' });
+                proteinDescription = proteinDescription.TrimStart('|', ' ');
             }
 
             return proteinName;
@@ -2873,14 +2881,7 @@ namespace ValidateFastaFile
 
         private string BoolToStringInt(bool value)
         {
-            if (value)
-            {
-                return "1";
-            }
-            else
-            {
-                return "0";
-            }
+            return value ? "1" : "0";
         }
 
         private void ClearAllRules()
@@ -2927,6 +2928,7 @@ namespace ValidateFastaFile
         {
             if (residues.Length > 0)
             {
+                // ReSharper disable once ConvertIfStatementToReturnStatement
                 if (consolidateDupsIgnoreILDiff)
                 {
                     return HashUtilities.ComputeStringHashSha1(residues.ToString().Replace('L', 'I')).ToUpper();
@@ -2936,10 +2938,8 @@ namespace ValidateFastaFile
                     return HashUtilities.ComputeStringHashSha1(residues.ToString()).ToUpper();
                 }
             }
-            else
-            {
-                return string.Empty;
-            }
+
+            return string.Empty;
         }
 
         /// <summary>
@@ -2966,8 +2966,6 @@ namespace ValidateFastaFile
             var cachedProteinDescription = string.Empty;
             var sbCachedProteinResidueLines = new StringBuilder(250);
             var sbCachedProteinResidues = new StringBuilder(250);
-
-            int descriptionStartIndex;
 
             bool success;
 
@@ -3164,7 +3162,7 @@ namespace ValidateFastaFile
                                 }
 
                                 // Extract the protein name and description
-                                SplitFastaProteinHeaderLine(lineIn, out cachedProteinName, out cachedProteinDescription, out descriptionStartIndex);
+                                SplitFastaProteinHeaderLine(lineIn, out cachedProteinName, out cachedProteinDescription, out _);
                             }
                             else
                             {
@@ -3221,16 +3219,17 @@ namespace ValidateFastaFile
 
         private string ConstructFastaHeaderLine(string proteinName, string proteinDescription)
         {
-            proteinName = proteinName ?? "????";
+            if (string.IsNullOrWhiteSpace(proteinName))
+            {
+                proteinName = "????";
+            }
 
             if (string.IsNullOrWhiteSpace(proteinDescription))
             {
                 return ProteinLineStartChar + proteinName;
             }
-            else
-            {
-                return ProteinLineStartChar + proteinName + " " + proteinDescription;
-            }
+
+            return ProteinLineStartChar + proteinName + " " + proteinDescription;
         }
 
         private string ConstructStatsFilePath(string outputFolderPath)
@@ -3336,7 +3335,8 @@ namespace ValidateFastaFile
 
                             break;
                         }
-                        else if (oneByte == 13)
+
+                        if (oneByte == 13)
                         {
                             // Found carriage return
                             if (fsInFile.Position < fsInFile.Length)
@@ -3435,7 +3435,7 @@ namespace ValidateFastaFile
 
                 if (!Path.IsPathRooted(newFileName))
                 {
-                    newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix), Path.GetFileName(newFileName));
+                    newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix) ?? string.Empty, Path.GetFileName(newFileName));
                 }
 
                 var targetFile = new FileInfo(pathOfFileToFix);
@@ -3459,9 +3459,10 @@ namespace ValidateFastaFile
 
                         if (linesRead % 1000 == 0)
                         {
-                            OnProgressUpdate("Normalizing Line Endings (" +
-                                Math.Round(currentFilePos / (double)fileSizeBytes * 100.0, 1).ToString() +
-                                " % complete", (float)(currentFilePos / (double)fileSizeBytes * 100));
+                            var percentComplete = currentFilePos / (float)fileSizeBytes * 100;
+                            var progressMessage = string.Format("Normalizing Line Endings ({0:F1} % complete", percentComplete);
+
+                            OnProgressUpdate(progressMessage, percentComplete);
                         }
 
                         dataLine = reader.ReadLine();
@@ -3472,10 +3473,8 @@ namespace ValidateFastaFile
 
                 return newFileName;
             }
-            else
-            {
-                return pathOfFileToFix;
-            }
+
+            return pathOfFileToFix;
         }
 
         private void EvaluateRules(
@@ -3617,12 +3616,7 @@ namespace ValidateFastaFile
             return proteinName;
         }
 
-        private string ExtractContext(string text, int startIndex)
-        {
-            return ExtractContext(text, startIndex, DEFAULT_CONTEXT_LENGTH);
-        }
-
-        private string ExtractContext(string text, int startIndex, int contextLength)
+        private string ExtractContext(string text, int startIndex, int contextLength = DEFAULT_CONTEXT_LENGTH)
         {
             // Note that contextLength should be an odd number; if it isn't, we'll add 1 to it
 
@@ -3639,27 +3633,26 @@ namespace ValidateFastaFile
             {
                 return string.Empty;
             }
-            else if (text.Length <= 1)
+
+            if (text.Length <= 1)
             {
                 return text;
             }
-            else
+
+            // Define the start index for extracting the context from text
+            var contextStartIndex = startIndex - (int)Math.Round((contextLength - 1) / (double)2);
+            if (contextStartIndex < 0)
+                contextStartIndex = 0;
+
+            // Define the end index for extracting the context from text
+            var contextEndIndex = Math.Max(startIndex + (int)Math.Round((contextLength - 1) / (double)2), contextStartIndex + contextLength - 1);
+            if (contextEndIndex >= text.Length)
             {
-                // Define the start index for extracting the context from text
-                var contextStartIndex = startIndex - (int)Math.Round((contextLength - 1) / (double)2);
-                if (contextStartIndex < 0)
-                    contextStartIndex = 0;
-
-                // Define the end index for extracting the context from text
-                var contextEndIndex = Math.Max(startIndex + (int)Math.Round((contextLength - 1) / (double)2), contextStartIndex + contextLength - 1);
-                if (contextEndIndex >= text.Length)
-                {
-                    contextEndIndex = text.Length - 1;
-                }
-
-                // Return the context portion of text
-                return text.Substring(contextStartIndex, contextEndIndex - contextStartIndex + 1);
+                contextEndIndex = text.Length - 1;
             }
+
+            // Return the context portion of text
+            return text.Substring(contextStartIndex, contextEndIndex - contextStartIndex + 1);
         }
 
         private string FlattenArray(IEnumerable<string> items, char sepChar)
@@ -3668,45 +3661,8 @@ namespace ValidateFastaFile
             {
                 return string.Empty;
             }
-            else
-            {
-                return FlattenArray(items, items.Count(), sepChar);
-            }
-        }
 
-        private string FlattenArray(IEnumerable<string> items, int dataCount, char sepChar)
-        {
-            if (items == null)
-            {
-                return string.Empty;
-            }
-            else if (items.Count() == 0 || dataCount <= 0)
-            {
-                return string.Empty;
-            }
-            else
-            {
-                if (dataCount > items.Count())
-                {
-                    dataCount = items.Count();
-                }
-
-                var result = items.ElementAtOrDefault(0) ?? string.Empty;
-
-                for (var index = 1; index <= dataCount - 1; index++)
-                {
-                    if (items.ElementAtOrDefault(index) == null)
-                    {
-                        result += sepChar.ToString();
-                    }
-                    else
-                    {
-                        result += sepChar + items.ElementAtOrDefault(index);
-                    }
-                }
-
-                return result;
-            }
+            return string.Join(sepChar.ToString(), items);
         }
 
         /// <summary>
@@ -3726,24 +3682,27 @@ namespace ValidateFastaFile
         private int GetBestSpaceIndex(string headerLine)
         {
             var spaceIndex = headerLine.IndexOf(' ');
-            var tabIndex = headerLine.IndexOf('\t');
-
             if (spaceIndex == 1)
             {
                 // Space found directly after the > symbol
+                return spaceIndex;
             }
-            else if (tabIndex > 0)
+
+            var tabIndex = headerLine.IndexOf('\t');
+
+            if (tabIndex <= 0)
+                return spaceIndex;
+
+            if (tabIndex == 1)
             {
-                if (tabIndex == 1)
-                {
-                    // Tab character found directly after the > symbol
-                    spaceIndex = tabIndex;
-                }
-                else if (spaceIndex <= 0 || spaceIndex > 0 && tabIndex < spaceIndex)
-                {
-                    // Tab character found; does it separate the protein name and description?
-                    spaceIndex = tabIndex;
-                }
+                // Tab character found directly after the > symbol
+                return tabIndex;
+            }
+
+            // Tab character found; does it separate the protein name and description?
+            if (spaceIndex <= 0 || tabIndex < spaceIndex)
+            {
+                return tabIndex;
             }
 
             return spaceIndex;
@@ -3754,9 +3713,7 @@ namespace ValidateFastaFile
         /// </summary>
         public override IList<string> GetDefaultExtensionsToParse()
         {
-            var extensionsToParse = new List<string>() { ".fasta", ".faa" };
-
-            return extensionsToParse;
+            return new List<string>() { ".fasta", ".faa" };
         }
 
         /// <summary>
@@ -3810,25 +3767,24 @@ namespace ValidateFastaFile
             {
                 return string.Empty;
             }
+
+            var fileError = mFileErrors.Messages[fileErrorIndex];
+
+            string proteinName;
+            if (string.IsNullOrEmpty(fileError.ProteinName))
+            {
+                proteinName = "N/A";
+            }
             else
             {
-                var fileError = mFileErrors.Messages[fileErrorIndex];
-                string proteinName;
-                if (string.IsNullOrEmpty(fileError.ProteinName))
-                {
-                    proteinName = "N/A";
-                }
-                else
-                {
-                    proteinName = string.Copy(fileError.ProteinName);
-                }
-
-                return LookupMessageType(MsgTypeConstants.ErrorMsg) + sepChar +
-                    "Line " + fileError.LineNumber.ToString() + sepChar +
-                    "Col " + fileError.ColNumber.ToString() + sepChar +
-                    proteinName + sepChar +
-                    LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo) + sepChar + fileError.Context;
+                proteinName = string.Copy(fileError.ProteinName);
             }
+
+            return LookupMessageType(MsgTypeConstants.ErrorMsg) + sepChar +
+                   "Line " + fileError.LineNumber.ToString() + sepChar +
+                   "Col " + fileError.ColNumber.ToString() + sepChar +
+                   proteinName + sepChar +
+                   LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo) + sepChar + fileError.Context;
         }
 
         private MsgInfo GetFileErrorByIndex(int fileErrorIndex)
@@ -3837,10 +3793,8 @@ namespace ValidateFastaFile
             {
                 return new MsgInfo();
             }
-            else
-            {
-                return mFileErrors.Messages[fileErrorIndex];
-            }
+
+            return mFileErrors.Messages[fileErrorIndex];
         }
 
         /// <summary>
@@ -3862,26 +3816,25 @@ namespace ValidateFastaFile
             {
                 return string.Empty;
             }
+
+            var fileWarning = mFileWarnings.Messages[fileWarningIndex];
+
+            string proteinName;
+            if (string.IsNullOrEmpty(fileWarning.ProteinName))
+            {
+                proteinName = "N/A";
+            }
             else
             {
-                var fileWarning = mFileWarnings.Messages[fileWarningIndex];
-                string proteinName;
-                if (string.IsNullOrEmpty(fileWarning.ProteinName))
-                {
-                    proteinName = "N/A";
-                }
-                else
-                {
-                    proteinName = string.Copy(fileWarning.ProteinName);
-                }
-
-                return LookupMessageType(MsgTypeConstants.WarningMsg) + sepChar +
-                    "Line " + fileWarning.LineNumber.ToString() + sepChar +
-                    "Col " + fileWarning.ColNumber.ToString() + sepChar +
-                    proteinName + sepChar +
-                    LookupMessageDescription(fileWarning.MessageCode, fileWarning.ExtraInfo) +
-                    sepChar + fileWarning.Context;
+                proteinName = string.Copy(fileWarning.ProteinName);
             }
+
+            return LookupMessageType(MsgTypeConstants.WarningMsg) + sepChar +
+                   "Line " + fileWarning.LineNumber.ToString() + sepChar +
+                   "Col " + fileWarning.ColNumber.ToString() + sepChar +
+                   proteinName + sepChar +
+                   LookupMessageDescription(fileWarning.MessageCode, fileWarning.ExtraInfo) +
+                   sepChar + fileWarning.Context;
         }
 
         private MsgInfo GetFileWarningByIndex(int fileWarningIndex)
@@ -3890,10 +3843,8 @@ namespace ValidateFastaFile
             {
                 return new MsgInfo();
             }
-            else
-            {
-                return mFileWarnings.Messages[fileWarningIndex];
-            }
+
+            return mFileWarnings.Messages[fileWarningIndex];
         }
 
         /// <summary>
@@ -3986,7 +3937,7 @@ namespace ValidateFastaFile
         }
 
         private void InitializeRuleDetails(
-            List<RuleDefinition> ruleDefinitions,
+            IReadOnlyList<RuleDefinition> ruleDefinitions,
             out RuleDefinitionExtended[] ruleDetails)
         {
             if (ruleDefinitions == null || ruleDefinitions.Count == 0)
@@ -4057,10 +4008,13 @@ namespace ValidateFastaFile
                     {
                         cachedHeaderLine = hashFileReader.ReadLine();
 
-                        var headerNames = cachedHeaderLine.Split('\t');
+                        if (!string.IsNullOrWhiteSpace(cachedHeaderLine))
+                        {
+                            var headerNames = cachedHeaderLine.Split('\t');
 
-                        for (var colIndex = 0; colIndex <= headerNames.Count() - 1; colIndex++)
-                            headerInfo.Add(headerNames[colIndex], colIndex);
+                            for (var colIndex = 0; colIndex <= headerNames.Length - 1; colIndex++)
+                                headerInfo.Add(headerNames[colIndex], colIndex);
+                        }
 
                         proteinHashFileLines = 1;
                     }
@@ -4070,15 +4024,16 @@ namespace ValidateFastaFile
                         hashFileReader.ReadLine();
                         proteinHashFileLines += 1;
 
-                        if (proteinHashFileLines % 10000 == 0)
-                        {
-                            if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds >= 10)
-                            {
-                                Console.Write(".");
-                                progressDotShown = true;
-                                lastStatus = DateTime.UtcNow;
-                            }
-                        }
+                        if (proteinHashFileLines % 10000 != 0)
+                            continue;
+
+                        if (DateTime.UtcNow.Subtract(lastStatus).TotalSeconds < 10)
+                            continue;
+
+                        Console.Write(".");
+                        progressDotShown = true;
+                        lastStatus = DateTime.UtcNow;
+
                     }
                 }
 
@@ -4087,7 +4042,7 @@ namespace ValidateFastaFile
 
                 if (headerInfo.Count == 0)
                 {
-                    ShowErrorMessage("Protein hash file is empty: " + proteinHashFilePath);
+                    ShowErrorMessage("Protein hash file is empty (or has an empty header line): " + proteinHashFilePath);
                     return false;
                 }
 
@@ -4554,7 +4509,7 @@ namespace ValidateFastaFile
                 {
                     // See if parameterFilePath points to a file in the same directory as the application
                     parameterFilePath = Path.Combine(
-                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty,
                         Path.GetFileName(parameterFilePath));
 
                     if (!File.Exists(parameterFilePath))
@@ -4572,162 +4527,165 @@ namespace ValidateFastaFile
                         SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidParameterFile);
                         return false;
                     }
-                    else
-                    {
-                        // Read customized settings
 
-                        SetOptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
+                    // Read customized settings
+                    SetOptionSwitch(SwitchOptions.AddMissingLineFeedAtEOF,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "AddMissingLinefeedAtEOF",
                             GetOptionSwitchValue(SwitchOptions.AddMissingLineFeedAtEOF)));
-                        SetOptionSwitch(SwitchOptions.AllowAsteriskInResidues,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
+
+                    SetOptionSwitch(SwitchOptions.AllowAsteriskInResidues,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowAsteriskInResidues",
                             GetOptionSwitchValue(SwitchOptions.AllowAsteriskInResidues)));
-                        SetOptionSwitch(SwitchOptions.AllowDashInResidues,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
+
+                    SetOptionSwitch(SwitchOptions.AllowDashInResidues,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "AllowDashInResidues",
                             GetOptionSwitchValue(SwitchOptions.AllowDashInResidues)));
-                        SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinNames,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
+
+                    SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinNames,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinNames",
                             GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinNames)));
-                        SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
+
+                    SetOptionSwitch(SwitchOptions.CheckForDuplicateProteinSequences,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "CheckForDuplicateProteinSequences",
                             GetOptionSwitchValue(SwitchOptions.CheckForDuplicateProteinSequences)));
 
-                        SetOptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
+                    SetOptionSwitch(SwitchOptions.SaveProteinSequenceHashInfoFiles,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveProteinSequenceHashInfoFiles",
                             GetOptionSwitchValue(SwitchOptions.SaveProteinSequenceHashInfoFiles)));
 
-                        SetOptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
+                    SetOptionSwitch(SwitchOptions.SaveBasicProteinHashInfoFile,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "SaveBasicProteinHashInfoFile",
                             GetOptionSwitchValue(SwitchOptions.SaveBasicProteinHashInfoFile)));
 
-                        MaximumFileErrorsToTrack = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                            "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
-                        MinimumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                            "MinimumProteinNameLength", MinimumProteinNameLength);
-                        MaximumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                            "MaximumProteinNameLength", MaximumProteinNameLength);
-                        MaximumResiduesPerLine = settingsFile.GetParam(XML_SECTION_OPTIONS,
-                            "MaximumResiduesPerLine", MaximumResiduesPerLine);
+                    MaximumFileErrorsToTrack = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                        "MaximumFileErrorsToTrack", MaximumFileErrorsToTrack);
 
-                        SetOptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
+                    MinimumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                        "MinimumProteinNameLength", MinimumProteinNameLength);
+
+                    MaximumProteinNameLength = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                        "MaximumProteinNameLength", MaximumProteinNameLength);
+
+                    MaximumResiduesPerLine = settingsFile.GetParam(XML_SECTION_OPTIONS,
+                        "MaximumResiduesPerLine", MaximumResiduesPerLine);
+
+                    SetOptionSwitch(SwitchOptions.WarnBlankLinesBetweenProteins,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnBlankLinesBetweenProteins",
                             GetOptionSwitchValue(SwitchOptions.WarnBlankLinesBetweenProteins)));
-                        SetOptionSwitch(SwitchOptions.WarnLineStartsWithSpace,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
+                    SetOptionSwitch(SwitchOptions.WarnLineStartsWithSpace,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "WarnLineStartsWithSpace",
                             GetOptionSwitchValue(SwitchOptions.WarnLineStartsWithSpace)));
 
-                        SetOptionSwitch(SwitchOptions.OutputToStatsFile,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
+                    SetOptionSwitch(SwitchOptions.OutputToStatsFile,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "OutputToStatsFile",
                             GetOptionSwitchValue(SwitchOptions.OutputToStatsFile)));
 
-                        SetOptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters,
-                            settingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
+                    SetOptionSwitch(SwitchOptions.NormalizeFileLineEndCharacters,
+                        settingsFile.GetParam(XML_SECTION_OPTIONS, "NormalizeFileLineEndCharacters",
                             GetOptionSwitchValue(SwitchOptions.NormalizeFileLineEndCharacters)));
 
-                        if (!settingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS))
-                        {
-                            // "ValidateFastaFixedFASTAFileOptions" section not present
-                            // Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
+                    if (!settingsFile.SectionPresent(XML_SECTION_FIXED_FASTA_FILE_OPTIONS))
+                    {
+                        // "ValidateFastaFixedFASTAFileOptions" section not present
+                        // Only read the settings for GenerateFixedFASTAFile and SplitOutMultipleRefsInProteinName
 
-                            SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
-                                settingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
+                        SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "GenerateFixedFASTAFile",
                                 GetOptionSwitchValue(SwitchOptions.GenerateFixedFASTAFile)));
 
-                            SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
-                                settingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
+                        SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                            settingsFile.GetParam(XML_SECTION_OPTIONS, "SplitOutMultipleRefsInProteinName",
                                 GetOptionSwitchValue(SwitchOptions.SplitOutMultipleRefsInProteinName)));
-                        }
-                        else
-                        {
-                            // "ValidateFastaFixedFASTAFileOptions" section is present
+                    }
+                    else
+                    {
+                        // "ValidateFastaFixedFASTAFileOptions" section is present
 
-                            SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
+                        SetOptionSwitch(SwitchOptions.GenerateFixedFASTAFile,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "GenerateFixedFASTAFile",
                                 GetOptionSwitchValue(SwitchOptions.GenerateFixedFASTAFile)));
 
-                            SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
+                        SetOptionSwitch(SwitchOptions.SplitOutMultipleRefsInProteinName,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsInProteinName",
                                 GetOptionSwitchValue(SwitchOptions.SplitOutMultipleRefsInProteinName)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
+                        SetOptionSwitch(SwitchOptions.FixedFastaRenameDuplicateNameProteins,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RenameDuplicateNameProteins",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaRenameDuplicateNameProteins)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
+                        SetOptionSwitch(SwitchOptions.FixedFastaKeepDuplicateNamedProteins,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "KeepDuplicateNamedProteins",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaKeepDuplicateNamedProteins)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
+                        SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDuplicateProteinSeqs",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
+                        SetOptionSwitch(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ConsolidateDupsIgnoreILDiff",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
+                        SetOptionSwitch(SwitchOptions.FixedFastaTruncateLongProteinNames,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "TruncateLongProteinNames",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaTruncateLongProteinNames)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
+                        SetOptionSwitch(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "SplitOutMultipleRefsForKnownAccession",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
+                        SetOptionSwitch(SwitchOptions.FixedFastaWrapLongResidueLines,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "WrapLongResidueLines",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaWrapLongResidueLines)));
 
-                            SetOptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues,
-                                settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
+                        SetOptionSwitch(SwitchOptions.FixedFastaRemoveInvalidResidues,
+                            settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "RemoveInvalidResidues",
                                 GetOptionSwitchValue(SwitchOptions.FixedFastaRemoveInvalidResidues)));
 
-                            // Look for the special character lists
-                            // If defined, then update the default values
-                            var characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", string.Empty);
-                            if (!string.IsNullOrEmpty(characterList))
-                            {
-                                // Update mFixedFastaOptions.LongProteinNameSplitChars with characterList
-                                LongProteinNameSplitChars = characterList;
-                            }
-
-                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", string.Empty);
-                            if (!string.IsNullOrEmpty(characterList))
-                            {
-                                // Update mFixedFastaOptions.ProteinNameInvalidCharsToRemove with characterList
-                                ProteinNameInvalidCharsToRemove = characterList;
-                            }
-
-                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", string.Empty);
-                            if (!string.IsNullOrEmpty(characterList))
-                            {
-                                // Update mProteinNameFirstRefSepChars
-                                ProteinNameFirstRefSepChars = characterList;
-                            }
-
-                            characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", string.Empty);
-                            if (!string.IsNullOrEmpty(characterList))
-                            {
-                                // Update mProteinNameSubsequentRefSepChars
-                                ProteinNameSubsequentRefSepChars = characterList;
-                            }
+                        // Look for the special character lists
+                        // If defined, then update the default values
+                        var characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "LongProteinNameSplitChars", string.Empty);
+                        if (!string.IsNullOrEmpty(characterList))
+                        {
+                            // Update mFixedFastaOptions.LongProteinNameSplitChars with characterList
+                            LongProteinNameSplitChars = characterList;
                         }
 
-                        // Read the custom rules
-                        // If all of the sections are missing, then use the default rules
-                        customRulesLoaded = false;
+                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameInvalidCharsToRemove", string.Empty);
+                        if (!string.IsNullOrEmpty(characterList))
+                        {
+                            // Update mFixedFastaOptions.ProteinNameInvalidCharsToRemove with characterList
+                            ProteinNameInvalidCharsToRemove = characterList;
+                        }
 
-                        var success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules);
-                        customRulesLoaded = customRulesLoaded || success;
+                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameFirstRefSepChars", string.Empty);
+                        if (!string.IsNullOrEmpty(characterList))
+                        {
+                            // Update mProteinNameFirstRefSepChars
+                            ProteinNameFirstRefSepChars = characterList;
+                        }
 
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules);
-                        customRulesLoaded = customRulesLoaded || success;
-
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules);
-                        customRulesLoaded = customRulesLoaded || success;
-
-                        success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules);
-                        customRulesLoaded = customRulesLoaded || success;
+                        characterList = settingsFile.GetParam(XML_SECTION_FIXED_FASTA_FILE_OPTIONS, "ProteinNameSubsequentRefSepChars", string.Empty);
+                        if (!string.IsNullOrEmpty(characterList))
+                        {
+                            // Update mProteinNameSubsequentRefSepChars
+                            ProteinNameSubsequentRefSepChars = characterList;
+                        }
                     }
+
+                    // Read the custom rules
+                    // If all of the sections are missing, use the default rules
+
+                    var success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_HEADER_LINE_RULES, mHeaderLineRules);
+                    customRulesLoaded = success;
+
+                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_NAME_RULES, mProteinNameRules);
+                    customRulesLoaded = customRulesLoaded || success;
+
+                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES, mProteinDescriptionRules);
+                    customRulesLoaded = customRulesLoaded || success;
+
+                    success = ReadRulesFromParameterFile(settingsFile, XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES, mProteinSequenceRules);
+                    customRulesLoaded = customRulesLoaded || success;
                 }
             }
             catch (Exception ex)
@@ -4748,6 +4706,7 @@ namespace ValidateFastaFile
         /// Obtain the message description by message code
         /// </summary>
         /// <param name="errorMessageCode"></param>
+        // ReSharper disable once UnusedMember.Global
         public string LookupMessageDescription(int errorMessageCode)
         {
             return LookupMessageDescription(errorMessageCode, null);
@@ -4895,8 +4854,6 @@ namespace ValidateFastaFile
                     message = "Unspecified error";
                     break;
                 default:
-                    message = "Unspecified error";
-
                     // Search the custom rules for the given code
                     var matchFound = SearchRulesForID(mHeaderLineRules, errorMessageCode, out message);
 
@@ -4947,6 +4904,7 @@ namespace ValidateFastaFile
         /// Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
         /// Used by CustomValidateFastaFiles
         /// </remarks>
+        // ReSharper disable once UnusedMember.Global
         protected bool SimpleProcessFile(string inputFilePath)
         {
             return ProcessFile(inputFilePath, null, null, false);
@@ -4991,72 +4949,70 @@ namespace ValidateFastaFile
                     SetBaseClassErrorCode(ProcessFilesErrorCodes.InvalidInputFilePath);
                     return false;
                 }
+
+                Console.WriteLine();
+                ShowMessage("Parsing " + Path.GetFileName(inputFilePath));
+
+                if (!CleanupFilePaths(ref inputFilePath, ref outputFolderPath))
+                {
+                    SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError);
+                    return false;
+                }
                 else
                 {
-                    Console.WriteLine();
-                    ShowMessage("Parsing " + Path.GetFileName(inputFilePath));
+                    // List of protein names to keep
+                    // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+                    NestedStringIntList preloadedProteinNamesToKeep = null;
 
-                    if (!CleanupFilePaths(ref inputFilePath, ref outputFolderPath))
+                    if (!string.IsNullOrEmpty(ExistingProteinHashFile))
                     {
-                        SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError);
-                        return false;
-                    }
-                    else
-                    {
-                        // List of protein names to keep
-                        // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
-                        NestedStringIntList preloadedProteinNamesToKeep = null;
-
-                        if (!string.IsNullOrEmpty(ExistingProteinHashFile))
+                        var loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, out preloadedProteinNamesToKeep);
+                        if (!loadSuccess)
                         {
-                            var loadSuccess = LoadExistingProteinHashFile(ExistingProteinHashFile, out preloadedProteinNamesToKeep);
-                            if (!loadSuccess)
-                            {
-                                return false;
-                            }
+                            return false;
                         }
+                    }
 
-                        try
+                    try
+                    {
+                        // Obtain the full path to the input file
+                        var ioFile = new FileInfo(inputFilePath);
+                        var inputFilePathFull = ioFile.FullName;
+
+                        var success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep);
+
+                        if (success)
                         {
-                            // Obtain the full path to the input file
-                            var ioFile = new FileInfo(inputFilePath);
-                            var inputFilePathFull = ioFile.FullName;
-
-                            var success = AnalyzeFastaFile(inputFilePathFull, preloadedProteinNamesToKeep);
-
-                            if (success)
+                            ReportResults(outputFolderPath, mOutputToStatsFile);
+                            DeleteTempFiles();
+                            return true;
+                        }
+                        else
+                        {
+                            if (mOutputToStatsFile)
                             {
-                                ReportResults(outputFolderPath, mOutputToStatsFile);
-                                DeleteTempFiles();
-                                return true;
+                                mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
+
+                                using var statsFileWriter = new StreamWriter(mStatsFilePath, true);
+
+                                statsFileWriter.WriteLine(GetTimeStamp() + "\t" +
+                                                          "Error parsing " +
+                                                          Path.GetFileName(inputFilePath) + ": " + GetErrorMessage());
                             }
                             else
                             {
-                                if (mOutputToStatsFile)
-                                {
-                                    mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
-
-                                    using var statsFileWriter = new StreamWriter(mStatsFilePath, true);
-
-                                    statsFileWriter.WriteLine(GetTimeStamp() + "\t" +
-                                        "Error parsing " +
-                                        Path.GetFileName(inputFilePath) + ": " + GetErrorMessage());
-                                }
-                                else
-                                {
-                                    ShowMessage("Error parsing " +
-                                        Path.GetFileName(inputFilePath) +
-                                        ": " + GetErrorMessage());
-                                }
-
-                                return false;
+                                ShowMessage("Error parsing " +
+                                            Path.GetFileName(inputFilePath) +
+                                            ": " + GetErrorMessage());
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            OnErrorEvent("Error calling AnalyzeFastaFile", ex);
+
                             return false;
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        OnErrorEvent("Error calling AnalyzeFastaFile", ex);
+                        return false;
                     }
                 }
             }
@@ -5956,14 +5912,9 @@ namespace ValidateFastaFile
             SetRule(RuleTypes.ProteinSequence, "Z", true, "Residues line contains Z (non-standard amino acid for Q or E)", DEFAULT_WARNING_SEVERITY - 1);
         }
 
-        private void SetLocalErrorCode(ValidateFastaFileErrorCodes eNewErrorCode)
-        {
-            SetLocalErrorCode(eNewErrorCode, false);
-        }
-
         private void SetLocalErrorCode(
-            ValidateFastaFileErrorCodes eNewErrorCode,
-            bool leaveExistingErrorCodeUnchanged)
+            ValidateFastaFileErrorCodes newErrorCode,
+            bool leaveExistingErrorCodeUnchanged = false)
         {
             if (leaveExistingErrorCodeUnchanged && mLocalErrorCode != ValidateFastaFileErrorCodes.NoError)
             {
@@ -5971,9 +5922,9 @@ namespace ValidateFastaFile
             }
             else
             {
-                mLocalErrorCode = eNewErrorCode;
+                mLocalErrorCode = newErrorCode;
 
-                if (eNewErrorCode == ValidateFastaFileErrorCodes.NoError)
+                if (newErrorCode == ValidateFastaFileErrorCodes.NoError)
                 {
                     if (ErrorCode == ProcessFilesErrorCodes.LocalizedError)
                     {
@@ -5992,22 +5943,8 @@ namespace ValidateFastaFile
             string regexToMatch,
             bool doesMatchIndicateProblem,
             string problemReturnMessage,
-            short severityLevel)
-        {
-            SetRule(
-                ruleType, regexToMatch,
-                doesMatchIndicateProblem,
-                problemReturnMessage,
-                severityLevel, false);
-        }
-
-        private void SetRule(
-            RuleTypes ruleType,
-            string regexToMatch,
-            bool doesMatchIndicateProblem,
-            string problemReturnMessage,
             short severityLevel,
-            bool displayMatchAsExtraInfo)
+            bool displayMatchAsExtraInfo = false)
         {
             switch (ruleType)
             {
@@ -6057,7 +5994,9 @@ namespace ValidateFastaFile
 
             mSortUtilityErrorMessage = string.Empty;
 
-            sortUtility.WorkingDirectoryPath = proteinHashFile.Directory.FullName;
+            if (proteinHashFile.Directory != null)
+                sortUtility.WorkingDirectoryPath = proteinHashFile.Directory.FullName;
+
             sortUtility.HasHeaderLine = true;
             sortUtility.ColumnDelimiter = "\t";
             sortUtility.MaxFileSizeMBForInMemorySort = 250;
@@ -6133,10 +6072,8 @@ namespace ValidateFastaFile
             }
         }
 
-        private bool VerifyLinefeedAtEOF(string strInputFilePath, bool blnAddCrLfIfMissing)
+        private bool VerifyLinefeedAtEOF(string inputFilePath, bool addCrLfIfMissing)
         {
-            var blnNeedToAddCrLf = false;
-            bool blnSuccess;
 
             try
             {
@@ -6152,35 +6089,26 @@ namespace ValidateFastaFile
                         if (lastByte == 10 || lastByte == 13)
                         {
                             // File ends in a linefeed or carriage return character; that's good
-                            blnNeedToAddCrLf = false;
-                        }
-                        else
-                        {
-                            blnNeedToAddCrLf = true;
+                            return true;
                         }
                     }
 
-                    if (blnNeedToAddCrLf)
-                    {
-                        if (blnAddCrLfIfMissing)
-                        {
-                            ShowMessage("Appending CrLf return to: " + Path.GetFileName(strInputFilePath));
-                            fsInFile.WriteByte(13);
+                    if (!addCrLfIfMissing)
+                        return true;
 
-                            fsInFile.WriteByte(10);
-                        }
-                    }
+                    ShowMessage("Appending CrLf return to: " + Path.GetFileName(inputFilePath));
+                    fsInFile.WriteByte(13);
+
+                    fsInFile.WriteByte(10);
                 }
 
-                blnSuccess = true;
+                return true;
             }
             catch (Exception)
             {
                 SetLocalErrorCode(ValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
                 blnSuccess = false;
             }
-
-            return blnSuccess;
         }
 
         private readonly Regex reAdditionalProtein = new(@"(.+)-[a-z]\d*", RegexOptions.Compiled);
@@ -6209,8 +6137,7 @@ namespace ValidateFastaFile
             {
                 // cachedProteinName was found in proteinNameFirst
 
-                int cachedSeqIndex;
-                if (proteinsWritten.TryGetValue(cachedProteinName, out cachedSeqIndex))
+                if (proteinsWritten.TryGetValue(cachedProteinName, out _))
                 {
                     if (mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence)
                     {
