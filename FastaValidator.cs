@@ -3758,7 +3758,7 @@ namespace ValidateFastaFile
         /// </summary>
         public override IList<string> GetDefaultExtensionsToParse()
         {
-            var extensionsToParse = new List<string>() { ".fasta" };
+            var extensionsToParse = new List<string>() { ".fasta", ".faa" };
 
             return extensionsToParse;
         }
