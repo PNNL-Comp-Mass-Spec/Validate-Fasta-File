@@ -86,8 +86,9 @@ namespace ValidateFastaFile
                     return m_PerfCounterFreeMemory.NextValue();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Ignore errors here
                 return -1;
             }
         }
@@ -136,8 +137,9 @@ namespace ValidateFastaFile
                     return (float)(m_PerfCounterPoolNonpagedBytes.NextValue() / 1024.0 / 1024);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Ignore errors here
                 return -1;
             }
         }
@@ -159,8 +161,9 @@ namespace ValidateFastaFile
                     return (float)(m_PerfCounterPoolPagedBytes.NextValue() / 1024.0 / 1024);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Ignore errors here
                 return -1;
             }
         }
@@ -179,8 +182,9 @@ namespace ValidateFastaFile
                 // The WorkingSet is the total physical memory usage
                 return (float)(objProcess.WorkingSet64 / 1024.0 / 1024);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Ignore errors here
                 return 0;
             }
         }

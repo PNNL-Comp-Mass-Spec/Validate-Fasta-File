@@ -3237,8 +3237,9 @@ namespace ValidateFastaFile
                     outFilePath = Path.Combine(outputFolderPath, outFilePath);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Silently ignore this error
                 if (string.IsNullOrWhiteSpace(outFilePath))
                 {
                     outFilePath = "FastaFileStats.txt";
@@ -3261,9 +3262,9 @@ namespace ValidateFastaFile
                             File.Delete(filePath);
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        // Ignore errors
+                        // Ignore errors here
                     }
                 }
             }
@@ -3352,7 +3353,7 @@ namespace ValidateFastaFile
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 SetLocalErrorCode(ValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
             }
@@ -4408,7 +4409,7 @@ namespace ValidateFastaFile
                     System.Threading.Thread.Sleep(100);
                     File.Delete(proteinNamesUnsortedFilePath);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Ignore errors here
                 }
@@ -5491,7 +5492,7 @@ namespace ValidateFastaFile
                 {
                     outputOptions.SourceFile = Path.GetFileName(mFastaFilePath);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     outputOptions.SourceFile = "Unknown_filename_due_to_error.fasta";
                 }
@@ -5516,7 +5517,7 @@ namespace ValidateFastaFile
 
                             success = true;
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             // Failed to open file, wait 1 second, then try again
                             outStream?.Close();
@@ -6173,7 +6174,7 @@ namespace ValidateFastaFile
 
                 blnSuccess = true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 SetLocalErrorCode(ValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
                 blnSuccess = false;

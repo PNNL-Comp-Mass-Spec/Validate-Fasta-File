@@ -36,7 +36,7 @@ namespace TestValidateFastaFileDLL
                         testFilePath = parameters[1];
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Ignore errors here
                 }
