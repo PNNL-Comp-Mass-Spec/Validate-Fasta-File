@@ -28,7 +28,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <NoWarn>CS1591,CS1572,CS1573</NoWarn>
+    <NoWarn>
+    </NoWarn>
     <DocumentationFile>bin\DLL\ValidateFastaFile.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -39,7 +40,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <NoWarn>CS1591,CS1572,CS1573</NoWarn>
+    <NoWarn>
+    </NoWarn>
     <DocumentationFile>bin\DLL\ValidateFastaFile.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>

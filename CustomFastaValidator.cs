@@ -2,10 +2,15 @@
 using System.Collections.Generic;
 using System.IO;
 
+// ReSharper disable UnusedMember.Global
+
 namespace ValidateFastaFile
 {
     // Ignore Spelling: Validator
 
+    /// <summary>
+    /// Old class name
+    /// </summary>
     [Obsolete("Renamed to 'CustomFastaValidator'", true)]
     // ReSharper disable once InconsistentNaming
     public class clsCustomValidateFastaFiles : CustomFastaValidator
@@ -13,10 +18,28 @@ namespace ValidateFastaFile
         // Intentionally empty
     }
 
+    /// <summary>
+    /// Custom FASTA validator
+    /// </summary>
+    /// <remarks>
+    /// Inherits from FastaValidator and has an extended error info class
+    /// Supports tracking errors for multiple FASTA files
+    /// </remarks>
     public class CustomFastaValidator : FastaValidator
     {
+        /// <summary>
+        /// Extended error info
+        /// </summary>
         public class ErrorInfoExtended
         {
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="lineNumber"></param>
+            /// <param name="proteinName"></param>
+            /// <param name="messageText"></param>
+            /// <param name="extraInfo"></param>
+            /// <param name="type"></param>
             public ErrorInfoExtended(
                 int lineNumber,
                 string proteinName,
@@ -31,23 +54,66 @@ namespace ValidateFastaFile
                 Type = type;
             }
 
+            /// <summary>
+            /// Line number of the error
+            /// </summary>
             public int LineNumber;
+
+            /// <summary>
+            /// Protein name
+            /// </summary>
             public string ProteinName;
+
+            /// <summary>
+            /// Message text
+            /// </summary>
             public string MessageText;
+
+            /// <summary>
+            /// Extra info
+            /// </summary>
             public string ExtraInfo;
+
+            /// <summary>
+            /// Error type (Error or Warning)
+            /// </summary>
             public string Type;
         }
 
-        public enum ValidationOptionConstants : int
+        /// <summary>
+        /// Validation options
+        /// </summary>
+        public enum ValidationOptionConstants
         {
+            /// <summary>
+            /// Allow asterisks in residues
+            /// </summary>
             AllowAsterisksInResidues = 0,
+
+            /// <summary>
+            /// Allow dashes in residues
+            /// </summary>
             AllowDashInResidues = 1,
+
+            /// <summary>
+            /// Allow symbols in protein names
+            /// </summary>
             AllowAllSymbolsInProteinNames = 2
         }
 
-        public enum ValidationMessageTypes : int
+        /// <summary>
+        /// Validation message types
+        /// </summary>
+        public enum ValidationMessageTypes
         {
+            /// <summary>
+            /// Error message
+            /// </summary>
             ErrorMsg = 0,
+
+            /// <summary>
+            /// Warning message
+            /// </summary>
             WarningMsg = 1
         }
 
@@ -75,6 +141,9 @@ namespace ValidateFastaFile
             mValidationOptions = new bool[11];
         }
 
+        /// <summary>
+        /// Clear cached errors
+        /// </summary>
         public void ClearErrorList()
         {
             FullErrorCollection?.Clear();
@@ -93,7 +162,11 @@ namespace ValidateFastaFile
         /// </summary>
         public Dictionary<string, List<ErrorInfoExtended>> FullWarningCollection { get; }
 
-        public bool FASTAFileValid(string FASTAFileName)
+        /// <summary>
+        /// Returns true if dictionary FullErrorCollection contains any errors for the given FASTA file
+        /// </summary>
+        /// <param name="fastaFileName"></param>
+        public bool FASTAFileValid(string fastaFileName)
         {
             if (FullErrorCollection == null)
             {
@@ -105,6 +178,10 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Returns true if dictionary FullWarningCollection contains any warnings for the given FASTA file
+        /// </summary>
+        /// <param name="fastaFileName"></param>
         public bool FASTAFileHasWarnings(string fastaFileName)
         {
             if (FullWarningCollection == null)
@@ -117,6 +194,10 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Returns the errors found for the given FASTA file
+        /// </summary>
+        /// <param name="fastaFileName"></param>
         public List<ErrorInfoExtended> RecordedFASTAFileErrors(string fastaFileName)
         {
             if (FullErrorCollection.TryGetValue(fastaFileName, out var errorList))
@@ -127,6 +208,10 @@ namespace ValidateFastaFile
             return new List<ErrorInfoExtended>();
         }
 
+        /// <summary>
+        /// Returns the warnings found for the given FASTA file
+        /// </summary>
+        /// <param name="fastaFileName"></param>
         public List<ErrorInfoExtended> RecordedFASTAFileWarnings(string fastaFileName)
         {
             if (FullWarningCollection.TryGetValue(fastaFileName, out var warningList))
@@ -137,6 +222,9 @@ namespace ValidateFastaFile
             return new List<ErrorInfoExtended>();
         }
 
+        /// <summary>
+        /// Return a count of the number of files with an error
+        /// </summary>
         public int NumFilesWithErrors
         {
             get
@@ -208,6 +296,11 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Set validation options
+        /// </summary>
+        /// <param name="eValidationOptionName"></param>
+        /// <param name="enabled"></param>
         public void SetValidationOptions(ValidationOptionConstants eValidationOptionName, bool enabled)
         {
             mValidationOptions[(int)eValidationOptionName] = enabled;

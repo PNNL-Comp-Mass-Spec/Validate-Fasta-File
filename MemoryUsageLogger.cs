@@ -11,6 +11,9 @@ using System.IO;
 
 namespace ValidateFastaFile
 {
+    /// <summary>
+    /// Memory usage logger
+    /// </summary>
     public class MemoryUsageLogger
     {
         // Ignore Spelling: yyyy-MM-dd, hh:mm:ss tt, nonpaged
@@ -94,6 +97,10 @@ namespace ValidateFastaFile
         }
 
         public string GetMemoryUsageHeader()
+        /// <summary>
+        /// Return the memory usage columns as a space or tab-separated list
+        /// </summary>
+        /// <param name="tabSeparated"></param>
         {
             return "Date" + COL_SEP +
                    "Time" + COL_SEP +
@@ -104,6 +111,10 @@ namespace ValidateFastaFile
         }
 
         public string GetMemoryUsageSummary()
+        /// <summary>
+        /// Get memory usage data as a space or tab-separated list
+        /// </summary>
+        /// <param name="tabSeparated"></param>
         {
             if (!m_PerfCountersInitialized)
             {

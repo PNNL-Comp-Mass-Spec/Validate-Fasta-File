@@ -17,7 +17,15 @@ namespace ValidateFastaFile
     // ReSharper disable once InconsistentNaming
     public class clsValidateFastaFile : FastaValidator
     {
+        /// <summary>
+        /// Parameterless constructor
+        /// </summary>
         public clsValidateFastaFile() : base() { }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="parameterFilePath"></param>
         public clsValidateFastaFile(string parameterFilePath) : base(parameterFilePath) { }
     }
 
@@ -150,8 +158,13 @@ namespace ValidateFastaFile
         /// </summary>
         public const string XML_OPTION_ENTRY_RULE_COUNT = "RuleCount";
 
-        // The value of 7995 is chosen because the maximum varchar() value in SQL Server is varchar(8000)
-        // and we want to prevent truncation errors when importing protein names and descriptions into SQL Server
+        /// <summary>
+        /// Maximum protein description length
+        /// </summary>
+        /// <remarks>
+        /// The value of 7995 is chosen because the maximum varchar() value in SQL Server is varchar(8000)
+        /// and we want to prevent truncation errors when importing protein names and descriptions into SQL Server
+        /// </remarks>
         public const int MAX_PROTEIN_DESCRIPTION_LENGTH = 7995;
 
         private const string MEM_USAGE_PREFIX = "MemUsage: ";
@@ -174,6 +187,7 @@ namespace ValidateFastaFile
         /// </remarks>
         public enum MessageCodeConstants
         {
+#pragma warning disable 1591
             UnspecifiedError = 0,
 
             // Error messages
@@ -207,6 +221,7 @@ namespace ValidateFastaFile
             RenamedProtein = 19,
             ProteinRemovedSinceDuplicateSequence = 20,
             DuplicateProteinNameRetained = 21
+#pragma warning restore 1591
         }
 
         /// <summary>
@@ -350,6 +365,8 @@ namespace ValidateFastaFile
             }
         }
 
+#pragma warning disable 1591
+
         /// <summary>
         /// Validation rule types
         /// </summary>
@@ -436,6 +453,8 @@ namespace ValidateFastaFile
             ErrorVerifyingLinefeedAtEOF = 8,
             UnspecifiedError = -1
         }
+
+#pragma warning restore 1591
 
         /// <summary>
         /// Line ending characters
@@ -981,6 +1000,7 @@ namespace ValidateFastaFile
         /// Sets a processing option
         /// </summary>
         /// <param name="switchName"></param>
+        /// <param name="value"></param>
         [Obsolete("Use SetOptionSwitch instead", true)]
         // ReSharper disable once UnusedMember.Global
         public void set_OptionSwitch(SwitchOptions switchName, bool value)
@@ -1071,7 +1091,6 @@ namespace ValidateFastaFile
         /// Get a processing option
         /// </summary>
         /// <param name="switchName"></param>
-        /// <returns></returns>
         public bool GetOptionSwitchValue(SwitchOptions switchName)
         {
             return switchName switch
@@ -1136,8 +1155,10 @@ namespace ValidateFastaFile
                     msgSet = mFileWarnings;
                     break;
 
+                case MsgTypeConstants.StatusMsg:
+                    return 0;
+
                 default:
-                    // Includes MsgTypeConstants.StatusMsg
                     return 0;
             }
 
@@ -1291,6 +1312,9 @@ namespace ValidateFastaFile
         /// </summary>
         public string ExistingProteinHashFile { get; set; }
 
+        /// <summary>
+        /// Maximum number of errors to track
+        /// </summary>
         public int MaximumFileErrorsToTrack
         {
             get => mMaximumFileErrorsToTrack;
@@ -2924,6 +2948,7 @@ namespace ValidateFastaFile
         /// Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
         /// </summary>
         /// <param name="consolidateDuplicateProteinSeqsInFasta"></param>
+        /// <param name="consolidateDupsIgnoreILDiff"></param>
         /// <param name="fixedFastaFilePath"></param>
         /// <param name="proteinSeqHashInfo"></param>
         private bool CorrectForDuplicateProteinSeqsInFasta(
@@ -4664,7 +4689,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="errorMessageCode"></param>
         /// <param name="extraInfo"></param>
-        /// <returns></returns>
         public string LookupMessageDescription(int errorMessageCode, string extraInfo)
         {
             string message;

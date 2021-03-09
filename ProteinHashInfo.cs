@@ -3,12 +3,15 @@ using System.Collections.Generic;
 
 namespace ValidateFastaFile
 {
+    /// <summary>
+    /// Container for sequence hashes and associated protein names
+    /// </summary>
     public class ProteinHashInfo
     {
         /// <summary>
         /// Additional protein names
         /// </summary>
-        /// <remarks>mProteinNameFirst is not stored here; only additional proteins</remarks>
+        /// <remarks>ProteinNameFirst is not stored here; only additional proteins</remarks>
         private readonly SortedSet<string> mAdditionalProteins;
 
         /// <summary>
@@ -59,6 +62,10 @@ namespace ValidateFastaFile
             DuplicateProteinNameCount = 0;
         }
 
+        /// <summary>
+        /// Add an additional protein name
+        /// </summary>
+        /// <param name="proteinName"></param>
         public void AddAdditionalProtein(string proteinName)
         {
             if (!mAdditionalProteins.Contains(proteinName))
@@ -67,6 +74,10 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Show the protein name and sequence hash
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return ProteinNameFirst + ": " + SequenceHash;
