@@ -45,7 +45,7 @@ namespace ValidateFastaFile
         /// </summary>
         public FastaValidator()
         {
-            mFileDate = "March 8, 2021";
+            mFileDate = "March 9, 2021";
             InitializeLocalVariables();
         }
 
@@ -3567,7 +3567,6 @@ namespace ValidateFastaFile
                             }
                             else
                             {
-                                // letterToAppend = Chr(Asc(letterToAppend) + 1)
                                 letterToAppend = (char)(letterToAppend + 1);
                             }
                         }
