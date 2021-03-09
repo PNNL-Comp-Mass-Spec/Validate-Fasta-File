@@ -4,25 +4,27 @@ using ValidateFastaFile;
 
 namespace TestValidateFastaFileDLL
 {
-    // Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-    // Copyright 2005, Battelle Memorial Institute.  All Rights Reserved.
-
-    // This program can be used to test the use of the ValidateFastaFiles in the ValidateFastaFiles.Dll file
-    // Last modified May 8, 2007
-
+    /// <summary>
+    /// This program can be used to test the use of the ValidateFastaFiles in the ValidateFastaFiles.Dll file
+    /// </summary>
+    /// <remarks>
+    /// Program written by Matthew Monroe in 2005 for the Department of Energy (PNNL, Richland, WA)
+    /// </remarks>
     static class Program
     {
+        /// <summary>
+        /// Entry method
+        /// </summary>
+        /// <returns>0 if no error, error code if an error</returns>
         public static int Main()
         {
-            // Returns 0 if no error, error code if an error
-
             var testFilePath = "JunkTest.fasta";
 
             var returnCode = 0;
 
             try
             {
-                // See if the user provided a custom filepath at the command line
+                // See if the user provided a custom file path at the command line
                 try
                 {
                     // This command will fail if the program is called from a network share

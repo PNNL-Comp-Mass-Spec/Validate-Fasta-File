@@ -8,22 +8,25 @@ using PRISM;
 
 namespace ValidateFastaFile
 {
-
-    // This program will read in a Fasta file and write out stats on the number of proteins and number of residues
-    // It will also validate the protein name, descriptions, and sequences in the file
-
-    // -------------------------------------------------------------------------------
-    // Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-    // Program started March 21, 2005
-
-    // E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
-    // Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
-    // -------------------------------------------------------------------------------
-    //
-    // Licensed under the Apache License, Version 2.0; you may not use this file except
-    // in compliance with the License.  You may obtain a copy of the License at
-    // http://www.apache.org/licenses/LICENSE-2.0
-
+    /// <summary>
+    /// This program will read in a Fasta file and write out stats on the number of proteins and number of residues
+    /// It will also validate the protein name, descriptions, and sequences in the file
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
+    /// Program started March 21, 2005
+    /// </para>
+    /// <para>
+    /// E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
+    /// Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
+    /// </para>
+    /// <para>
+    /// Licensed under the Apache License, Version 2.0; you may not use this file except
+    /// in compliance with the License.  You may obtain a copy of the License at
+    /// http://www.apache.org/licenses/LICENSE-2.0
+    /// </para>
+    /// </remarks>
     static class Program
     {
         public const string PROGRAM_DATE = "April 15, 2020";
@@ -63,10 +66,12 @@ namespace ValidateFastaFile
         private static DateTime mLastProgressReportTime;
         private static int mLastProgressReportValue;
 
+        /// <summary>
+        /// Entry method
+        /// </summary>
+        /// <returns>0 if no error, error code if an error</returns>
         public static int Main()
         {
-            // Returns 0 if no error, error code if an error
-
             var commandLineParser = new clsParseCommandLine();
 
             var returnCode = 0;

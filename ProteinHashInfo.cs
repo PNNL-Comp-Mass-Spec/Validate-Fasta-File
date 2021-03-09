@@ -14,33 +14,21 @@ namespace ValidateFastaFile
         /// <summary>
         /// SHA-1 has of the protein sequence
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string SequenceHash { get; }
 
         /// <summary>
         /// Number of residues in the protein sequence
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public int SequenceLength { get; }
 
         /// <summary>
         /// The first 20 residues of the protein sequence
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string SequenceStart { get; }
 
         /// <summary>
         /// First protein associated with this hash value
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string ProteinNameFirst { get; }
 
         public IEnumerable<string> AdditionalProteins => mAdditionalProteins;
@@ -48,9 +36,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Greater than 0 if multiple entries have the same name and same sequence
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public int DuplicateProteinNameCount { get; set; }
 
         /// <summary>
@@ -59,7 +44,6 @@ namespace ValidateFastaFile
         /// <param name="seqHash"></param>
         /// <param name="sbResidues"></param>
         /// <param name="proteinName"></param>
-        /// <remarks></remarks>
         public ProteinHashInfo(string seqHash, System.Text.StringBuilder sbResidues, string proteinName)
         {
             SequenceHash = seqHash;

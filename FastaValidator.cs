@@ -1,18 +1,4 @@
-﻿// This class will read a protein fasta file and validate its contents
-//
-// -------------------------------------------------------------------------------
-// Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
-// Program started March 21, 2005
-//
-// E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
-// Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
-// -------------------------------------------------------------------------------
-//
-// Licensed under the Apache License, Version 2.0; you may not use this file except
-// in compliance with the License.  You may obtain a copy of the License at
-// http://www.apache.org/licenses/LICENSE-2.0
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,6 +10,9 @@ namespace ValidateFastaFile
 {
     // Ignore Spelling: jgi, gi, Lf, Mem, Validator, seqs, Dups, Diff, Sep, selenocysteine, ornithine, yyyy-MM-dd, A-Za-z
 
+    /// <summary>
+    /// Old FASTA file validator class name
+    /// </summary>
     [Obsolete("Renamed to 'FastaValidator'", true)]
     public class clsValidateFastaFile : FastaValidator
     {
@@ -31,6 +20,24 @@ namespace ValidateFastaFile
         public clsValidateFastaFile(string parameterFilePath): base(parameterFilePath) { }
     }
 
+    /// <summary>
+    /// This class will read a protein fasta file and validate its contents
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)
+    /// Program started March 21, 2005
+    /// </para>
+    /// <para>
+    /// E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov
+    /// Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/
+    /// </para>
+    /// <para>
+    /// Licensed under the Apache License, Version 2.0; you may not use this file except
+    /// in compliance with the License.  You may obtain a copy of the License at
+    /// http://www.apache.org/licenses/LICENSE-2.0
+    /// </para>
+    /// </remarks>
     public class FastaValidator : PRISM.FileProcessor.ProcessFilesBase
     {
         /// <summary>
@@ -57,37 +64,93 @@ namespace ValidateFastaFile
         /// The maximum suggested value when using SEQUEST is 34 characters
         /// In contrast, MS-GF+ supports long protein names
         /// </summary>
-        /// <remarks></remarks>
         public const int DEFAULT_MAXIMUM_PROTEIN_NAME_LENGTH = 60;
+
         private const int DEFAULT_MAXIMUM_RESIDUES_PER_LINE = 120;
 
+        /// <summary>
+        /// Default protein line start character
+        /// </summary>
         public const char DEFAULT_PROTEIN_LINE_START_CHAR = '>';
+
+        /// <summary>
+        /// Default long protein name split char
+        /// </summary>
         public const char DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR = '|';
+
+        /// <summary>
+        /// Default protein name first reference split chars
+        /// </summary>
         public const string DEFAULT_PROTEIN_NAME_FIRST_REF_SEP_CHARS = ":|";
+
+        /// <summary>
+        /// Default protein name subsequent reference separation chars
+        /// </summary>
         public const string DEFAULT_PROTEIN_NAME_SUBSEQUENT_REF_SEP_CHARS = ":|;";
 
         private const char INVALID_PROTEIN_NAME_CHAR_REPLACEMENT = '_';
 
         private const int CUSTOM_RULE_ID_START = 1000;
+
         private const int DEFAULT_CONTEXT_LENGTH = 13;
 
+        /// <summary>
+        /// Protein description missing message
+        /// </summary>
         public const string MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING = "Line contains a protein name, but not a description";
+
+        /// <summary>
+        /// Protein description too long message
+        /// </summary>
         public const string MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG = "Protein description is over 900 characters long";
+
+        /// <summary>
+        /// Asterisk found in the residues message
+        /// </summary>
         public const string MESSAGE_TEXT_ASTERISK_IN_RESIDUES = "An asterisk was found in the residues";
+
+        /// <summary>
+        /// Dash found in the residues message
+        /// </summary>
         public const string MESSAGE_TEXT_DASH_IN_RESIDUES = "A dash was found in the residues";
 
+        /// <summary>
+        /// Option section name in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_OPTIONS = "ValidateFastaFileOptions";
+
+        /// <summary>
+        /// Fixed FASTA file options section in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_FIXED_FASTA_FILE_OPTIONS = "ValidateFastaFixedFASTAFileOptions";
 
+        /// <summary>
+        /// Fixed FASTA file options section in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_FASTA_HEADER_LINE_RULES = "ValidateFastaHeaderLineRules";
+
+        /// <summary>
+        /// Protein name rules section in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_FASTA_PROTEIN_NAME_RULES = "ValidateFastaProteinNameRules";
+
+        /// <summary>
+        /// Protein description rules section in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_FASTA_PROTEIN_DESCRIPTION_RULES = "ValidateFastaProteinDescriptionRules";
+
+        /// <summary>
+        /// Protein sequence rules section in the XML parameter file
+        /// </summary>
         public const string XML_SECTION_FASTA_PROTEIN_SEQUENCE_RULES = "ValidateFastaProteinSequenceRules";
 
+        /// <summary>
+        /// RuleCount element name
+        /// </summary>
         public const string XML_OPTION_ENTRY_RULE_COUNT = "RuleCount";
 
-        // The value of 7995 is chosen because the maximum varchar() value in Sql Server is varchar(8000)
-        // and we want to prevent truncation errors when importing protein names and descriptions into Sql Server
+        // The value of 7995 is chosen because the maximum varchar() value in SQL Server is varchar(8000)
+        // and we want to prevent truncation errors when importing protein names and descriptions into SQL Server
         public const int MAX_PROTEIN_DESCRIPTION_LENGTH = 7995;
 
         private const string MEM_USAGE_PREFIX = "MemUsage: ";
@@ -101,8 +164,13 @@ namespace ValidateFastaFile
         private const int DEFAULT_WARNING_SEVERITY = 3;
         private const int DEFAULT_ERROR_SEVERITY = 7;
 
-        // Note: Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
-        // the values in enum MessageCodeConstants should all be less than CUSTOM_RULE_ID_START
+        /// <summary>
+        /// Message code constants
+        /// </summary>
+        /// <remarks>
+        /// Custom rules start with message code CUSTOM_RULE_ID_START=1000, and therefore
+        /// the values in enum MessageCodeConstants should all be less than CUSTOM_RULE_ID_START
+        /// </remarks>
         public enum MessageCodeConstants
         {
             UnspecifiedError = 0,
@@ -140,15 +208,50 @@ namespace ValidateFastaFile
             DuplicateProteinNameRetained = 21
         }
 
+        /// <summary>
+        /// Error message info
+        /// </summary>
         public class MsgInfo : IComparable<MsgInfo>
         {
+            /// <summary>
+            /// Line number of this error in the FASTA file
+            /// </summary>
             public int LineNumber { get; }
+
+            /// <summary>
+            /// Column number of this error in the FASTA file
+            /// </summary>
             public int ColNumber { get; }
+
+            /// <summary>
+            /// Column number of this error in the FASTA file
+            /// </summary>
             public string ProteinName { get; }
+
+            /// <summary>
+            /// Error message code
+            /// </summary>
             public int MessageCode { get; }
+
+            /// <summary>
+            /// Extra info about this error
+            /// </summary>
             public string ExtraInfo { get; }
+
+            /// <summary>
+            /// Error message context
+            /// </summary>
             public string Context { get; }
 
+            /// <summary>
+            /// Constructor that takes line number, column number, etc.
+            /// </summary>
+            /// <param name="lineNumber"></param>
+            /// <param name="colNumber"></param>
+            /// <param name="proteinName"></param>
+            /// <param name="messageCode"></param>
+            /// <param name="extraInfo"></param>
+            /// <param name="context"></param>
             public MsgInfo(int lineNumber, int colNumber, string proteinName, int messageCode, string extraInfo, string context)
             {
                 LineNumber = lineNumber;
@@ -159,6 +262,9 @@ namespace ValidateFastaFile
                 Context = context;
             }
 
+            /// <summary>
+            /// Parameterless constructor
+            /// </summary>
             public MsgInfo()
             {
                 ProteinName = string.Empty;
@@ -166,11 +272,19 @@ namespace ValidateFastaFile
                 Context = string.Empty;
             }
 
+            /// <summary>
+            /// Return a string describing this error
+            /// </summary>
             public override string ToString()
             {
                 return string.Format("Line {0}, protein {1}, code {2}: {3}", LineNumber, ProteinName, MessageCode, ExtraInfo);
             }
 
+            /// <summary>
+            /// Compare one instance of this class to another
+            /// </summary>
+            /// <param name="other"></param>
+            /// <returns>0 if the two instances match, otherwise -1 or 1 based on sort order</returns>
             public int CompareTo(MsgInfo other)
             {
                 if (ReferenceEquals(this, other)) return 0;
@@ -183,25 +297,54 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Options for reporting results
+        /// </summary>
         public class OutputOptions
         {
+            /// <summary>
+            /// Filename of the FASTA file examined
+            /// </summary>
             public string SourceFile { get; set; }
+
+            /// <summary>
+            /// When true, write message stats to a file
+            /// </summary>
             public bool OutputToStatsFile { get; }
+
+            /// <summary>
+            /// Output file path
+            /// </summary>
             public StreamWriter OutFile { get; set; }
+
+            /// <summary>
+            /// Column separation character
+            /// </summary>
             public string SepChar { get; set; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="outputToStatsFile"></param>
+            /// <param name="sepChar"></param>
             public OutputOptions(bool outputToStatsFile, string sepChar)
             {
                 OutputToStatsFile = outputToStatsFile;
                 SepChar = sepChar;
             }
 
+            /// <summary>
+            /// Return the name of the FASTA file being analyzed
+            /// </summary>
             public override string ToString()
             {
                 return SourceFile;
             }
         }
 
+        /// <summary>
+        /// Validation rule types
+        /// </summary>
         public enum RuleTypes
         {
             HeaderLine,
@@ -210,6 +353,9 @@ namespace ValidateFastaFile
             ProteinSequence
         }
 
+        /// <summary>
+        /// Option switches
+        /// </summary>
         public enum SwitchOptions
         {
             AddMissingLineFeedAtEOF,
@@ -236,6 +382,9 @@ namespace ValidateFastaFile
             AllowAllSymbolsInProteinNames
         }
 
+        /// <summary>
+        /// Fixed FASTA stat categories
+        /// </summary>
         public enum FixedFASTAFileValues
         {
             DuplicateProteinNamesSkippedCount,
@@ -247,6 +396,9 @@ namespace ValidateFastaFile
             DuplicateProteinSeqsSkippedCount
         }
 
+        /// <summary>
+        /// Error warning count types
+        /// </summary>
         public enum ErrorWarningCountTypes
         {
             Specified,
@@ -254,6 +406,9 @@ namespace ValidateFastaFile
             Total
         }
 
+        /// <summary>
+        /// Message type constants
+        /// </summary>
         public enum MsgTypeConstants
         {
             ErrorMsg = 0,
@@ -261,6 +416,9 @@ namespace ValidateFastaFile
             StatusMsg = 2
         }
 
+        /// <summary>
+        /// Validation error codes
+        /// </summary>
         public enum ValidateFastaFileErrorCodes
         {
             NoError = 0,
@@ -271,135 +429,336 @@ namespace ValidateFastaFile
             UnspecifiedError = -1
         }
 
+        /// <summary>
+        /// Line ending characters
+        /// </summary>
         public enum LineEndingCharacters
         {
-            CRLF,  // Windows
-            CR,    // Old Style Mac
-            LF,    // Unix/Linux/OS X
-            LFCR,  // Oddball (Just for completeness!)
+            /// <summary>
+            /// Windows
+            /// </summary>
+            CRLF,
+
+            /// <summary>
+            /// Old style Mac
+            /// </summary>
+            CR,
+
+            /// <summary>
+            /// Unix, Linux, OS X
+            /// </summary>
+            LF,
+
+            /// <summary>
+            /// Oddball (Just for completeness!)
+            /// </summary>
+            LFCR
         }
 
-
+        /// <summary>
+        /// Error stats container
+        /// </summary>
         private class ErrorStats
         {
-            public int MessageCode { get; }          // Note: Custom rules start with message code CUSTOM_RULE_ID_START
+            /// <summary>
+            /// Error code
+            /// </summary>
+            /// <remarks>Custom rules start with message code CUSTOM_RULE_ID_START</remarks>
+            private int MessageCode { get; }
+
+            /// <summary>
+            /// Number of times detailed information about this error was stored in mFileErrors
+            /// </summary>
             public int CountSpecified { get; set; }
+
+            /// <summary>
+            /// Number of additional occurrences of this error (where details were not stored in mFileErrors)
+            /// </summary>
             public int CountUnspecified { get; set; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="messageCode"></param>
             public ErrorStats(int messageCode)
             {
                 MessageCode = messageCode;
             }
 
+            /// <summary>
+            /// Return the message code, count specified, and count unspecified
+            /// </summary>
             public override string ToString()
             {
                 return MessageCode + ": " + CountSpecified + " specified, " + CountUnspecified + " unspecified";
             }
         }
 
+        /// <summary>
+        /// Container for tracking errors and warnings
+        /// </summary>
         private class MsgInfosAndSummary
         {
+            /// <summary>
+            /// Error messages
+            /// </summary>
             public List<MsgInfo> Messages { get; } = new List<MsgInfo>(10); // Initially reserve space for 10 errors
-            public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new Dictionary<int, ErrorStats>();
 
             public MsgInfo this[int index] => Messages[index];
+            /// <summary>
+            /// Stats dictionary
+            /// </summary>
+            public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new Dictionary<int, ErrorStats>();
 
+            /// <summary>
+            /// Number of items in Messages
+            /// </summary>
             public int Count => Messages.Count;
 
+            /// <summary>
+            /// Clear cached messages
+            /// </summary>
             public void Reset()
             {
                 Messages.Clear();
-                Messages.Capacity = 10; // Initially reserve space for 10 errors
+                Messages.Capacity = 10;
                 MessageCodeToErrorStats.Clear();
             }
 
+            /// <summary>
+            /// Return the sum of CountSpecified for all tracked messages
+            /// </summary>
             public int ComputeTotalSpecifiedCount()
             {
                 return MessageCodeToErrorStats.Values.Sum(stat => stat.CountSpecified);
             }
 
+            /// <summary>
+            /// Return the sum of CountUnspecified for all tracked messages
+            /// </summary>
             public int ComputeTotalUnspecifiedCount()
             {
                 return MessageCodeToErrorStats.Values.Sum(stat => stat.CountUnspecified);
             }
         }
 
+        /// <summary>
+        /// Validation rule definition container
+        /// </summary>
         private class RuleDefinition
         {
+            /// <summary>
+            /// Rule RegEx
+            /// </summary>
             public string MatchRegEx { get; }
-            public bool MatchIndicatesProblem { get; set; }        // True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
-            public string MessageWhenProblem { get; set; }         // Message to display if a problem is present
-            public short Severity { get; set; }                    // 0 is lowest severity, 9 is highest severity; value >= 5 means error
-            public bool DisplayMatchAsExtraInfo { get; set; }      // If true, then the matching text is stored as the context info
-            public int CustomRuleID { get; set; }                  // This value is auto-assigned
 
+            /// <summary>
+            /// True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
+            /// </summary>
+            public bool MatchIndicatesProblem { get; set; }
+
+            /// <summary>
+            /// Message to display if a problem is present
+            /// </summary>
+            public string MessageWhenProblem { get; set; }
+
+            /// <summary>
+            /// 0 is lowest severity, 9 is highest severity; value >= 5 means error
+            /// </summary>
+            public short Severity { get; set; }
+
+            /// <summary>
+            /// If true, the matching text is stored as the context info
+            /// </summary>
+            public bool DisplayMatchAsExtraInfo { get; set; }
+
+            /// <summary>
+            /// Custom Rule ID
+            /// </summary>
+            /// <remarks>This value is auto-assigned</remarks>
+            public int CustomRuleID { get; set; }
+
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="matchRegEx"></param>
             public RuleDefinition(string matchRegEx)
             {
                 MatchRegEx = matchRegEx;
             }
 
+            /// <summary>
+            /// Return the rule ID and message to display if a problem is present
+            /// </summary>
             public override string ToString()
             {
                 return CustomRuleID + ": " + MessageWhenProblem;
             }
         }
 
+        /// <summary>
+        /// Extended rule definition container
+        /// </summary>
         private class RuleDefinitionExtended
         {
+            /// <summary>
+            /// Parent rule definition
+            /// </summary>
             public RuleDefinition RuleDefinition { get; }
             public Regex reRule { get; }
 
             // ReSharper disable once UnusedAutoPropertyAccessor.Local
+
+            /// <summary>
+            /// True if the rule is valid, false if a problem
+            /// </summary>
             public bool Valid { get; set; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="ruleDefinition"></param>
+            /// <param name="regexRule"></param>
             public RuleDefinitionExtended(RuleDefinition ruleDefinition, Regex regexRule)
             {
                 RuleDefinition = ruleDefinition;
                 reRule = regexRule;
             }
 
+            /// <summary>
+            /// Return the rule ID and message to display if a problem is present
+            /// </summary>
             public override string ToString()
             {
                 return RuleDefinition.CustomRuleID + ": " + RuleDefinition.MessageWhenProblem;
             }
         }
 
+        /// <summary>
+        /// Options container
+        /// </summary>
         private class FixedFastaOptions
         {
+            /// <summary>
+            /// Split out multiple refs in protein name
+            /// </summary>
             public bool SplitOutMultipleRefsInProteinName { get; set; }
+
+            /// <summary>
+            /// Split out multiple refs for known accession
+            /// </summary>
             public bool SplitOutMultipleRefsForKnownAccession { get; set; }
+
+            /// <summary>
+            /// Long protein name split chars
+            /// </summary>
             public char[] LongProteinNameSplitChars { get; set; }
+
+            /// <summary>
+            /// Protein name invalid chars to remove
+            /// </summary>
             public char[] ProteinNameInvalidCharsToRemove { get; set; }
+
+            /// <summary>
+            /// Rename proteins with duplicate names
+            /// </summary>
             public bool RenameProteinsWithDuplicateNames { get; set; }
-            public bool KeepDuplicateNamedProteinsUnlessMatchingSequence { get; set; }      // Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true
+
+            /// <summary>
+            /// Keep duplicate named proteins unless matching sequence
+            /// </summary>
+            /// <remarks>Ignored if RenameProteinsWithDuplicateNames=true or ConsolidateProteinsWithDuplicateSeqs=true</remarks>
+            public bool KeepDuplicateNamedProteinsUnlessMatchingSequence { get; set; }
+
+            /// <summary>
+            /// Consolidate proteins with duplicate sequences
+            /// </summary>
             public bool ConsolidateProteinsWithDuplicateSeqs { get; set; }
+
+            /// <summary>
+            /// Ignore I/L differences when consolidating duplicates
+            /// </summary>
             public bool ConsolidateDupsIgnoreILDiff { get; set; }
+
+            /// <summary>
+            /// Truncate long protein names
+            /// </summary>
             public bool TruncateLongProteinNames { get; set; }
+
+            /// <summary>
+            /// Wrap long residue lines
+            /// </summary>
             public bool WrapLongResidueLines { get; set; }
+
+            /// <summary>
+            /// Remove invalid residues
+            /// </summary>
             public bool RemoveInvalidResidues { get; set; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
             public FixedFastaOptions()
             {
                 LongProteinNameSplitChars = new char[] { DEFAULT_LONG_PROTEIN_NAME_SPLIT_CHAR };
-                ProteinNameInvalidCharsToRemove = new char[] { };          // Default to an empty character array
+
+                // Default to an empty character array for invalid characters
+                ProteinNameInvalidCharsToRemove = new char[] { };
             }
         }
 
+        /// <summary>
+        /// Fixed FASTA stats
+        /// </summary>
         private class FixedFastaStats
         {
+
+            /// <summary>
+            /// Truncated protein name count
+            /// </summary>
             public int TruncatedProteinNameCount { get; set; }
+
+            /// <summary>
+            /// Updated residue lines
+            /// </summary>
             public int UpdatedResidueLines { get; set; }
+
+            /// <summary>
+            /// Protein names invalid chars replaced
+            /// </summary>
             public int ProteinNamesInvalidCharsReplaced { get; set; }
+
+            /// <summary>
+            /// Protein names multiple refs removed
+            /// </summary>
             public int ProteinNamesMultipleRefsRemoved { get; set; }
+
+            /// <summary>
+            /// Duplicate name proteins skipped
+            /// </summary>
             public int DuplicateNameProteinsSkipped { get; set; }
+
+            /// <summary>
+            /// Duplicate name proteins renamed
+            /// </summary>
             public int DuplicateNameProteinsRenamed { get; set; }
+
+            /// <summary>
+            /// Duplicate sequence proteins skipped
+            /// </summary>
             public int DuplicateSequenceProteinsSkipped { get; set; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
             public FixedFastaStats()
             {
                 Reset();
             }
 
+            /// <summary>
+            /// Reset all counts to 0
+            /// </summary>
             public void Reset()
             {
                 TruncatedProteinNameCount = 0;
@@ -472,6 +831,11 @@ namespace ValidateFastaFile
             /// </summary>
             public Regex reMatchDoubleBarOrColonAndBar { get; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="proteinNameFirstRefSepChars"></param>
+            /// <param name="proteinNameSubsequentRefSepChars"></param>
             public ProteinNameTruncationRegex(char[] proteinNameFirstRefSepChars, char[] proteinNameSubsequentRefSepChars)
             {
                 // Note that each of these RegEx tests contain two groups with captured text:
@@ -514,10 +878,11 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Fasta file path being examined
+        /// FASTA file path being examined
         /// </summary>
         /// <remarks>Used by CustomValidateFastaFiles</remarks>
         protected string mFastaFilePath;
+
         private readonly FixedFastaStats mFixedFastaStats = new FixedFastaStats();
 
         private readonly MsgInfosAndSummary mFileErrors = new MsgInfosAndSummary();
@@ -535,16 +900,27 @@ namespace ValidateFastaFile
         private bool mAddMissingLinefeedAtEOF;
         private bool mCheckForDuplicateProteinNames;
 
-        // This will be set to True if
-        // mSaveProteinSequenceHashInfoFiles = True or mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = True
+        /// <summary>
+        /// Check for duplicate protein sequences
+        /// </summary>
+        /// <remarks>
+        /// This will be set to True if mSaveProteinSequenceHashInfoFiles is True
+        /// or mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs is True
+        /// </remarks>
         private bool mCheckForDuplicateProteinSequences;
 
-        private int mMaximumFileErrorsToTrack;        // This is the maximum # of errors per type to track
+        /// <summary>
+        /// Maximum number of errors per type to track
+        /// </summary>
+        private int mMaximumFileErrorsToTrack;
         private int mMinimumProteinNameLength;
         private int mMaximumProteinNameLength;
         private int mMaximumResiduesPerLine;
 
-        private readonly FixedFastaOptions mFixedFastaOptions = new FixedFastaOptions();     // Used if mGenerateFixedFastaFile = True
+        /// <summary>
+        /// Options used when mGenerateFixedFastaFile is True
+        /// </summary>
+        private readonly FixedFastaOptions mFixedFastaOptions = new FixedFastaOptions();
 
         private bool mOutputToStatsFile;
         private string mStatsFilePath;
@@ -552,9 +928,11 @@ namespace ValidateFastaFile
         private bool mGenerateFixedFastaFile;
         private bool mSaveProteinSequenceHashInfoFiles;
 
-        // When true, creates a text file that will contain the protein name and sequence hash for each protein;
-        // this option will not store protein names and/or hashes in memory, and is thus useful for processing
-        // huge .Fasta files to determine duplicate proteins
+        /// <summary>
+        /// When true, create a text file that will contain the protein name and sequence hash for each protein.
+        /// This option will not store protein names and/or hashes in memory, and is thus useful for processing
+        /// huge .Fasta files to determine duplicate proteins.
+        /// </summary>
         private bool mSaveBasicProteinHashInfoFile;
 
         private char mProteinLineStartChar;
@@ -586,13 +964,10 @@ namespace ValidateFastaFile
 
         private List<string> mTempFilesToDelete;
 
-
         /// <summary>
-        /// Gets or sets a processing option
+        /// Gets a processing option
         /// </summary>
-        /// <param name="SwitchName"></param>
-        /// <value></value>
-        /// <returns></returns>
+        /// <param name="switchName"></param>
         /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
         [Obsolete("Use GetOptionSwitchValue instead", true)]
         public bool get_OptionSwitch(SwitchOptions switchName)
@@ -600,6 +975,10 @@ namespace ValidateFastaFile
             return GetOptionSwitchValue(switchName);
         }
 
+        /// <summary>
+        /// Sets a processing option
+        /// </summary>
+        /// <param name="switchName"></param>
         [Obsolete("Use SetOptionSwitch instead", true)]
         public void set_OptionSwitch(SwitchOptions switchName, bool value)
         {
@@ -609,8 +988,8 @@ namespace ValidateFastaFile
         /// <summary>
         /// Set a processing option
         /// </summary>
-        /// <param name="SwitchName"></param>
-        /// <param name="State"></param>
+        /// <param name="switchName"></param>
+        /// <param name="state"></param>
         /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
         public void SetOptionSwitch(SwitchOptions switchName, bool state)
         {
@@ -685,7 +1064,12 @@ namespace ValidateFastaFile
             }
         }
 
-        public bool GetOptionSwitchValue(SwitchOptions SwitchName)
+        /// <summary>
+        /// Get a processing option
+        /// </summary>
+        /// <param name="switchName"></param>
+        /// <returns></returns>
+        public bool GetOptionSwitchValue(SwitchOptions switchName)
         {
             switch (SwitchName)
             {
@@ -738,6 +1122,11 @@ namespace ValidateFastaFile
             return false;
         }
 
+        /// <summary>
+        /// Get error warning counts for the given message type and count type
+        /// </summary>
+        /// <param name="messageType"></param>
+        /// <param name="countType"></param>
         [Obsolete("Use GetErrorWarningCounts instead", true)]
         public int get_ErrorWarningCounts(
             MsgTypeConstants messageType,
@@ -746,6 +1135,11 @@ namespace ValidateFastaFile
             return GetErrorWarningCounts(messageType, CountType);
         }
 
+        /// <summary>
+        /// Get error warning counts for the given message type and count type
+        /// </summary>
+        /// <param name="messageType"></param>
+        /// <param name="countType"></param>
         public int GetErrorWarningCounts(
             MsgTypeConstants messageType,
             ErrorWarningCountTypes CountType)
@@ -789,55 +1183,106 @@ namespace ValidateFastaFile
             return mFixedFastaStats.GetStat(valueType);
         }
 
+        /// <summary>
+        /// Number of proteins in the FASTA file
+        /// </summary>
         public int ProteinCount { get; private set; }
 
+        /// <summary>
+        /// Number of lines in the FASTA file
+        /// </summary>
         public int LineCount { get; private set; }
 
+        /// <summary>
+        /// Local error code
+        /// </summary>
         public ValidateFastaFileErrorCodes LocalErrorCode => mLocalErrorCode;
 
+        /// <summary>
+        /// Number of residues in the FASTA file
+        /// </summary>
         public long ResidueCount { get; private set; }
 
+        /// <summary>
+        /// FASTA file path
+        /// </summary>
         public string FastaFilePath => mFastaFilePath;
 
+        /// <summary>
+        /// Get error message text by index in mErrors
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="valueSeparator"></param>
         [Obsolete("Use GetErrorMessageTextByIndex", true)]
         public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
         {
             return GetErrorMessageTextByIndex(index, valueSeparator);
         }
 
+        /// <summary>
+        /// Get error message text by index in mErrors
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="valueSeparator"></param>
         public string GetErrorMessageTextByIndex(int index, string valueSeparator)
         {
             return GetFileErrorTextByIndex(index, valueSeparator);
         }
 
+        /// <summary>
+        /// Get warning message text by index in mFileWarnings
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="valueSeparator"></param>
         [Obsolete("Use GetWarningMessageTextByIndex", true)]
         public string get_WarningMessageTextByIndex(int index, string valueSeparator)
         {
             return GetWarningMessageTextByIndex(index, valueSeparator);
         }
 
+        /// <summary>
+        /// Get warning message text by index in mFileWarnings
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="valueSeparator"></param>
         public string GetWarningMessageTextByIndex(int index, string valueSeparator)
         {
             return GetFileWarningTextByIndex(index, valueSeparator);
         }
 
+        /// <summary>
+        /// Get error details, by index in mErrors
+        /// </summary>
+        /// <param name="errorIndex"></param>
         [Obsolete("Use GetErrorsByIndex", true)]
         public MsgInfo get_ErrorsByIndex(int errorIndex)
         {
             return GetErrorsByIndex(errorIndex);
         }
 
+        /// <summary>
+        /// Get error details, by index in mErrors
+        /// </summary>
+        /// <param name="errorIndex"></param>
         public MsgInfo GetErrorsByIndex(int errorIndex)
         {
             return GetFileErrorByIndex(errorIndex);
         }
 
+        /// <summary>
+        /// Get warning details, by index in mWarnings
+        /// </summary>
+        /// <param name="warningIndex"></param>
         [Obsolete("Use GetWarningsByIndex", true)]
         public MsgInfo get_WarningsByIndex(int warningIndex)
         {
             return GetWarningsByIndex(warningIndex);
         }
 
+        /// <summary>
+        /// Get warning details, by index in mWarnings
+        /// </summary>
+        /// <param name="warningIndex"></param>
         public MsgInfo GetWarningsByIndex(int warningIndex)
         {
             return GetFileWarningByIndex(warningIndex);
@@ -846,9 +1291,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string ExistingProteinHashFile { get; set; }
 
         public int MaximumFileErrorsToTrack
@@ -863,6 +1305,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Maximum protein name length
+        /// </summary>
         public int MaximumProteinNameLength
         {
             get => mMaximumProteinNameLength;
@@ -878,6 +1323,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Minimum protein name length
+        /// </summary>
         public int MinimumProteinNameLength
         {
             get => mMinimumProteinNameLength;
@@ -890,6 +1338,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Maximum residues per line
+        /// </summary>
         public int MaximumResiduesPerLine
         {
             get => mMaximumResiduesPerLine;
@@ -908,12 +1359,18 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Protein line start character
+        /// </summary>
         public char ProteinLineStartChar
         {
             get => mProteinLineStartChar;
             set => mProteinLineStartChar = value;
         }
 
+        /// <summary>
+        /// Stats file path
+        /// </summary>
         public string StatsFilePath
         {
             get
@@ -929,6 +1386,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Invalid characters to remove from protein names
+        /// </summary>
         public string ProteinNameInvalidCharsToRemove
         {
             get => new string(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
@@ -948,6 +1408,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Separation characters used to find the first reference in a protein name
+        /// </summary>
         public string ProteinNameFirstRefSepChars
         {
             get => new string(mProteinNameFirstRefSepChars);
@@ -967,6 +1430,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Separation characters used to find the additional references in a protein name
+        /// </summary>
         public string ProteinNameSubsequentRefSepChars
         {
             get => new string(mProteinNameSubsequentRefSepChars);
@@ -986,6 +1452,9 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Long protein name split characters
+        /// </summary>
         public string LongProteinNameSplitChars
         {
             get => new string(mFixedFastaOptions.LongProteinNameSplitChars);
@@ -1004,18 +1473,37 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// List of warnings
+        /// </summary>
         public List<MsgInfo> FileWarningList => GetFileWarnings();
 
+        /// <summary>
+        /// List of errors
+        /// </summary>
         public List<MsgInfo> FileErrorList => GetFileErrors();
 
         #region "Events and delegates"
 
+        /// <summary>
+        /// Progress completed event
+        /// </summary>
         public event ProgressCompletedEventHandler ProgressCompleted;
 
+        /// <summary>
+        /// Progress completed event handler
+        /// </summary>
         public delegate void ProgressCompletedEventHandler();
 
+        /// <summary>
+        /// Event raised when a new FASTA file is created, with normalized line endings
+        /// </summary>
         public event WroteLineEndNormalizedFASTAEventHandler WroteLineEndNormalizedFASTA;
 
+        /// <summary>
+        /// Event handler for event WroteLineEndNormalizedFASTA
+        /// </summary>
+        /// <param name="newFilePath"></param>
         public delegate void WroteLineEndNormalizedFASTAEventHandler(string newFilePath);
 
         private void OnProgressComplete()
@@ -1116,7 +1604,7 @@ namespace ValidateFastaFile
                 var sbCurrentResidues = new StringBuilder();
 
                 // Initialize the RegEx objects
-                // This object contains multiple regex, with the following capabilities:
+                // This object contains multiple RegEx, with the following capabilities:
                 // Note that each of these RegEx tests contain two groups with captured text:
                 // reMatchIPI extracts IPI:IPI00048500.11 from IPI:IPI00048500.11|ref|23848934
                 // reMatchGI extracts gi|169602219 from gi|169602219|ref|XP_001794531.1|
@@ -2038,7 +2526,6 @@ namespace ValidateFastaFile
         /// <param name="startOffset"></param>
         /// <param name="bytesToRead"></param>
         /// <returns>The number of lines read</returns>
-        /// <remarks></remarks>
         private long AutoDetermineFastaProteinNameSpannerCharLength(
             FileInfo fastaFile,
             int terminatorSize,
@@ -2475,10 +2962,7 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="consolidateDuplicateProteinSeqsInFasta"></param>
         /// <param name="fixedFastaFilePath"></param>
-        /// <param name="proteinSequenceHashCount"></param>
         /// <param name="proteinSeqHashInfo"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
         private bool CorrectForDuplicateProteinSeqsInFasta(
             bool consolidateDuplicateProteinSeqsInFasta,
             bool consolidateDupsIgnoreILDiff,
@@ -3242,8 +3726,6 @@ namespace ValidateFastaFile
         /// Convert a list of strings to a tab-delimited string
         /// </summary>
         /// <param name="dataValues"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
         private string FlattenList(IEnumerable<string> dataValues)
         {
             return FlattenArray(dataValues, '\t');
@@ -3253,7 +3735,6 @@ namespace ValidateFastaFile
         /// Find the first space (or first tab) in the protein header line
         /// </summary>
         /// <param name="headerLine"></param>
-        /// <returns></returns>
         /// <remarks>Used for determining protein name</remarks>
         private int GetBestSpaceIndex(string headerLine)
         {
@@ -3281,6 +3762,9 @@ namespace ValidateFastaFile
             return spaceIndex;
         }
 
+        /// <summary>
+        /// Get default file extensions to parse
+        /// </summary>
         public override IList<string> GetDefaultExtensionsToParse()
         {
             var extensionsToParse = new List<string>() { ".fasta" };
@@ -3288,10 +3772,12 @@ namespace ValidateFastaFile
             return extensionsToParse;
         }
 
+        /// <summary>
+        /// Get the error message
+        /// </summary>
+        /// <returns>The error message, or an empty string if no error</returns>
         public override string GetErrorMessage()
         {
-            // Returns "" if no error
-
             string errorMessage;
 
             if (ErrorCode == ProcessFilesErrorCodes.LocalizedError ||
@@ -3373,7 +3859,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Retrieve the errors reported by the validator
         /// </summary>
-        /// <returns></returns>
         /// <remarks>Used by CustomValidateFastaFiles</remarks>
         protected List<MsgInfo> GetFileErrors()
         {
@@ -3427,7 +3912,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Retrieve the warnings reported by the validator
         /// </summary>
-        /// <returns></returns>
         /// <remarks>Used by CustomValidateFastaFiles</remarks>
         protected List<MsgInfo> GetFileWarnings()
         {
@@ -4057,6 +4541,10 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Load settings from a parameter file
+        /// </summary>
+        /// <param name="parameterFilePath"></param>
         public bool LoadParameterFileSettings(string parameterFilePath)
         {
             var settingsFile = new XmlSettingsFileAccessor();
@@ -4265,11 +4753,21 @@ namespace ValidateFastaFile
             return true;
         }
 
+        /// <summary>
+        /// Obtain the message description by message code
+        /// </summary>
+        /// <param name="errorMessageCode"></param>
         public string LookupMessageDescription(int errorMessageCode)
         {
             return LookupMessageDescription(errorMessageCode, null);
         }
 
+        /// <summary>
+        /// Obtain the message description by message code, appending extraInfo
+        /// </summary>
+        /// <param name="errorMessageCode"></param>
+        /// <param name="extraInfo"></param>
+        /// <returns></returns>
         public string LookupMessageDescription(int errorMessageCode, string extraInfo)
         {
             string message;
@@ -4758,14 +5256,19 @@ namespace ValidateFastaFile
             return addLocation;
         }
 
+        /// <summary>
+        /// Read rules from an XML parameter file
+        /// </summary>
+        /// <param name="settingsFile"></param>
+        /// <param name="sectionName"></param>
+        /// <param name="rules"></param>
+        /// <returns>True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"</returns>
+        /// <remarks>Even if RuleCount = 0, this function will return True</remarks>
         private bool ReadRulesFromParameterFile(
             XmlSettingsFileAccessor settingsFile,
             string sectionName,
             List<RuleDefinition> rules)
         {
-            // Returns True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"
-            // Note: even if RuleCount = 0, this function will return True
-
             var success = false;
 
             var ruleCount = settingsFile.GetParam(sectionName, XML_OPTION_ENTRY_RULE_COUNT, -1);
@@ -5270,6 +5773,10 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Save settings to a parameter file
+        /// </summary>
+        /// <param name="parameterFilePath"></param>
         public bool SaveSettingsToParameterFile(string parameterFilePath)
         {
             // Save a model parameter file

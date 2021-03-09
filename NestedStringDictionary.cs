@@ -11,7 +11,6 @@ namespace ValidateFastaFile
     /// based on the first few letters of the keys of an added key/value pair
     /// </summary>
     /// <typeparam name="T">Type for values</typeparam>
-    /// <remarks></remarks>
     public class NestedStringDictionary<T>
     {
         private readonly Dictionary<string, Dictionary<string, T>> mData;
@@ -20,9 +19,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Number of items stored with Add()
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public int Count
         {
             get
@@ -39,16 +35,11 @@ namespace ValidateFastaFile
         /// <summary>
         /// True when we are ignoring case for stored keys
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public bool IgnoreCase { get; }
 
         /// <summary>
         /// The number of characters at the start of keyStrings to use when adding items to NestedStringDictionary instances
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
         /// <remarks>
         /// If this value is too short, all of the items added to the NestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
@@ -93,7 +84,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="key">String to store</param>
         /// <param name="value">Value of type T</param>
-        /// <remarks></remarks>
         /// <exception cref="System.ArgumentException">Thrown if the key has already been stored</exception>
         public void Add(string key, T value)
         {
@@ -111,7 +101,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Remove the stored items
         /// </summary>
-        /// <remarks></remarks>
         public void Clear()
         {
             foreach (var item in mData)
@@ -125,7 +114,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="key"></param>
         /// <returns>True if the key exists, otherwise false</returns>
-        /// <remarks></remarks>
         public bool ContainsKey(string key)
         {
             string spannerKey = GetSpannerKey(key);
@@ -200,7 +188,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="keyName"></param>
         /// <returns>The dictionary, or nothing if the key is not found</returns>
-        /// <remarks></remarks>
         public Dictionary<string, T> GetDictionaryForSpanningKey(string keyName)
         {
             if (mData.TryGetValue(keyName, out var subDictionary))
@@ -216,7 +203,6 @@ namespace ValidateFastaFile
         /// Retrieve the list of spanning keys in use
         /// </summary>
         /// <returns>List of keys</returns>
-        /// <remarks></remarks>
         public List<string> GetSpanningKeys()
         {
             return mData.Keys.ToList();
@@ -228,7 +214,6 @@ namespace ValidateFastaFile
         /// <param name="key">Key to find</param>
         /// <param name="value">Value found, or nothing if no match</param>
         /// <returns>True if a match was found, otherwise nothing</returns>
-        /// <remarks></remarks>
         public bool TryGetValue(string key, out T value)
         {
             string spannerKey = GetSpannerKey(key);

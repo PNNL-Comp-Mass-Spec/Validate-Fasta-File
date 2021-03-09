@@ -10,7 +10,6 @@ namespace ValidateFastaFile
     /// Internally it uses a dictionary to track several lists, storing each added string/integer pair to one of the lists
     /// based on the first few letters of the newly added string
     /// </summary>
-    /// <remarks></remarks>
     public class NestedStringIntList
     {
         private readonly Dictionary<string, List<KeyValuePair<string, int>>> mData;
@@ -24,9 +23,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Number of items stored with Add()
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public int Count
         {
             get
@@ -42,8 +38,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// The number of characters at the start of stored items to use when adding items to NestedStringDictionary instances
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
         /// <remarks>
         /// If this value is too short, all of the items added to the NestedStringDictionary instance
         /// will be tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
@@ -82,7 +76,6 @@ namespace ValidateFastaFile
         /// Appends an item to the list
         /// </summary>
         /// <param name="item">String to add</param>
-        /// <remarks></remarks>
         public void Add(string item, int value)
         {
             string spannerKey = GetSpannerKey(item);
@@ -119,7 +112,6 @@ namespace ValidateFastaFile
         /// <param name="keyColumnIndex"></param>
         /// <param name="hasHeaderLine"></param>
         /// <returns>The appropriate spanner length</returns>
-        /// <remarks></remarks>
         public static byte AutoDetermineSpannerCharLength(
             FileInfo fiDataFile,
             int keyColumnIndex,
@@ -220,7 +212,6 @@ namespace ValidateFastaFile
         /// Dictionary where keys are base names (characters in common between adjacent items)
         /// and values are the observation count of each base name</param>
         /// <returns>Spanner key length that fits the majority of the entries in keyStartLetters</returns>
-        /// <remarks></remarks>
         public static byte DetermineSpannerLengthUsingStartLetterStats(Dictionary<string, int> keyStartLetters)
         {
             // Compute the average observation count in keyStartLetters
@@ -264,7 +255,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Remove the stored items
         /// </summary>
-        /// <remarks></remarks>
         public void Clear()
         {
             foreach (var item in mData)
@@ -364,7 +354,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="keyName"></param>
         /// <returns>The list, or nothing if the key is not found</returns>
-        /// <remarks></remarks>
         public List<KeyValuePair<string, int>> GetListForSpanningKey(string keyName)
         {
             if (mData.TryGetValue(keyName, out var subList))
@@ -379,7 +368,6 @@ namespace ValidateFastaFile
         /// Retrieve the list of spanning keys in use
         /// </summary>
         /// <returns>List of keys</returns>
-        /// <remarks></remarks>
         public List<string> GetSpanningKeys()
         {
             return mData.Keys.ToList();
@@ -427,8 +415,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Checks whether the items are sorted
         /// </summary>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public bool IsSorted()
         {
             foreach (var subList in mData.Values)
@@ -450,7 +436,6 @@ namespace ValidateFastaFile
         /// Removes all occurrences of the item from the list
         /// </summary>
         /// <param name="item">String to remove</param>
-        /// <remarks></remarks>
         public void Remove(string item)
         {
             string spannerKey = GetSpannerKey(item);
@@ -511,7 +496,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Sorts all of the stored items
         /// </summary>
-        /// <remarks></remarks>
         public void Sort()
         {
             if (mDataIsSorted)
