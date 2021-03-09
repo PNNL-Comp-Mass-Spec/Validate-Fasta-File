@@ -4,6 +4,8 @@ using System.IO;
 
 namespace ValidateFastaFile
 {
+    // Ignore Spelling: Validator
+
     [Obsolete("Renamed to 'CustomFastaValidator'", true)]
     public class clsCustomValidateFastaFiles : CustomFastaValidator
     {

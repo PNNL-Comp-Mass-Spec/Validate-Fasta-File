@@ -22,6 +22,8 @@ using PRISM;
 
 namespace ValidateFastaFile
 {
+    // Ignore Spelling: jgi, gi, Lf, Mem, Validator, seqs, Dups, Diff, Sep, selenocysteine, ornithine, yyyy-MM-dd, A-Za-z
+
     [Obsolete("Renamed to 'FastaValidator'", true)]
     public class clsValidateFastaFile : FastaValidator
     {

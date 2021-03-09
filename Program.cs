@@ -27,6 +27,7 @@ namespace ValidateFastaFile
     static class Program
     {
         public const string PROGRAM_DATE = "April 15, 2020";
+        // Ignore Spelling: parseable
 
         private static string mInputFilePath;
         private static string mOutputDirectoryPath;

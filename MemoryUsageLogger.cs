@@ -13,6 +13,7 @@ namespace ValidateFastaFile
 {
     public class MemoryUsageLogger
     {
+        // Ignore Spelling: yyyy-MM-dd, hh:mm:ss tt, nonpaged
 
         private const char COL_SEP = '\t';
 
