@@ -129,7 +129,7 @@ namespace ValidateFastaFile
         /// <summary>
         /// Constructor
         /// </summary>
-        public CustomFastaValidator() : base()
+        public CustomFastaValidator()
         {
             FullErrorCollection = new Dictionary<string, List<ErrorInfoExtended>>();
             FullWarningCollection = new Dictionary<string, List<ErrorInfoExtended>>();
@@ -172,10 +172,8 @@ namespace ValidateFastaFile
             {
                 return true;
             }
-            else
-            {
-                return !FullErrorCollection.ContainsKey(FASTAFileName);
-            }
+
+            return !FullErrorCollection.ContainsKey(fastaFileName);
         }
 
         /// <summary>
@@ -188,10 +186,8 @@ namespace ValidateFastaFile
             {
                 return false;
             }
-            else
-            {
-                return FullWarningCollection.ContainsKey(fastaFileName);
-            }
+
+            return FullWarningCollection.ContainsKey(fastaFileName);
         }
 
         /// <summary>
@@ -233,10 +229,8 @@ namespace ValidateFastaFile
                 {
                     return 0;
                 }
-                else
-                {
-                    return FullErrorCollection.Count;
-                }
+
+                return FullErrorCollection.Count;
             }
         }
 
@@ -317,63 +311,60 @@ namespace ValidateFastaFile
         {
             var success = SimpleProcessFile(filePath);
 
-            if (success)
+            if (!success)
+                return false;
+
+            if (GetErrorWarningCounts(MsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
             {
-                if (GetErrorWarningCounts(MsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total) > 0)
+                // The file has warnings; we need to record them using RecordFastaFileProblem
+
+                var warnings = GetFileWarnings();
+
+                foreach (var item in warnings)
+                    RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, ValidationMessageTypes.WarningMsg);
+            }
+
+            if (GetErrorWarningCounts(MsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) <= 0)
+                return true;
+
+            {
+                // The file has errors; we need to record them using RecordFastaFileProblem
+                // However, we might ignore some of the errors
+
+                var errors = GetFileErrors();
+
+                foreach (var item in errors)
                 {
-                    // The file has warnings; we need to record them using RecordFastaFileProblem
+                    var errorMessage = LookupMessageDescription(item.MessageCode, item.ExtraInfo);
 
-                    var warnings = GetFileWarnings();
-
-                    foreach (var item in warnings)
-                        RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, ValidationMessageTypes.WarningMsg);
-                }
-
-                if (GetErrorWarningCounts(MsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) > 0)
-                {
-                    // The file has errors; we need to record them using RecordFastaFileProblem
-                    // However, we might ignore some of the errors
-
-                    var errors = GetFileErrors();
-
-                    foreach (var item in errors)
+                    var ignoreError = false;
+                    switch (errorMessage)
                     {
-                        var errorMessage = LookupMessageDescription(item.MessageCode, item.ExtraInfo);
+                        case MESSAGE_TEXT_ASTERISK_IN_RESIDUES:
+                            if (mValidationOptions[(int)ValidationOptionConstants.AllowAsterisksInResidues])
+                            {
+                                ignoreError = true;
+                            }
 
-                        var ignoreError = false;
-                        switch (errorMessage)
-                        {
-                            case MESSAGE_TEXT_ASTERISK_IN_RESIDUES:
-                                if (mValidationOptions[(int)ValidationOptionConstants.AllowAsterisksInResidues])
-                                {
-                                    ignoreError = true;
-                                }
+                            break;
 
-                                break;
+                        case MESSAGE_TEXT_DASH_IN_RESIDUES:
+                            if (mValidationOptions[(int)ValidationOptionConstants.AllowDashInResidues])
+                            {
+                                ignoreError = true;
+                            }
 
-                            case MESSAGE_TEXT_DASH_IN_RESIDUES:
-                                if (mValidationOptions[(int)ValidationOptionConstants.AllowDashInResidues])
-                                {
-                                    ignoreError = true;
-                                }
+                            break;
+                    }
 
-                                break;
-                        }
-
-                        if (!ignoreError)
-                        {
-                            RecordFastaFileProblem(item.LineNumber, item.ProteinName, errorMessage, item.ExtraInfo, ValidationMessageTypes.ErrorMsg);
-                        }
+                    if (!ignoreError)
+                    {
+                        RecordFastaFileProblem(item.LineNumber, item.ProteinName, errorMessage, item.ExtraInfo, ValidationMessageTypes.ErrorMsg);
                     }
                 }
+            }
 
-                return true;
-            }
-            else
-            {
-                // SimpleProcessFile returned False
-                return false;
-            }
+            return true;
         }
     }
 }
