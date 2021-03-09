@@ -17,7 +17,7 @@ namespace ValidateFastaFile
     public class clsValidateFastaFile : FastaValidator
     {
         public clsValidateFastaFile() : base() { }
-        public clsValidateFastaFile(string parameterFilePath): base(parameterFilePath) { }
+        public clsValidateFastaFile(string parameterFilePath) : base(parameterFilePath) { }
     }
 
     /// <summary>
@@ -289,10 +289,15 @@ namespace ValidateFastaFile
             {
                 if (ReferenceEquals(this, other)) return 0;
                 if (ReferenceEquals(null, other)) return 1;
+
                 var messageCodeComparison = MessageCode.CompareTo(other.MessageCode);
-                if (messageCodeComparison != 0) return messageCodeComparison;
+                if (messageCodeComparison != 0)
+                    return messageCodeComparison;
+
                 var lineNumberComparison = LineNumber.CompareTo(other.LineNumber);
-                if (lineNumberComparison != 0) return lineNumberComparison;
+                if (lineNumberComparison != 0)
+                    return lineNumberComparison;
+
                 return ColNumber.CompareTo(other.ColNumber);
             }
         }
@@ -2442,7 +2447,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                var stepSizeBytes = (long) Math.Round(fastaFile.Length / (double)PARTS_TO_SAMPLE, 0);
+                var stepSizeBytes = (long)Math.Round(fastaFile.Length / (double)PARTS_TO_SAMPLE, 0);
 
                 for (long byteOffsetStart = 0; byteOffsetStart <= fastaFile.Length; byteOffsetStart += stepSizeBytes)
                 {
@@ -5047,7 +5052,7 @@ namespace ValidateFastaFile
             }
         }
 
-        private readonly char[] extraCharsToTrim = {'|', ' '};
+        private readonly char[] extraCharsToTrim = { '|', ' ' };
 
         private void PrependExtraTextToProteinDescription(string extraProteinNameText, ref string proteinDescription)
         {
