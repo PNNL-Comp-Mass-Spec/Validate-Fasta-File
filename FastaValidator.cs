@@ -770,27 +770,23 @@ namespace ValidateFastaFile
                 DuplicateSequenceProteinsSkipped = 0;
             }
 
-            public int GetStat(FixedFASTAFileValues valueType)
+            /// <summary>
+            /// Get the specified statistic
+            /// </summary>
+            /// <param name="statCategory"></param>
+            public int GetStat(FixedFASTAFileValues statCategory)
             {
-                switch (valueType)
+                return statCategory switch
                 {
-                    case FixedFASTAFileValues.DuplicateProteinNamesSkippedCount:
-                        return DuplicateNameProteinsSkipped;
-                    case FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced:
-                        return ProteinNamesInvalidCharsReplaced;
-                    case FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved:
-                        return ProteinNamesMultipleRefsRemoved;
-                    case FixedFASTAFileValues.TruncatedProteinNameCount:
-                        return TruncatedProteinNameCount;
-                    case FixedFASTAFileValues.UpdatedResidueLines:
-                        return UpdatedResidueLines;
-                    case FixedFASTAFileValues.DuplicateProteinNamesRenamedCount:
-                        return DuplicateNameProteinsRenamed;
-                    case FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount:
-                        return DuplicateSequenceProteinsSkipped;
-                    default:
-                        return 0;
-                }
+                    FixedFASTAFileValues.DuplicateProteinNamesSkippedCount => DuplicateNameProteinsSkipped,
+                    FixedFASTAFileValues.ProteinNamesInvalidCharsReplaced => ProteinNamesInvalidCharsReplaced,
+                    FixedFASTAFileValues.ProteinNamesMultipleRefsRemoved => ProteinNamesMultipleRefsRemoved,
+                    FixedFASTAFileValues.TruncatedProteinNameCount => TruncatedProteinNameCount,
+                    FixedFASTAFileValues.UpdatedResidueLines => UpdatedResidueLines,
+                    FixedFASTAFileValues.DuplicateProteinNamesRenamedCount => DuplicateNameProteinsRenamed,
+                    FixedFASTAFileValues.DuplicateProteinSeqsSkippedCount => DuplicateSequenceProteinsSkipped,
+                    _ => 0,
+                };
             }
         }
 
@@ -1071,55 +1067,32 @@ namespace ValidateFastaFile
         /// <returns></returns>
         public bool GetOptionSwitchValue(SwitchOptions switchName)
         {
-            switch (SwitchName)
+            return switchName switch
             {
-                case SwitchOptions.AddMissingLineFeedAtEOF:
-                    return mAddMissingLinefeedAtEOF;
-                case SwitchOptions.AllowAsteriskInResidues:
-                    return mAllowAsteriskInResidues;
-                case SwitchOptions.CheckForDuplicateProteinNames:
-                    return mCheckForDuplicateProteinNames;
-                case SwitchOptions.GenerateFixedFASTAFile:
-                    return mGenerateFixedFastaFile;
-                case SwitchOptions.OutputToStatsFile:
-                    return mOutputToStatsFile;
-                case SwitchOptions.SplitOutMultipleRefsInProteinName:
-                    return mFixedFastaOptions.SplitOutMultipleRefsInProteinName;
-                case SwitchOptions.WarnBlankLinesBetweenProteins:
-                    return mWarnBlankLinesBetweenProteins;
-                case SwitchOptions.WarnLineStartsWithSpace:
-                    return mWarnLineStartsWithSpace;
-                case SwitchOptions.NormalizeFileLineEndCharacters:
-                    return mNormalizeFileLineEndCharacters;
-                case SwitchOptions.CheckForDuplicateProteinSequences:
-                    return mCheckForDuplicateProteinSequences;
-                case SwitchOptions.FixedFastaRenameDuplicateNameProteins:
-                    return mFixedFastaOptions.RenameProteinsWithDuplicateNames;
-                case SwitchOptions.FixedFastaKeepDuplicateNamedProteins:
-                    return mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence;
-                case SwitchOptions.SaveProteinSequenceHashInfoFiles:
-                    return mSaveProteinSequenceHashInfoFiles;
-                case SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs:
-                    return mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs;
-                case SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff:
-                    return mFixedFastaOptions.ConsolidateDupsIgnoreILDiff;
-                case SwitchOptions.FixedFastaTruncateLongProteinNames:
-                    return mFixedFastaOptions.TruncateLongProteinNames;
-                case SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession:
-                    return mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession;
-                case SwitchOptions.FixedFastaWrapLongResidueLines:
-                    return mFixedFastaOptions.WrapLongResidueLines;
-                case SwitchOptions.FixedFastaRemoveInvalidResidues:
-                    return mFixedFastaOptions.RemoveInvalidResidues;
-                case SwitchOptions.SaveBasicProteinHashInfoFile:
-                    return mSaveBasicProteinHashInfoFile;
-                case SwitchOptions.AllowDashInResidues:
-                    return mAllowDashInResidues;
-                case SwitchOptions.AllowAllSymbolsInProteinNames:
-                    return mAllowAllSymbolsInProteinNames;
-            }
-
-            return false;
+                SwitchOptions.AddMissingLineFeedAtEOF => mAddMissingLinefeedAtEOF,
+                SwitchOptions.AllowAsteriskInResidues => mAllowAsteriskInResidues,
+                SwitchOptions.CheckForDuplicateProteinNames => mCheckForDuplicateProteinNames,
+                SwitchOptions.GenerateFixedFASTAFile => mGenerateFixedFastaFile,
+                SwitchOptions.OutputToStatsFile => mOutputToStatsFile,
+                SwitchOptions.SplitOutMultipleRefsInProteinName => mFixedFastaOptions.SplitOutMultipleRefsInProteinName,
+                SwitchOptions.WarnBlankLinesBetweenProteins => mWarnBlankLinesBetweenProteins,
+                SwitchOptions.WarnLineStartsWithSpace => mWarnLineStartsWithSpace,
+                SwitchOptions.NormalizeFileLineEndCharacters => mNormalizeFileLineEndCharacters,
+                SwitchOptions.CheckForDuplicateProteinSequences => mCheckForDuplicateProteinSequences,
+                SwitchOptions.FixedFastaRenameDuplicateNameProteins => mFixedFastaOptions.RenameProteinsWithDuplicateNames,
+                SwitchOptions.FixedFastaKeepDuplicateNamedProteins => mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence,
+                SwitchOptions.SaveProteinSequenceHashInfoFiles => mSaveProteinSequenceHashInfoFiles,
+                SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs => mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs,
+                SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff => mFixedFastaOptions.ConsolidateDupsIgnoreILDiff,
+                SwitchOptions.FixedFastaTruncateLongProteinNames => mFixedFastaOptions.TruncateLongProteinNames,
+                SwitchOptions.FixedFastaSplitOutMultipleRefsForKnownAccession => mFixedFastaOptions.SplitOutMultipleRefsForKnownAccession,
+                SwitchOptions.FixedFastaWrapLongResidueLines => mFixedFastaOptions.WrapLongResidueLines,
+                SwitchOptions.FixedFastaRemoveInvalidResidues => mFixedFastaOptions.RemoveInvalidResidues,
+                SwitchOptions.SaveBasicProteinHashInfoFile => mSaveBasicProteinHashInfoFile,
+                SwitchOptions.AllowDashInResidues => mAllowDashInResidues,
+                SwitchOptions.AllowAllSymbolsInProteinNames => mAllowAllSymbolsInProteinNames,
+                _ => false,
+            };
         }
 
         /// <summary>
