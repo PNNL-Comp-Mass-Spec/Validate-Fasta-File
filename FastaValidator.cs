@@ -6104,10 +6104,11 @@ namespace ValidateFastaFile
 
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ShowErrorMessage("Error in VerifyLinefeedAtEOF: " + ex.Message);
                 SetLocalErrorCode(ValidateFastaFileErrorCodes.ErrorVerifyingLinefeedAtEOF);
-                blnSuccess = false;
+                return false;
             }
         }
 
