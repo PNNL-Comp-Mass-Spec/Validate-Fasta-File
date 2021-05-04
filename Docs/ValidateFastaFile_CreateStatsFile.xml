@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sections>
+  <section name="ValidateFastaFileOptions">
+    <item key="AddMissingLinefeedAtEOF" value="False" />
+    <item key="AllowAsteriskInResidues" value="False" />
+    <item key="AllowDashInResidues" value="False" />
+    <item key="CheckForDuplicateProteinNames" value="True" />
+    <item key="CheckForDuplicateProteinSequences" value="True" />
+    <item key="SaveProteinSequenceHashInfoFiles" value="False" />
+    <item key="SaveBasicProteinHashInfoFile" value="False" />
+    <item key="MaximumFileErrorsToTrack" value="5" />
+    <item key="MinimumProteinNameLength" value="3" />
+    <item key="MaximumProteinNameLength" value="60" />
+    <item key="MaximumResiduesPerLine" value="120" />
+    <item key="WarnBlankLinesBetweenProteins" value="False" />
+    <item key="WarnLineStartsWithSpace" value="True" />
+    <item key="OutputToStatsFile" value="True" />
+    <item key="NormalizeFileLineEndCharacters" value="False" />
+  </section>
+  <section name="ValidateFastaFixedFASTAFileOptions">
+    <item key="GenerateFixedFASTAFile" value="False" />
+    <item key="SplitOutMultipleRefsInProteinName" value="False" />
+    <item key="RenameDuplicateNameProteins" value="False" />
+    <item key="KeepDuplicateNamedProteins" value="False" />
+    <item key="ConsolidateDuplicateProteinSeqs" value="False" />
+    <item key="ConsolidateDupsIgnoreILDiff" value="False" />
+    <item key="TruncateLongProteinNames" value="True" />
+    <item key="SplitOutMultipleRefsForKnownAccession" value="True" />
+    <item key="WrapLongResidueLines" value="True" />
+    <item key="RemoveInvalidResidues" value="False" />
+    <item key="LongProteinNameSplitChars" value="|" />
+    <item key="ProteinNameInvalidCharsToRemove" value="" />
+    <item key="ProteinNameFirstRefSepChars" value=":|" />
+    <item key="ProteinNameSubsequentRefSepChars" value=":|;" />
+  </section>
+  <section name="ValidateFastaHeaderLineRules">
+    <item key="RuleCount" value="5" />
+    <item key="Rule1MatchRegEx" value="^>[ \t]*$" />
+    <item key="Rule1MatchIndicatesProblem" value="True" />
+    <item key="Rule1MessageWhenProblem" value="Line starts with > but does not contain a protein name" />
+    <item key="Rule1Severity" value="7" />
+    <item key="Rule1DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule2MatchRegEx" value="^>[ \t].+" />
+    <item key="Rule2MatchIndicatesProblem" value="True" />
+    <item key="Rule2MessageWhenProblem" value="Space or tab found directly after the > symbol" />
+    <item key="Rule2Severity" value="7" />
+    <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule3MatchRegEx" value="^>[^ \t]+[ \t]*$" />
+    <item key="Rule3MatchIndicatesProblem" value="True" />
+    <item key="Rule3MessageWhenProblem" value="Line contains a protein name, but not a description" />
+    <item key="Rule3Severity" value="3" />
+    <item key="Rule3DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule4MatchRegEx" value="^>[^ \t]+\t" />
+    <item key="Rule4MatchIndicatesProblem" value="True" />
+    <item key="Rule4MessageWhenProblem" value="Protein name is separated from the protein description by a tab" />
+    <item key="Rule4Severity" value="3" />
+    <item key="Rule4DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule5MatchRegEx" value="^>[^ \t]+\xA0" />
+    <item key="Rule5MatchIndicatesProblem" value="True" />
+    <item key="Rule5MessageWhenProblem" value="Non-breaking space after the protein name" />
+    <item key="Rule5Severity" value="3" />
+    <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
+  </section>
+  <section name="ValidateFastaProteinNameRules">
+    <item key="RuleCount" value="3" />
+    <item key="Rule1MatchRegEx" value="[^A-Za-z0-9.\-_:,\|/()\[\]\=\+#]" />
+    <item key="Rule1MatchIndicatesProblem" value="True" />
+    <item key="Rule1MessageWhenProblem" value="Protein name contains invalid characters" />
+    <item key="Rule1Severity" value="7" />
+    <item key="Rule1DisplayMatchAsExtraInfo" value="True" />
+    <item key="Rule2MatchRegEx" value="[:|].*?[:|;].*?[:|;]" />
+    <item key="Rule2MatchIndicatesProblem" value="True" />
+    <item key="Rule2MessageWhenProblem" value="Protein name contains 3 or more vertical bars" />
+    <item key="Rule2Severity" value="4" />
+    <item key="Rule2DisplayMatchAsExtraInfo" value="True" />
+    <item key="Rule3MatchRegEx" value="[/()\[\],]" />
+    <item key="Rule3MatchIndicatesProblem" value="True" />
+    <item key="Rule3MessageWhenProblem" value="Protein name contains undesirable characters" />
+    <item key="Rule3Severity" value="3" />
+    <item key="Rule3DisplayMatchAsExtraInfo" value="True" />
+  </section>
+  <section name="ValidateFastaProteinDescriptionRules">
+    <item key="RuleCount" value="5" />
+    <item key="Rule1MatchRegEx" value="&quot;" />
+    <item key="Rule1MatchIndicatesProblem" value="True" />
+    <item key="Rule1MessageWhenProblem" value="Protein description contains a quotation mark" />
+    <item key="Rule1Severity" value="3" />
+    <item key="Rule1DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule2MatchRegEx" value="\t" />
+    <item key="Rule2MatchIndicatesProblem" value="True" />
+    <item key="Rule2MessageWhenProblem" value="Protein description contains a tab character" />
+    <item key="Rule2Severity" value="3" />
+    <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule3MatchRegEx" value="\\/" />
+    <item key="Rule3MatchIndicatesProblem" value="True" />
+    <item key="Rule3MessageWhenProblem" value="Protein description contains an escaped slash: \/" />
+    <item key="Rule3Severity" value="3" />
+    <item key="Rule3DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule4MatchRegEx" value="[\x00-\x08\x0E-\x1F]" />
+    <item key="Rule4MatchIndicatesProblem" value="True" />
+    <item key="Rule4MessageWhenProblem" value="Protein description contains an escape code character" />
+    <item key="Rule4Severity" value="7" />
+    <item key="Rule4DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule5MatchRegEx" value=".{900,}" />
+    <item key="Rule5MatchIndicatesProblem" value="True" />
+    <item key="Rule5MessageWhenProblem" value="Protein description is over 900 characters long" />
+    <item key="Rule5Severity" value="4" />
+    <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
+  </section>
+  <section name="ValidateFastaProteinSequenceRules">
+    <item key="RuleCount" value="10" />
+    <item key="Rule1MatchRegEx" value="[ \t]" />
+    <item key="Rule1MatchIndicatesProblem" value="True" />
+    <item key="Rule1MessageWhenProblem" value="A space or tab was found in the residues" />
+    <item key="Rule1Severity" value="7" />
+    <item key="Rule1DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule2MatchRegEx" value="\*" />
+    <item key="Rule2MatchIndicatesProblem" value="True" />
+    <item key="Rule2MessageWhenProblem" value="An asterisk was found in the residues" />
+    <item key="Rule2Severity" value="7" />
+    <item key="Rule2DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule3MatchRegEx" value="\-" />
+    <item key="Rule3MatchIndicatesProblem" value="True" />
+    <item key="Rule3MessageWhenProblem" value="A dash was found in the residues" />
+    <item key="Rule3Severity" value="7" />
+    <item key="Rule3DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule4MatchRegEx" value="[^A-Z \t\*\-]" />
+    <item key="Rule4MatchIndicatesProblem" value="True" />
+    <item key="Rule4MessageWhenProblem" value="Invalid residues found" />
+    <item key="Rule4Severity" value="7" />
+    <item key="Rule4DisplayMatchAsExtraInfo" value="True" />
+    <item key="Rule5MatchRegEx" value="B" />
+    <item key="Rule5MatchIndicatesProblem" value="True" />
+    <item key="Rule5MessageWhenProblem" value="Residues line contains B (non-standard amino acid for N or D)" />
+    <item key="Rule5Severity" value="2" />
+    <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule6MatchRegEx" value="J" />
+    <item key="Rule6MatchIndicatesProblem" value="True" />
+    <item key="Rule6MessageWhenProblem" value="Residues line contains J (non-standard amino acid)" />
+    <item key="Rule6Severity" value="2" />
+    <item key="Rule6DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule7MatchRegEx" value="O" />
+    <item key="Rule7MatchIndicatesProblem" value="True" />
+    <item key="Rule7MessageWhenProblem" value="Residues line contains O (non-standard amino acid, ornithine)" />
+    <item key="Rule7Severity" value="2" />
+    <item key="Rule7DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule8MatchRegEx" value="U" />
+    <item key="Rule8MatchIndicatesProblem" value="True" />
+    <item key="Rule8MessageWhenProblem" value="Residues line contains U (non-standard amino acid, selenocysteine)" />
+    <item key="Rule8Severity" value="3" />
+    <item key="Rule8DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule9MatchRegEx" value="X" />
+    <item key="Rule9MatchIndicatesProblem" value="True" />
+    <item key="Rule9MessageWhenProblem" value="Residues line contains X (non-standard amino acid for L or I)" />
+    <item key="Rule9Severity" value="2" />
+    <item key="Rule9DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule10MatchRegEx" value="Z" />
+    <item key="Rule10MatchIndicatesProblem" value="True" />
+    <item key="Rule10MessageWhenProblem" value="Residues line contains Z (non-standard amino acid for Q or E)" />
+    <item key="Rule10Severity" value="2" />
+    <item key="Rule10DisplayMatchAsExtraInfo" value="False" />
+  </section>
+</sections>
