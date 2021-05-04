@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using PRISM;
 using ValidateFastaFile;
 
@@ -18,9 +20,7 @@ namespace TestValidateFastaFileDLL
         /// <returns>0 if no error, error code if an error</returns>
         public static int Main()
         {
-            var testFilePath = "JunkTest.fasta";
-
-            var returnCode = 0;
+            var testFilePaths = new List<string> {"JunkTest.fasta", "JunkTest_UTF8.fasta"};
 
             try
             {
@@ -33,7 +33,8 @@ namespace TestValidateFastaFileDLL
                     if (parameters.Length > 1)
                     {
                         // Note that parameters(0) is the path to the Executable for the calling program
-                        testFilePath = parameters[1];
+                        testFilePaths.Clear();
+                        testFilePaths.Add(parameters[1]);
                     }
                 }
                 catch (Exception)
@@ -41,8 +42,19 @@ namespace TestValidateFastaFileDLL
                     // Ignore errors here
                 }
 
+                foreach (var testFilePath in testFilePaths)
+                {
                     TestReader(testFilePath);
+                }
 
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                ConsoleMsgUtils.ShowError("Error occurred: " + ex.Message);
+                return -1;
+            }
+        }
 
         private static bool FindInputFile(string testFilePath, out FileInfo fileInfo)
         {
