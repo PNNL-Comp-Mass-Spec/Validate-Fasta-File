@@ -34,7 +34,7 @@
     <item key="ProteinNameSubsequentRefSepChars" value=":|;" />
   </section>
   <section name="ValidateFastaHeaderLineRules">
-    <item key="RuleCount" value="4" />
+    <item key="RuleCount" value="5" />
     <item key="Rule1MatchRegEx" value="^>[ \t]*$" />
     <item key="Rule1MatchIndicatesProblem" value="True" />
     <item key="Rule1MessageWhenProblem" value="Line starts with > but does not contain a protein name" />
@@ -55,6 +55,11 @@
     <item key="Rule4MessageWhenProblem" value="Protein name is separated from the protein description by a tab" />
     <item key="Rule4Severity" value="3" />
     <item key="Rule4DisplayMatchAsExtraInfo" value="False" />
+    <item key="Rule5MatchRegEx" value="^>[^ \t]+\xA0" />
+    <item key="Rule5MatchIndicatesProblem" value="True" />
+    <item key="Rule5MessageWhenProblem" value="Non-breaking space after the protein name" />
+    <item key="Rule5Severity" value="3" />
+    <item key="Rule5DisplayMatchAsExtraInfo" value="False" />
   </section>
   <section name="ValidateFastaProteinNameRules">
     <item key="RuleCount" value="3" />
