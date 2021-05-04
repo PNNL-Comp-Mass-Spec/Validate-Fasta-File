@@ -4756,7 +4756,7 @@ namespace ValidateFastaFile
                     message = "The last entry in the file is a protein header line, but there is no protein sequence line after it";
                     break;
                 case (int)MessageCodeConstants.FileDoesNotEndWithLinefeed:
-                    message = "File does not end in a blank line; this is a problem for Sequest";
+                    message = "File does not end in a blank line; this is a problem for SEQUEST";
                     break;
                 case (int)MessageCodeConstants.DuplicateProteinName:
                     message = "Duplicate protein name found";
@@ -4803,7 +4803,7 @@ namespace ValidateFastaFile
                 //    message = "Residues line is longer than the suggested maximum length of " + mMaximumResiduesPerLine.ToString + " characters";
                 //    break;
                 //case (int)MessageCodeConstants.ResiduesLineContainsU:
-                //    message = "Residues line contains U (selenocysteine); this residue is unsupported by Sequest";
+                //    message = "Residues line contains U (selenocysteine); this residue is unsupported by SEQUEST";
                 //    break;
 
                 case (int)MessageCodeConstants.DuplicateProteinSequence:
@@ -5027,7 +5027,9 @@ namespace ValidateFastaFile
         {
             // Check for and remove any asterisks at the end of the residues
             while (currentResidues.Length > 0 && currentResidues[currentResidues.Length - 1] == '*')
+            {
                 currentResidues.Remove(currentResidues.Length - 1, 1);
+            }
 
             if (currentResidues.Length > 0)
             {
