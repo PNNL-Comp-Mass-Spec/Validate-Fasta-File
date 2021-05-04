@@ -31,7 +31,7 @@ namespace ValidateFastaFile
     {
         // Ignore Spelling: isoleucine, leucine, parseable, pre
 
-        public const string PROGRAM_DATE = "March 9, 2021";
+        public const string PROGRAM_DATE = "May 4, 2021";
 
         private static string mInputFilePath;
         private static string mOutputDirectoryPath;
@@ -473,7 +473,9 @@ namespace ValidateFastaFile
                 }
 
                 while (percentComplete >= mLastProgressReportValue)
+                {
                     mLastProgressReportValue += PERCENT_REPORT_INTERVAL;
+                }
 
                 mLastProgressReportTime = DateTime.UtcNow;
             }
