@@ -1873,9 +1873,6 @@ namespace ValidateFastaFile
                             ProteinCount++;
                             proteinHeaderFound = true;
                             processingResidueBlock = false;
-                            processingDuplicateOrInvalidProtein = false;
-
-                            proteinName = string.Empty;
 
                             AnalyzeFastaProcessProteinHeader(
                                 fixedFastaWriter,
