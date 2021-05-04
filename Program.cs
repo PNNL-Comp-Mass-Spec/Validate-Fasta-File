@@ -29,7 +29,7 @@ namespace ValidateFastaFile
     /// </remarks>
     internal static class Program
     {
-        // Ignore Spelling: parseable
+        // Ignore Spelling: isoleucine, leucine, parseable, pre
 
         public const string PROGRAM_DATE = "March 9, 2021";
 

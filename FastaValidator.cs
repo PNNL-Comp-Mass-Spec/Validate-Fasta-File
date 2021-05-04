@@ -8,7 +8,7 @@ using PRISM;
 
 namespace ValidateFastaFile
 {
-    // Ignore Spelling: jgi, gi, Lf, Mem, Validator, seqs, Dups, Diff, Sep, selenocysteine, ornithine, yyyy-MM-dd, A-Za-z
+    // Ignore Spelling: A-Za-z, Diff, Dups, gi, jgi, Lf, Mem, ornithine, pre, selenocysteine, Sep, seqs, Validator, varchar, yyyy-MM-dd
 
     /// <summary>
     /// Old FASTA file validator class name
