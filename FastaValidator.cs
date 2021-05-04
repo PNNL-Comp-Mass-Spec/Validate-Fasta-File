@@ -5807,6 +5807,7 @@ namespace ValidateFastaFile
             // Header line warnings
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+[ \t]*$", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY);
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\t", true, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY);
+            SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\xA0", true, "Non-breaking space after the protein name", DEFAULT_WARNING_SEVERITY);
 
             // Protein Name error characters
             var allowedChars = @"A-Za-z0-9.\-_:,\|/()\[\]\=\+#";
