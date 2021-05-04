@@ -919,6 +919,11 @@ namespace ValidateFastaFile
         private char[] mProteinNameFirstRefSepChars;
         private char[] mProteinNameSubsequentRefSepChars;
 
+        /// <summary>
+        /// This array has a space and a non-breaking space
+        /// </summary>
+        private readonly char[] mProteinAccessionSepChars = { ' ', '\x00a0' };
+
         private bool mAddMissingLinefeedAtEOF;
         private bool mCheckForDuplicateProteinNames;
 
@@ -3672,7 +3677,7 @@ namespace ValidateFastaFile
         /// <remarks>Used for determining protein name</remarks>
         private int GetBestSpaceIndex(string headerLine)
         {
-            var spaceIndex = headerLine.IndexOf(' ');
+            var spaceIndex = headerLine.IndexOfAny(mProteinAccessionSepChars);
             if (spaceIndex == 1)
             {
                 // Space found directly after the > symbol
