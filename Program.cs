@@ -75,7 +75,6 @@ namespace ValidateFastaFile
         {
             var commandLineParser = new clsParseCommandLine();
 
-            var returnCode = 0;
             mInputFilePath = string.Empty;
             mOutputDirectoryPath = string.Empty;
             mParameterFilePath = string.Empty;
@@ -105,12 +104,7 @@ namespace ValidateFastaFile
             mLastProgressReportTime = DateTime.UtcNow;
             try
             {
-                var proceed = false;
-                if (commandLineParser.ParseCommandLine())
-                {
-                    if (SetOptionsUsingCommandLineParameters(commandLineParser))
-                        proceed = true;
-                }
+                var proceed = commandLineParser.ParseCommandLine() && SetOptionsUsingCommandLineParameters(commandLineParser);
 
                 if (proceed && !commandLineParser.NeedToShowHelp && mCreateModelXMLParameterFile)
                 {
@@ -125,91 +119,92 @@ namespace ValidateFastaFile
                     Console.WriteLine("Created example XML parameter file: ");
                     Console.WriteLine("  " + mParameterFilePath);
                     Console.WriteLine();
+                    return 0;
                 }
-                else if (!proceed || commandLineParser.NeedToShowHelp || mInputFilePath.Length == 0)
+
+                if (!proceed || commandLineParser.NeedToShowHelp || mInputFilePath.Length == 0)
                 {
                     ShowProgramHelp();
-                    returnCode = -1;
+                    return -1;
                 }
-                else
+
+                mValidateFastaFile = new FastaValidator();
+                mValidateFastaFile.ProgressUpdate += ValidateFastaFile_ProgressChanged;
+                mValidateFastaFile.ProgressReset += ValidateFastaFile_ProgressReset;
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, mUseStatsFile);
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile);
+
+                // Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins);
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaKeepDuplicateNamedProteins, mFixedFastaKeepDuplicateNamedProteins);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs);
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, mAllowAsterisk);
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowDashInResidues, mAllowDash);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile);
+
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinNames, mCheckForDuplicateProteinNames);
+                mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinSequences, mCheckForDuplicateProteinSequences);
+
+                // Update the rules based on the options that were set above
+                mValidateFastaFile.SetDefaultRules();
+
+                mValidateFastaFile.ExistingProteinHashFile = mProteinHashFilePath;
+
+                mValidateFastaFile.SkipConsoleWriteIfNoProgressListener = true;
+
+                // Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
+                // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AddMissingLineFeedAtEOF, );
+                // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, );
+                // mValidateFastaFile.MaximumFileErrorsToTrack();
+                // mValidateFastaFile.MinimumProteinNameLength();
+                // mValidateFastaFile.MaximumProteinNameLength();
+                // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, );
+                // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinSequences, );
+                // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
+
+                int returnCode;
+                if (mRecurseDirectories)
                 {
-                    mValidateFastaFile = new FastaValidator();
-                    mValidateFastaFile.ProgressUpdate += ValidateFastaFile_ProgressChanged;
-                    mValidateFastaFile.ProgressReset += ValidateFastaFile_ProgressReset;
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, mUseStatsFile);
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.GenerateFixedFASTAFile, mGenerateFixedFastaFile);
-
-                    // Also use mGenerateFixedFastaFile to set SaveProteinSequenceHashInfoFiles
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, mGenerateFixedFastaFile);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaRenameDuplicateNameProteins, mFixedFastaRenameDuplicateNameProteins);
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaKeepDuplicateNamedProteins, mFixedFastaKeepDuplicateNamedProteins);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaConsolidateDuplicateProteinSeqs, mFixedFastaConsolidateDuplicateProteinSeqs);
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaConsolidateDupsIgnoreILDiff, mFixedFastaConsolidateDupsIgnoreILDiff);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.FixedFastaRemoveInvalidResidues, mFixedFastaRemoveInvalidResidues);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, mAllowAsterisk);
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowDashInResidues, mAllowDash);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveBasicProteinHashInfoFile, mSaveBasicProteinHashInfoFile);
-
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinNames, mCheckForDuplicateProteinNames);
-                    mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinSequences, mCheckForDuplicateProteinSequences);
-
-                    // Update the rules based on the options that were set above
-                    mValidateFastaFile.SetDefaultRules();
-
-                    mValidateFastaFile.ExistingProteinHashFile = mProteinHashFilePath;
-
-                    mValidateFastaFile.SkipConsoleWriteIfNoProgressListener = true;
-
-                    // Note: the following settings will be overridden if mParameterFilePath points to a valid parameter file that has these settings defined
-                    // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AddMissingLineFeedAtEOF, );
-                    // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, );
-                    // mValidateFastaFile.MaximumFileErrorsToTrack();
-                    // mValidateFastaFile.MinimumProteinNameLength();
-                    // mValidateFastaFile.MaximumProteinNameLength();
-                    // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, );
-                    // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.CheckForDuplicateProteinSequences, );
-                    // mValidateFastaFile.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, )
-
-                    if (mRecurseDirectories)
-                    {
-                        if (mValidateFastaFile.ProcessFilesAndRecurseDirectories(mInputFilePath, mOutputDirectoryPath, mOutputDirectoryPath, false, mParameterFilePath, mMaxLevelsToRecurse))
-                        {
-                            returnCode = 0;
-                        }
-                        else
-                        {
-                            returnCode = (int)mValidateFastaFile.ErrorCode;
-                        }
-                    }
-                    else if (mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputDirectoryPath, mParameterFilePath))
+                    if (mValidateFastaFile.ProcessFilesAndRecurseDirectories(mInputFilePath, mOutputDirectoryPath, mOutputDirectoryPath, false, mParameterFilePath, mMaxLevelsToRecurse))
                     {
                         returnCode = 0;
                     }
                     else
                     {
                         returnCode = (int)mValidateFastaFile.ErrorCode;
-                        if (returnCode != 0)
-                        {
-                            ShowErrorMessage("Error while processing: " + mValidateFastaFile.GetErrorMessage());
-                        }
                     }
-
-                    DisplayProgressPercent(mLastProgressReportValue, true);
                 }
+                else if (mValidateFastaFile.ProcessFilesWildcard(mInputFilePath, mOutputDirectoryPath, mParameterFilePath))
+                {
+                    returnCode = 0;
+                }
+                else
+                {
+                    returnCode = (int)mValidateFastaFile.ErrorCode;
+                    if (returnCode != 0)
+                    {
+                        ShowErrorMessage("Error while processing: " + mValidateFastaFile.GetErrorMessage());
+                    }
+                }
+
+                DisplayProgressPercent(mLastProgressReportValue, true);
+
+                return returnCode;
             }
             catch (Exception ex)
             {
                 ShowErrorMessage("Error occurred in Program->Main: " + ex.Message, ex);
-                returnCode = -1;
+                return -1;
             }
-
-            return returnCode;
         }
 
         private static void DisplayProgressPercent(int percentComplete, bool addCarriageReturn)
