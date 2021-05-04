@@ -41,65 +41,103 @@ namespace TestValidateFastaFileDLL
                     // Ignore errors here
                 }
 
-                Console.WriteLine("Examining file: " + testFilePath);
+                    TestReader(testFilePath);
 
-                var fastaFileValidator = new FastaValidator();
 
-                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, true);
+        private static bool FindInputFile(string testFilePath, out FileInfo fileInfo)
+        {
+            fileInfo = new FileInfo(testFilePath);
+            if (fileInfo.Exists)
+                return true;
 
-                // Note: the following settings will be overridden if parameter file with these settings defined is provided to .ProcessFile()
-                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AddMissingLineFeedAtEOF, false);
-                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, true);
+            var alternateDirectories = new List<string>
+            {
+                Path.Combine("..", "Docs"), Path.Combine("..", "..", "Docs")
+            };
 
-                fastaFileValidator.MaximumFileErrorsToTrack = 5;               // The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
-                fastaFileValidator.MinimumProteinNameLength = 3;
-                fastaFileValidator.MaximumProteinNameLength = 34;
-
-                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, false);
-
-                fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, true);
-
-                // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
-                var success = fastaFileValidator.ProcessFile(testFilePath, string.Empty);
-
-                if (success)
+            foreach (var alternateDirectory in alternateDirectories)
+            {
+                var alternateFile = new FileInfo(Path.Combine(alternateDirectory, fileInfo.Name));
+                if (!alternateFile.Exists)
                 {
-                    var count = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.ErrorMsg, FastaValidator.ErrorWarningCountTypes.Total);
-                    if (count == 0)
-                    {
-                        Console.WriteLine(" No errors were found");
-                    }
-                    else
-                    {
-                        Console.WriteLine(" " + count.ToString() + " errors were found");
-                    }
+                    continue;
+                }
 
-                    count = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.WarningMsg, FastaValidator.ErrorWarningCountTypes.Total);
-                    if (count == 0)
-                    {
-                        Console.WriteLine(" No warnings were found");
-                    }
-                    else
-                    {
-                        Console.WriteLine(" " + count.ToString() + " warnings were found");
-                    }
+                fileInfo = alternateFile;
+                return true;
+            }
 
-                    // ' Could enumerate the errors using the following
-                    for (var index = 0; index <= count - 1; index++)
-                        Console.WriteLine(fastaFileValidator.GetErrorMessageTextByIndex(index, "\t"));
+            return false;
+        }
+
+        private static void TestReader(string testFilePath)
+        {
+            if (!FindInputFile(testFilePath, out var testFile))
+                return;
+
+            Console.WriteLine("Examining file: " + testFile.FullName);
+
+            var fastaFileValidator = new FastaValidator();
+
+            fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.OutputToStatsFile, true);
+
+            // Note: the following settings will be overridden if a parameter file with these settings defined is passed to .ProcessFile()
+            fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AddMissingLineFeedAtEOF, false);
+            fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.AllowAsteriskInResidues, true);
+
+            fastaFileValidator.MaximumFileErrorsToTrack = 5;               // The maximum number of errors for each type of error; the total error count is always available, but detailed information is only saved for this many errors or warnings of each type
+            fastaFileValidator.MinimumProteinNameLength = 3;
+            fastaFileValidator.MaximumProteinNameLength = 34;
+
+            fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.WarnBlankLinesBetweenProteins, false);
+
+            fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, true);
+
+            // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
+            var success = fastaFileValidator.ProcessFile(testFile.FullName, string.Empty);
+
+            if (success)
+            {
+                var errorCount = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.ErrorMsg, FastaValidator.ErrorWarningCountTypes.Total);
+                if (errorCount == 0)
+                {
+                    Console.WriteLine(" No errors were found");
                 }
                 else
                 {
-                    ConsoleMsgUtils.ShowError("Error calling validateFastaFile.ProcessFile: " + fastaFileValidator.GetErrorMessage());
+                    Console.WriteLine(" {0} errors were found", errorCount);
+                }
+
+                var warningCount = fastaFileValidator.GetErrorWarningCounts(FastaValidator.MsgTypeConstants.WarningMsg, FastaValidator.ErrorWarningCountTypes.Total);
+                if (warningCount == 0)
+                {
+                    Console.WriteLine(" No warnings were found");
+                }
+                else
+                {
+                    Console.WriteLine(" {0} warnings were found", warningCount);
+                }
+
+                Console.WriteLine();
+
+                // Enumerate the errors
+                for (var index = 0; index < errorCount; index++)
+                {
+                    Console.WriteLine(fastaFileValidator.GetErrorMessageTextByIndex(index, "\t"));
+                }
+
+                Console.WriteLine();
+
+                // Enumerate the warnings
+                for (var index = 0; index < warningCount; index++)
+                {
+                    Console.WriteLine(fastaFileValidator.GetWarningMessageTextByIndex(index, "\t"));
                 }
             }
-            catch (Exception ex)
+            else
             {
-                ConsoleMsgUtils.ShowError("Error occurred: " + ex.Message);
-                returnCode = -1;
+                ConsoleMsgUtils.ShowError("Error calling validateFastaFile.ProcessFile: " + fastaFileValidator.GetErrorMessage());
             }
-
-            return returnCode;
         }
     }
 }
