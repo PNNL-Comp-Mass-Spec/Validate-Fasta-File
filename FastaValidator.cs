@@ -3953,7 +3953,7 @@ namespace ValidateFastaFile
         {
             if (ruleDefinitions == null || ruleDefinitions.Count == 0)
             {
-                ruleDetails = new RuleDefinitionExtended[0];
+                ruleDetails = Array.Empty<RuleDefinitionExtended>();
             }
             else
             {
