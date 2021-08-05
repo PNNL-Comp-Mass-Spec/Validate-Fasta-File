@@ -22,11 +22,7 @@ namespace ValidateFastaFile
         {
             get
             {
-                int totalItems = 0;
-                foreach (var subDictionary in mData.Values)
-                    totalItems += subDictionary.Count;
-
-                return totalItems;
+                return mData.Values.Sum(subDictionary => subDictionary.Count);
             }
         }
 
