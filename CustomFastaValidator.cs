@@ -321,7 +321,9 @@ namespace ValidateFastaFile
                 var warnings = GetFileWarnings();
 
                 foreach (var item in warnings)
+                {
                     RecordFastaFileProblem(item.LineNumber, item.ProteinName, item.MessageCode, string.Empty, ValidationMessageTypes.WarningMsg);
+                }
             }
 
             if (GetErrorWarningCounts(MsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total) <= 0)

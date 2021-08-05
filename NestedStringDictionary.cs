@@ -103,7 +103,9 @@ namespace ValidateFastaFile
         public void Clear()
         {
             foreach (var item in mData)
+            {
                 item.Value.Clear();
+            }
 
             mData.Clear();
         }

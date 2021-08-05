@@ -279,19 +279,25 @@ namespace ValidateFastaFile
 
                 if (commandLineParser.IsParameterPresent("F"))
                     mGenerateFixedFastaFile = true;
+
                 if (commandLineParser.IsParameterPresent("R"))
                     mFixedFastaRenameDuplicateNameProteins = true;
+
                 if (commandLineParser.IsParameterPresent("D"))
                     mFixedFastaConsolidateDuplicateProteinSeqs = true;
+
                 if (commandLineParser.IsParameterPresent("L"))
                     mFixedFastaConsolidateDupsIgnoreILDiff = true;
+
                 if (commandLineParser.IsParameterPresent("V"))
                     mFixedFastaRemoveInvalidResidues = true;
+
                 if (commandLineParser.IsParameterPresent("KeepSameName"))
                     mFixedFastaKeepDuplicateNamedProteins = true;
 
                 if (commandLineParser.IsParameterPresent("AllowAsterisk"))
                     mAllowAsterisk = true;
+
                 if (commandLineParser.IsParameterPresent("AllowDash"))
                     mAllowDash = true;
 

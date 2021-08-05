@@ -2435,7 +2435,11 @@ namespace ValidateFastaFile
             {
                 if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
                 {
-                    success = CorrectForDuplicateProteinSeqsInFasta(consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff, fastaFilePathOut, proteinSeqHashInfo);
+                    success = CorrectForDuplicateProteinSeqsInFasta(
+                        consolidateDuplicateProteinSeqsInFasta,
+                        consolidateDupsIgnoreILDiff,
+                        fastaFilePathOut,
+                        proteinSeqHashInfo);
                 }
             }
 
@@ -3988,7 +3992,9 @@ namespace ValidateFastaFile
                             var headerNames = cachedHeaderLine.Split('\t');
 
                             for (var colIndex = 0; colIndex <= headerNames.Length - 1; colIndex++)
+                            {
                                 headerInfo.Add(headerNames[colIndex], colIndex);
+                            }
                         }
 
                         proteinHashFileLines = 1;

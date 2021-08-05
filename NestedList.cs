@@ -29,7 +29,9 @@ namespace ValidateFastaFile
             {
                 var totalItems = 0;
                 foreach (var subList in mData.Values)
+                {
                     totalItems += subList.Count;
+                }
 
                 return totalItems;
             }
@@ -260,7 +262,9 @@ namespace ValidateFastaFile
         public void Clear()
         {
             foreach (var item in mData)
+            {
                 item.Value.Clear();
+            }
 
             mData.Clear();
             mDataIsSorted = true;
