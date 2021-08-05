@@ -86,7 +86,7 @@ namespace ValidateFastaFile
         /// <exception cref="System.ArgumentException">Thrown if the key has already been stored</exception>
         public void Add(string key, T value)
         {
-            string spannerKey = GetSpannerKey(key);
+            var spannerKey = GetSpannerKey(key);
 
             if (!mData.TryGetValue(spannerKey, out var subDictionary))
             {
@@ -117,7 +117,7 @@ namespace ValidateFastaFile
         /// <returns>True if the key exists, otherwise false</returns>
         public bool ContainsKey(string key)
         {
-            string spannerKey = GetSpannerKey(key);
+            var spannerKey = GetSpannerKey(key);
 
             if (mData.TryGetValue(spannerKey, out var subDictionary))
             {
@@ -140,7 +140,7 @@ namespace ValidateFastaFile
         /// </remarks>
         public string GetSizeSummary()
         {
-            string summary = mData.Keys.Count + " spanning keys";
+            var summary = mData.Keys.Count + " spanning keys";
 
             var keyNames = mData.Keys.ToList();
 
@@ -159,7 +159,7 @@ namespace ValidateFastaFile
             }
             else if (keyNames.Count > 2)
             {
-                int midPoint = keyNames.Count / 2;
+                var midPoint = keyNames.Count / 2;
 
                 summary += ": including " +
                     GetSpanningKeyDescription(keyNames[0]) + ", " +
@@ -172,15 +172,13 @@ namespace ValidateFastaFile
 
         private string GetSpanningKeyDescription(string keyName)
         {
-            string keyDescription = "'" + keyName + "' with " + mData[keyName].Values.Count + " item";
+            var keyDescription = "'" + keyName + "' with " + mData[keyName].Values.Count + " item";
             if (mData[keyName].Values.Count == 1)
             {
                 return keyDescription;
             }
-            else
-            {
-                return keyDescription + "s";
-            }
+
+            return keyDescription + "s";
         }
 
         // ReSharper disable once UnusedMember.Global
@@ -217,7 +215,7 @@ namespace ValidateFastaFile
         /// <returns>True if a match was found, otherwise nothing</returns>
         public bool TryGetValue(string key, out T value)
         {
-            string spannerKey = GetSpannerKey(key);
+            var spannerKey = GetSpannerKey(key);
 
             if (mData.TryGetValue(spannerKey, out var subDictionary))
             {
