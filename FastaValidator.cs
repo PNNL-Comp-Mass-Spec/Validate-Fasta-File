@@ -539,6 +539,7 @@ namespace ValidateFastaFile
             /// <summary>
             /// Number of items in Messages
             /// </summary>
+            [Obsolete("Use Messages.Count")]
             public int Count => Messages.Count;
 
             /// <summary>
@@ -1170,7 +1171,7 @@ namespace ValidateFastaFile
             var count = 0;
             if (countType == ErrorWarningCountTypes.Specified || countType == ErrorWarningCountTypes.Total)
             {
-                count += msgSet.Count;
+                count += msgSet.Messages.Count;
             }
 
             if (countType == ErrorWarningCountTypes.Unspecified || countType == ErrorWarningCountTypes.Total)
@@ -3742,7 +3743,7 @@ namespace ValidateFastaFile
 
         private string GetFileErrorTextByIndex(int fileErrorIndex, string sepChar)
         {
-            if (mFileErrors.Count <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Count)
+            if (mFileErrors.Messages.Count == 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Messages.Count)
             {
                 return string.Empty;
             }
@@ -3768,7 +3769,7 @@ namespace ValidateFastaFile
 
         private MsgInfo GetFileErrorByIndex(int fileErrorIndex)
         {
-            if (mFileErrors.Count <= 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Count)
+            if (mFileErrors.Messages.Count == 0 || fileErrorIndex < 0 || fileErrorIndex >= mFileErrors.Messages.Count)
             {
                 return new MsgInfo();
             }
@@ -3791,7 +3792,7 @@ namespace ValidateFastaFile
 
         private string GetFileWarningTextByIndex(int fileWarningIndex, string sepChar)
         {
-            if (mFileWarnings.Count <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Count)
+            if (mFileWarnings.Messages.Count == 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Messages.Count)
             {
                 return string.Empty;
             }
@@ -3818,7 +3819,7 @@ namespace ValidateFastaFile
 
         private MsgInfo GetFileWarningByIndex(int fileWarningIndex)
         {
-            if (mFileWarnings.Count <= 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Count)
+            if (mFileWarnings.Messages.Count == 0 || fileWarningIndex < 0 || fileWarningIndex >= mFileWarnings.Messages.Count)
             {
                 return new MsgInfo();
             }
@@ -5508,18 +5509,18 @@ namespace ValidateFastaFile
                     "Residue count", ResidueCount.ToString("#,##0"));
 
                 string proteinName;
-                if (mFileErrors.Count > 0)
+                if (mFileErrors.Messages.Count > 0)
                 {
                     ReportResultAddEntry(
                         outputOptions, MsgTypeConstants.ErrorMsg,
                         "Error count", GetErrorWarningCounts(MsgTypeConstants.ErrorMsg, ErrorWarningCountTypes.Total).ToString());
 
-                    if (mFileErrors.Count > 1)
+                    if (mFileErrors.Messages.Count > 1)
                     {
                         mFileErrors.Messages.Sort();
                     }
 
-                    for (var index = 0; index <= mFileErrors.Count - 1; index++)
+                    for (var index = 0; index <= mFileErrors.Messages.Count - 1; index++)
                     {
                         var fileError = mFileErrors.Messages[index];
                         if (string.IsNullOrEmpty(fileError.ProteinName))
@@ -5543,19 +5544,19 @@ namespace ValidateFastaFile
                     }
                 }
 
-                if (mFileWarnings.Count > 0)
+                if (mFileWarnings.Messages.Count > 0)
                 {
                     ReportResultAddEntry(
                         outputOptions, MsgTypeConstants.WarningMsg,
                         "Warning count",
                         GetErrorWarningCounts(MsgTypeConstants.WarningMsg, ErrorWarningCountTypes.Total).ToString());
 
-                    if (mFileWarnings.Count > 1)
+                    if (mFileWarnings.Messages.Count > 1)
                     {
                         mFileWarnings.Messages.Sort();
                     }
 
-                    for (var index = 0; index <= mFileWarnings.Count - 1; index++)
+                    for (var index = 0; index <= mFileWarnings.Messages.Count - 1; index++)
                     {
                         var fileWarning = mFileWarnings.Messages[index];
                         if (string.IsNullOrEmpty(fileWarning.ProteinName))
