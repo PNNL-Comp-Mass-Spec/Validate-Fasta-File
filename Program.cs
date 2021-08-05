@@ -9,7 +9,7 @@ using PRISM;
 namespace ValidateFastaFile
 {
     /// <summary>
-    /// This program will read in a Fasta file and write out stats on the number of proteins and number of residues
+    /// This program will read in a FASTA file and write out stats on the number of proteins and number of residues
     /// It will also validate the protein name, descriptions, and sequences in the file
     /// </summary>
     /// <remarks>
@@ -342,15 +342,15 @@ namespace ValidateFastaFile
                 Console.WriteLine("== Overview ==");
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "This program will read a Fasta File and display statistics on the number of proteins and number of residues. " +
+                    "This program will read a FASTA File and display statistics on the number of proteins and number of residues. " +
                     "It will also check that the protein names, descriptions, and sequences are in the correct format."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "The program can optionally create a new, fixed version of a fasta file where proteins with duplicate sequences " +
+                    "The program can optionally create a new, fixed version of a FASTA file where proteins with duplicate sequences " +
                     "have been consolidated, and proteins with duplicate names have been renamed."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "To remove duplicates from huge fasta files (over 1 GB in size), " +
+                    "To remove duplicates from huge FASTA files (over 1 GB in size), " +
                     "first create the ProteinHashes.txt file by calling this program with:"));
                 Console.WriteLine("  {0} Proteins.fasta /B /SkipDupeSeqCheck /SkipDupeNameCheck", exeName);
                 Console.WriteLine();
@@ -369,7 +369,7 @@ namespace ValidateFastaFile
                 Console.WriteLine(" [/X] [/S:[MaxLevel]]");
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "The input file path can contain the wildcard character * and should point to a fasta file."));
+                    "The input file path can contain the wildcard character * and should point to a FASTA file."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                     "The output directory path is optional, and is only used if /C is used. If omitted, the output stats file " +
@@ -391,38 +391,38 @@ namespace ValidateFastaFile
                     "are found, then an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "Use /R to rename proteins with duplicate names when using /F to generate a fixed fasta file."));
+                    "Use /R to rename proteins with duplicate names when using /F to generate a fixed FASTA file."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed fasta file."));
+                    "Use /D to consolidate proteins with duplicate protein sequences when using /F to generate a fixed FASTA file."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                     "Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating proteins " +
-                    "with duplicate protein sequences while generating a fixed fasta file."));
+                    "with duplicate protein sequences while generating a fixed FASTA file."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed fasta file."));
+                    "Use /V to remove invalid residues (non-letter characters, including an asterisk) when using /F to generate a fixed FASTA file."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed fasta file " +
+                    "Use /KeepSameName to keep proteins with the same name but differing sequences when using /F to generate a fixed FASTA file " +
                     "(if they have the same name and same sequence, then will only retain one entry); ignored if /R or /D is used"));
                 Console.WriteLine();
                 Console.WriteLine("Use /AllowDash to allow a - in residues");
                 Console.WriteLine("Use /AllowAsterisk to allow * in residues");
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "When parsing large fasta files, you can reduce the memory used by disabling the checking for duplicates"));
+                    "When parsing large FASTA files, you can reduce the memory used by disabling the checking for duplicates"));
 
                 Console.WriteLine(" /SkipDupeSeqCheck disables duplicate sequence checking (large memory footprint)");
                 Console.WriteLine(" /SkipDupeNameCheck disables duplicate name checking (small memory footprint)");
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                     "Use /B to save a hash info file (even if not consolidating duplicates). " +
-                    "This is useful for parsing a large fasta file to obtain the sequence hash for each protein " +
+                    "This is useful for parsing a large FASTA file to obtain the sequence hash for each protein " +
                     "(hash values are not cached in memory, thus small memory footprint)."));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
-                    "Use /HashFile to specify a pre-computed hash file to use for determining which proteins to keep when generating a fixed fasta file"));
+                    "Use /HashFile to specify a pre-computed hash file to use for determining which proteins to keep when generating a fixed FASTA file"));
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph("Use of /HashFile automatically enables /F and automatically disables /D, /R, and /B"));
                 Console.WriteLine();
                 Console.WriteLine("Use /X to specify that a model XML parameter file should be created.");

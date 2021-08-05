@@ -151,14 +151,14 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Keys are fasta filename
-        /// Values are the list of fasta file errors
+        /// Keys are FASTA filename
+        /// Values are the list of FASTA file errors
         /// </summary>
         public Dictionary<string, List<ErrorInfoExtended>> FullErrorCollection { get; }
 
         /// <summary>
-        /// Keys are fasta filename
-        /// Values are the list of fasta file warnings
+        /// Keys are FASTA filename
+        /// Values are the list of FASTA file warnings
         /// </summary>
         public Dictionary<string, List<ErrorInfoExtended>> FullWarningCollection { get; }
 

@@ -105,7 +105,7 @@ namespace TestValidateFastaFileDLL
 
             fastaFileValidator.SetOptionSwitch(FastaValidator.SwitchOptions.SaveProteinSequenceHashInfoFiles, true);
 
-            // Analyze the fasta file; returns true if the analysis was successful (even if the file contains errors or warnings)
+            // Analyze the FASTA file; returns true if the analysis was successful (even if the file contains errors or warnings)
             var success = fastaFileValidator.ProcessFile(testFile.FullName, string.Empty);
 
             if (success)

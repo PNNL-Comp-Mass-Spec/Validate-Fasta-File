@@ -30,7 +30,7 @@ namespace ValidateFastaFile
     }
 
     /// <summary>
-    /// This class will read a protein fasta file and validate its contents
+    /// This class will read a protein FASTA file and validate its contents
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1313,7 +1313,7 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Existing protein hash file to load into memory instead of computing new hash values while reading the fasta file
+        /// Existing protein hash file to load into memory instead of computing new hash values while reading the FASTA file
         /// </summary>
         public string ExistingProteinHashFile { get; set; }
 
@@ -1533,14 +1533,14 @@ namespace ValidateFastaFile
         #endregion
 
         /// <summary>
-        /// Examine the given fasta file to look for problems.
-        /// Optionally create a new, fixed fasta file
+        /// Examine the given FASTA file to look for problems.
+        /// Optionally create a new, fixed FASTA file
         /// Optionally also consolidate proteins with duplicate sequences
         /// </summary>
         /// <param name="fastaFilePathToCheck"></param>
         /// <param name="preloadedProteinNamesToKeep">
-        /// Preloaded list of protein names to include in the fixed fasta file
-        /// Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+        /// Preloaded list of protein names to include in the fixed FASTA file
+        /// Keys are protein names, values are the number of entries written to the fixed FASTA file for the given protein name
         /// </param>
         /// <returns>True if the file was successfully analyzed (even if errors were found)</returns>
         /// <remarks>Assumes fastaFilePathToCheck exists</remarks>
@@ -1578,7 +1578,7 @@ namespace ValidateFastaFile
                     mSaveBasicProteinHashInfoFile = false;
                     mCheckForDuplicateProteinSequences = false;
 
-                    // Auto-enable creating a fixed fasta file
+                    // Auto-enable creating a fixed FASTA file
                     mGenerateFixedFastaFile = true;
                     mFixedFastaOptions.ConsolidateProteinsWithDuplicateSeqs = false;
                     mFixedFastaOptions.RenameProteinsWithDuplicateNames = false;
@@ -1657,7 +1657,7 @@ namespace ValidateFastaFile
                 // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
                 var terminatorSize = DetermineLineTerminatorSize(fastaFilePathToCheck);
 
-                // Pre-scan a portion of the fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+                // Pre-scan a portion of the FASTA file to determine the appropriate value for mProteinNameSpannerCharLength
                 AutoDetermineFastaProteinNameSpannerCharLength(mFastaFilePath, terminatorSize);
 
                 // Open the input file
@@ -1665,7 +1665,7 @@ namespace ValidateFastaFile
 
                 using (var fastaReader = new StreamReader(new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
-                    // Optionally, open the output fasta file
+                    // Optionally, open the output FASTA file
                     if (mGenerateFixedFastaFile)
                     {
                         try
@@ -1778,7 +1778,7 @@ namespace ValidateFastaFile
                             OnErrorEvent(string.Format(
                                 "Error in AnalyzeFastaFile reading line {0}; " +
                                 "it is most likely millions of characters long, " +
-                                "indicating a corrupt fasta file", LineCount + 1), ex);
+                                "indicating a corrupt FASTA file", LineCount + 1), ex);
                             exceptionCaught = true;
                             break;
                         }
@@ -1839,7 +1839,7 @@ namespace ValidateFastaFile
 
                         if (lineIn.Trim().Length == 0)
                         {
-                            // We typically only want blank lines at the end of the fasta file or between two protein entries
+                            // We typically only want blank lines at the end of the FASTA file or between two protein entries
                             blankLineProcessed = true;
                             continue;
                         }
@@ -2056,7 +2056,7 @@ namespace ValidateFastaFile
 
                 if (usingPreloadedProteinNames)
                 {
-                    // Report stats on the number of proteins read, the number written, and any that had duplicate protein names in the original fasta file
+                    // Report stats on the number of proteins read, the number written, and any that had duplicate protein names in the original FASTA file
                     var nameCountNotFound = 0;
                     var duplicateProteinNameCount = 0;
                     var proteinCountWritten = 0;
@@ -2087,21 +2087,21 @@ namespace ValidateFastaFile
                     Console.WriteLine();
                     if (proteinCountWritten == preloadedProteinNameCount)
                     {
-                        ShowMessage("Fixed Fasta has all " + proteinCountWritten.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
+                        ShowMessage("Fixed FASTA has all " + proteinCountWritten.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
                     }
                     else
                     {
-                        ShowMessage("Fixed Fasta has " + proteinCountWritten.ToString("#,##0") + " of the " + preloadedProteinNameCount.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
+                        ShowMessage("Fixed FASTA has " + proteinCountWritten.ToString("#,##0") + " of the " + preloadedProteinNameCount.ToString("#,##0") + " proteins determined from the pre-existing protein hash file");
                     }
 
                     if (nameCountNotFound > 0)
                     {
-                        ShowMessage("WARNING: " + nameCountNotFound.ToString("#,##0") + " protein names were in the protein name list to keep, but were not found in the fasta file");
+                        ShowMessage("WARNING: " + nameCountNotFound.ToString("#,##0") + " protein names were in the protein name list to keep, but were not found in the FASTA file");
                     }
 
                     if (duplicateProteinNameCount > 0)
                     {
-                        ShowMessage("WARNING: " + duplicateProteinNameCount.ToString("#,##0") + " protein names were present multiple times in the fasta file; duplicate entries were skipped");
+                        ShowMessage("WARNING: " + duplicateProteinNameCount.ToString("#,##0") + " protein names were present multiple times in the FASTA file; duplicate entries were skipped");
                     }
 
                     success = !exceptionCaught;
@@ -2443,12 +2443,12 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Pre-scan a portion of the Fasta file to determine the appropriate value for mProteinNameSpannerCharLength
+        /// Pre-scan a portion of the FASTA file to determine the appropriate value for mProteinNameSpannerCharLength
         /// </summary>
-        /// <param name="fastaFilePathToTest">Fasta file to examine</param>
+        /// <param name="fastaFilePathToTest">FASTA file to examine</param>
         /// <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
         /// <remarks>
-        /// Reads 50 MB chunks from 10 sections of the Fasta file (or the entire Fasta file if under 500 MB in size)
+        /// Reads 50 MB chunks from 10 sections of the FASTA file (or the entire FASTA file if under 500 MB in size)
         /// Keeps track of the portion of protein names in common between adjacent proteins
         /// Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
         /// </remarks>
@@ -2522,7 +2522,7 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Read a portion of the Fasta file, comparing adjacent protein names and keeping track of the name portions in common
+        /// Read a portion of the FASTA file, comparing adjacent protein names and keeping track of the name portions in common
         /// </summary>
         /// <param name="fastaFile"></param>
         /// <param name="terminatorSize"></param>
@@ -2945,8 +2945,8 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Looks for duplicate proteins in the Fasta file
-        /// Creates a new fasta file that has exact duplicates removed
+        /// Looks for duplicate proteins in the FASTA file
+        /// Creates a new FASTA file that has exact duplicates removed
         /// Will consolidate proteins with the same sequence if consolidateDuplicateProteinSeqsInFasta=True
         /// </summary>
         /// <param name="consolidateDuplicateProteinSeqsInFasta"></param>
@@ -2981,17 +2981,17 @@ namespace ValidateFastaFile
             // Processing Steps
             // '''''''''''''''''''''
             //
-            // Open fixedFastaFilePath with the fasta file reader
-            // Create a new fasta file with a writer
+            // Open fixedFastaFilePath with the FASTA file reader
+            // Create a new FASTA file with a writer
 
             // For each protein, check whether it has duplicates
-            // If not, just write it out to the new fasta file
+            // If not, just write it out to the new FASTA file
 
             // If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
-            // and write out the name, new description, and sequence to the new fasta file
+            // and write out the name, new description, and sequence to the new FASTA file
 
             // Otherwise, check if it is a duplicate of a master protein
-            // If it is, then do not write the name, description, or sequence to the new fasta file
+            // If it is, then do not write the name, description, or sequence to the new FASTA file
 
             try
             {
@@ -3008,7 +3008,7 @@ namespace ValidateFastaFile
             {
                 RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.UnspecifiedError,
                     "Error renaming " + fixedFastaFilePath + " to " + fixedFastaFilePathTemp + ": " + ex.Message, string.Empty);
-                OnErrorEvent("Error renaming fixed fasta to .tempfixed", ex);
+                OnErrorEvent("Error renaming fixed FASTA to .tempfixed", ex);
                 return false;
             }
 
@@ -3019,7 +3019,7 @@ namespace ValidateFastaFile
                 // Open the file and read, at most, the first 100,000 characters to see if it contains CrLf or just Lf
                 terminatorSize = DetermineLineTerminatorSize(fixedFastaFilePathTemp);
 
-                // Open the Fixed fasta file
+                // Open the Fixed FASTA file
                 Stream fsInFile = new FileStream(
                     fixedFastaFilePathTemp,
                     FileMode.Open,
@@ -3038,14 +3038,14 @@ namespace ValidateFastaFile
 
             try
             {
-                // Create the new fasta file
+                // Create the new FASTA file
                 consolidatedFastaWriter = new StreamWriter(new FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
             }
             catch (Exception ex)
             {
                 RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.UnspecifiedError,
-                    "Error creating consolidated fasta output file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
-                OnErrorEvent("Error creating consolidated fasta output file", ex);
+                    "Error creating consolidated FASTA output file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error creating consolidated FASTA output file", ex);
             }
 
             try
@@ -3071,7 +3071,7 @@ namespace ValidateFastaFile
                     else
                     {
                         // .ProteinNameFirst is already present in proteinNameFirst
-                        // The fixed fasta file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
+                        // The fixed FASTA file will only actually contain the first occurrence of .ProteinNameFirst, so we can effectively ignore this entry
                         // but we should increment the DuplicateNameSkipCount
 
                     }
@@ -3104,7 +3104,7 @@ namespace ValidateFastaFile
                     }
                 }
 
-                // This list keeps track of the protein names that have been written out to the new fasta file
+                // This list keeps track of the protein names that have been written out to the new FASTA file
                 // Keys are the protein names; values are the index of the entry in proteinSeqHashInfo()
                 var proteinsWritten = new NestedStringDictionary<int>(false, mProteinNameSpannerCharLength);
 
@@ -3140,7 +3140,7 @@ namespace ValidateFastaFile
                     {
                         if (lineIn.Trim().Length > 0)
                         {
-                            // Note: Trim the start of the line (however, since this is a fixed fasta file it should not start with a space)
+                            // Note: Trim the start of the line (however, since this is a fixed FASTA file it should not start with a space)
                             lineIn = lineIn.TrimStart();
 
                             if (lineIn[0] == ProteinLineStartChar)
@@ -3195,8 +3195,8 @@ namespace ValidateFastaFile
             catch (Exception ex)
             {
                 RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.UnspecifiedError,
-                    "Error writing to consolidated fasta file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
-                OnErrorEvent("Error writing to consolidated fasta file", ex);
+                    "Error writing to consolidated FASTA file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
+                OnErrorEvent("Error writing to consolidated FASTA file", ex);
                 return false;
             }
             finally
@@ -3953,7 +3953,7 @@ namespace ValidateFastaFile
             out NestedStringIntList preloadedProteinNamesToKeep)
         {
             // List of protein names to keep
-            // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+            // Keys are protein names, values are the number of entries written to the fixed FASTA file for the given protein name
             preloadedProteinNamesToKeep = null;
 
             try
@@ -4867,7 +4867,7 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Validate a single fasta file
+        /// Validate a single FASTA file
         /// </summary>
         /// <returns>True if success; false if a fatal error</returns>
         /// <remarks>
@@ -4931,7 +4931,7 @@ namespace ValidateFastaFile
                 else
                 {
                     // List of protein names to keep
-                    // Keys are protein names, values are the number of entries written to the fixed fasta file for the given protein name
+                    // Keys are protein names, values are the number of entries written to the fixed FASTA file for the given protein name
                     NestedStringIntList preloadedProteinNamesToKeep = null;
 
                     if (!string.IsNullOrEmpty(ExistingProteinHashFile))
