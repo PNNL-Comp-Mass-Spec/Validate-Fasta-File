@@ -54,7 +54,7 @@ namespace ValidateFastaFile
         /// </summary>
         public FastaValidator()
         {
-            mFileDate = "May 4, 2021";
+            mFileDate = "August 5, 2021";
             InitializeLocalVariables();
         }
 
