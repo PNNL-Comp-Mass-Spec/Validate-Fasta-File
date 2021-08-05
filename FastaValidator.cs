@@ -3801,8 +3801,11 @@ namespace ValidateFastaFile
         {
             var fileErrors = new List<MsgInfo>();
 
-            for (var i = 0; i <= mFileErrors.Count - 1; i++)
-                fileErrors.Add(mFileErrors.Messages[i]);
+            foreach (var fileError in mFileErrors.Messages)
+            {
+                fileErrors.Add(fileError);
+            }
+
             return fileErrors;
         }
 
@@ -3851,8 +3854,10 @@ namespace ValidateFastaFile
         {
             var fileWarnings = new List<MsgInfo>();
 
-            for (var i = 0; i <= mFileWarnings.Count - 1; i++)
-                fileWarnings.Add(mFileWarnings.Messages[i]);
+            foreach (var fileWarning in mFileWarnings.Messages)
+            {
+                fileWarnings.Add(fileWarning);
+            }
 
             return fileWarnings;
         }
