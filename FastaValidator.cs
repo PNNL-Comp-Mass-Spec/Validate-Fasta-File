@@ -529,7 +529,7 @@ namespace ValidateFastaFile
             /// <summary>
             /// Error messages
             /// </summary>
-            public List<MsgInfo> Messages { get; } = new(10); // Initially reserve space for 10 errors
+            public List<MsgInfo> Messages { get; } = new();
 
             /// <summary>
             /// Stats dictionary
@@ -548,7 +548,6 @@ namespace ValidateFastaFile
             public void Reset()
             {
                 Messages.Clear();
-                Messages.Capacity = 10;
                 MessageCodeToErrorStats.Clear();
             }
 
