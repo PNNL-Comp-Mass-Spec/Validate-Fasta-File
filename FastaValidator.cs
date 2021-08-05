@@ -3248,7 +3248,7 @@ namespace ValidateFastaFile
             return ProteinLineStartChar + proteinName + " " + proteinDescription;
         }
 
-        private string ConstructStatsFilePath(string outputFolderPath)
+        private string ConstructStatsFilePath(string outputDirectoryPath)
         {
             var outFilePath = string.Empty;
 
@@ -3257,9 +3257,9 @@ namespace ValidateFastaFile
                 // Record the current time in now
                 outFilePath = "FastaFileStats_" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt";
 
-                if (!string.IsNullOrEmpty(outputFolderPath))
+                if (!string.IsNullOrEmpty(outputDirectoryPath))
                 {
-                    outFilePath = Path.Combine(outputFolderPath, outFilePath);
+                    outFilePath = Path.Combine(outputDirectoryPath, outFilePath);
                 }
             }
             catch (Exception)
@@ -4917,13 +4917,13 @@ namespace ValidateFastaFile
         /// Main processing function
         /// </summary>
         /// <param name="inputFilePath"></param>
-        /// <param name="outputFolderPath"></param>
+        /// <param name="outputDirectoryPath"></param>
         /// <param name="parameterFilePath"></param>
         /// <param name="resetErrorCode"></param>
         /// <returns>True if success, False if failure</returns>
         public override bool ProcessFile(
             string inputFilePath,
-            string outputFolderPath,
+            string outputDirectoryPath,
             string parameterFilePath,
             bool resetErrorCode)
         {
@@ -4956,7 +4956,7 @@ namespace ValidateFastaFile
                 Console.WriteLine();
                 ShowMessage("Parsing " + Path.GetFileName(inputFilePath));
 
-                if (!CleanupFilePaths(ref inputFilePath, ref outputFolderPath))
+                if (!CleanupFilePaths(ref inputFilePath, ref outputDirectoryPath))
                 {
                     SetBaseClassErrorCode(ProcessFilesErrorCodes.FilePathError);
                     return false;
@@ -4986,7 +4986,7 @@ namespace ValidateFastaFile
 
                         if (success)
                         {
-                            ReportResults(outputFolderPath, mOutputToStatsFile);
+                            ReportResults(outputDirectoryPath, mOutputToStatsFile);
                             DeleteTempFiles();
                             return true;
                         }
@@ -4994,7 +4994,7 @@ namespace ValidateFastaFile
                         {
                             if (mOutputToStatsFile)
                             {
-                                mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
+                                mStatsFilePath = ConstructStatsFilePath(outputDirectoryPath);
 
                                 using var statsFileWriter = new StreamWriter(mStatsFilePath, true);
 
@@ -5450,7 +5450,7 @@ namespace ValidateFastaFile
         }
 
         private void ReportResults(
-            string outputFolderPath,
+            string outputDirectoryPath,
             bool outputToStatsFile)
         {
             try
@@ -5468,7 +5468,7 @@ namespace ValidateFastaFile
 
                 if (outputToStatsFile)
                 {
-                    mStatsFilePath = ConstructStatsFilePath(outputFolderPath);
+                    mStatsFilePath = ConstructStatsFilePath(outputDirectoryPath);
                     var fileAlreadyExists = File.Exists(mStatsFilePath);
 
                     var success = false;
