@@ -1665,14 +1665,15 @@ namespace ValidateFastaFile
 
                 using (var fastaReader = new StreamReader(new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
-                    // Optionally, open the output FASTA file
+                    // Optionally, create the output FASTA file
                     if (mGenerateFixedFastaFile)
                     {
                         try
                         {
-                            fastaFilePathOut = Path.Combine(
-                                Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
-                                Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_new.fasta");
+                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+
+                            fastaFilePathOut = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_new.fasta");
+
                             fixedFastaWriter = new StreamWriter(new FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
                         }
                         catch (Exception ex)
@@ -1692,8 +1693,10 @@ namespace ValidateFastaFile
 
                         try
                         {
+                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+
                             basicProteinHashInfoFilePath = Path.Combine(
-                                Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
+                                outputDirectory,
                                 Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + PROTEIN_HASHES_FILENAME_SUFFIX);
 
                             sequenceHashWriter = new StreamWriter(new FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
@@ -2307,8 +2310,10 @@ namespace ValidateFastaFile
 
             try
             {
+                var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+
                 uniqueProteinSeqsFileOut = Path.Combine(
-                    Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
+                    outputDirectory,
                     Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqs.txt");
 
                 // Create uniqueProteinSeqsWriter
@@ -2327,10 +2332,14 @@ namespace ValidateFastaFile
             {
                 // Define the path to the protein mapping file, but don't create it yet; just delete it if it exists
                 // We'll only create it if two or more proteins have the same protein sequence
-                duplicateProteinMappingFileOut = Path.Combine(
-                    Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty,
-                    Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqDuplicates.txt");                       // Look for duplicateProteinMappingFileOut and erase it if it exists
 
+                var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+
+                duplicateProteinMappingFileOut = Path.Combine(
+                    outputDirectory,
+                    Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_UniqueProteinSeqDuplicates.txt");
+
+                // Look for duplicateProteinMappingFileOut and erase it if it exists
                 if (File.Exists(duplicateProteinMappingFileOut))
                 {
                     File.Delete(duplicateProteinMappingFileOut);
@@ -3434,9 +3443,17 @@ namespace ValidateFastaFile
                         break;
                 }
 
-                if (!Path.IsPathRooted(newFileName))
+                string newFilePath;
+
+                if (Path.IsPathRooted(newFileName))
                 {
-                    newFileName = Path.Combine(Path.GetDirectoryName(pathOfFileToFix) ?? string.Empty, Path.GetFileName(newFileName));
+                    newFilePath = newFileName;
+                }
+                else
+                {
+                    var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(pathOfFileToFix) ?? string.Empty);
+
+                    newFilePath = Path.Combine(outputDirectory, Path.GetFileName(newFileName));
                 }
 
                 var targetFile = new FileInfo(pathOfFileToFix);
@@ -3444,7 +3461,7 @@ namespace ValidateFastaFile
 
                 var reader = targetFile.OpenText();
 
-                using var writer = new StreamWriter(new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+                using var writer = new StreamWriter(new FileStream(newFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
 
                 this.OnProgressUpdate("Normalizing Line Endings...", 0.0F);
 
@@ -3471,7 +3488,7 @@ namespace ValidateFastaFile
 
                 reader.Close();
 
-                return newFileName;
+                return newFilePath;
             }
 
             return pathOfFileToFix;
@@ -3838,6 +3855,16 @@ namespace ValidateFastaFile
                 fileWarnings.Add(mFileWarnings.Messages[i]);
 
             return fileWarnings;
+        }
+
+        private string GetOutputDirectory(string inputFileDirectoryPath)
+        {
+            if (string.IsNullOrWhiteSpace(mOutputDirectoryPath))
+            {
+                return Path.GetDirectoryName(inputFileDirectoryPath) ?? string.Empty;
+            }
+
+            return mOutputDirectoryPath;
         }
 
         private string GetProcessMemoryUsageWithTimestamp()
