@@ -4426,6 +4426,14 @@ namespace ValidateFastaFile
                         var dataLine = sortedProteinNamesReader.ReadLine();
                         var dataValues = dataLine.Split('\t');
 
+                        linesRead++;
+
+                        if (dataValues.Length < 2)
+                        {
+                            OnWarningEvent(string.Format("Skipping line {0} in the protein hash file since it does not have 2 columns", linesRead));
+                            continue;
+                        }
+
                         var currentProtein = dataValues[0];
                         var sequenceHash = dataValues[1];
 
