@@ -14,8 +14,8 @@ or [on GitHub](https://github.com/PNNL-Comp-Mass-Spec/Protein-Digestion-Simulato
 
 ### Continuous Integration
 
-The latest version of the application is available on the [AppVeyor CI server](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/artifacts)
-though builds are deleted after 6 months. \
+The latest version of the application may be available on the [AppVeyor CI server](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file/build/artifacts),
+but builds are deleted after 6 months. \
 Otherwise, see the [GitHub release page](https://github.com/PNNL-Comp-Mass-Spec/Validate-Fasta-File/releases)
 
 [![Build status](https://ci.appveyor.com/api/projects/status/gg6u438llyhiupv3?svg=true)](https://ci.appveyor.com/project/PNNLCompMassSpec/validate-fasta-file)
@@ -123,7 +123,7 @@ The optional /Q switch will suppress all error messages.
 
 Written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) \
 E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov\
-Website: https://panomics.pnnl.gov/ or https://omics.pnl.gov
+Website: https://github.com/PNNL-Comp-Mass-Spec/ or https://panomics.pnnl.gov/ or https://www.pnnl.gov/integrative-omics
 
 ## License
 
