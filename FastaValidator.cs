@@ -9,7 +9,7 @@ using PRISM;
 
 namespace ValidateFastaFile
 {
-    // Ignore Spelling: A-Za-z, Diff, Dups, gi, jgi, Lf, Mem, ornithine, pre, selenocysteine, Sep, seqs, Validator, varchar, yyyy-MM-dd
+    // ReSharper disable UnusedMember.Global
 
     /// <summary>
     /// This class will read a protein FASTA file and validate its contents
@@ -31,6 +31,11 @@ namespace ValidateFastaFile
     /// </remarks>
     public class FastaValidator : PRISM.FileProcessor.ProcessFilesBase
     {
+        // ReSharper disable once CommentTypo
+
+        // Ignore Spelling: A-Za-z, Diff, Dups, xfffd, gi, gzipped, jgi, Lf, Mem, ornithine
+        // Ignore Spelling: pre, selenocysteine, Sep, seqs, Validator, varchar, yyyy-MM-dd
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -45,6 +50,7 @@ namespace ValidateFastaFile
         /// Constructor that takes a parameter file
         /// </summary>
         /// <param name="parameterFilePath"></param>
+        // ReSharper disable once UnusedMember.Global
         public FastaValidator(string parameterFilePath) : this()
         {
             LoadParameterFileSettings(parameterFilePath);
@@ -2974,6 +2980,8 @@ namespace ValidateFastaFile
             {
                 RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.UnspecifiedError,
                     "Error renaming " + fixedFastaFilePath + " to " + fixedFastaFilePathTemp + ": " + ex.Message, string.Empty);
+
+                // ReSharper disable once StringLiteralTypo
                 OnErrorEvent("Error renaming fixed FASTA to .tempfixed", ex);
                 return false;
             }
