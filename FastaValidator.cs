@@ -1739,8 +1739,9 @@ namespace ValidateFastaFile
                             continue;
                         }
 
-                        if (lineIn[0] == ' ' && mWarnLineStartsWithSpace)
+                        if (mWarnLineStartsWithSpace && (lineIn[0] == ' ' || lineIn[0] == '\x00A0' || lineIn[0] == '\t'))
                         {
+                            // Line starts with a space, non-breaking space, or a tab
                             RecordFastaFileError(LineCount, 0, string.Empty,
                                 (int)MessageCodeConstants.LineStartsWithSpace, string.Empty, ExtractContext(lineIn, 0));
                         }
