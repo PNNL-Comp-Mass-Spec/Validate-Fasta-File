@@ -582,7 +582,8 @@ namespace ValidateFastaFile
             public string MatchRegEx { get; }
 
             /// <summary>
-            /// True means text matching the RegEx means a problem; false means if text doesn't match the RegEx, then that means a problem
+            /// True means text matching the RegEx means a problem
+            /// False means if text doesn't match the RegEx, that means a problem
             /// </summary>
             public bool MatchIndicatesProblem { get; set; }
 
@@ -924,6 +925,9 @@ namespace ValidateFastaFile
         /// <summary>
         /// This array has a space and a non-breaking space
         /// </summary>
+        /// <remarks>
+        /// It should not include a tab since we check for that separately
+        /// </remarks>
         private readonly char[] mProteinAccessionSepChars = { ' ', '\x00a0' };
 
         private bool mAddMissingLinefeedAtEOF;
@@ -1779,6 +1783,7 @@ namespace ValidateFastaFile
                     while (!fastaReader.EndOfStream)
                     {
                         string lineIn;
+
                         try
                         {
                             lineIn = fastaReader.ReadLine();
@@ -2998,9 +3003,7 @@ namespace ValidateFastaFile
                 return true;
             }
 
-            // '''''''''''''''''''''
-            // Processing Steps
-            // '''''''''''''''''''''
+            // Processing Steps:
             //
             // Open fixedFastaFilePath with the FASTA file reader
             // Create a new FASTA file with a writer
@@ -3008,11 +3011,11 @@ namespace ValidateFastaFile
             // For each protein, check whether it has duplicates
             // If not, just write it out to the new FASTA file
 
-            // If it does have duplicates and it is the master, then append the duplicate protein names to the end of the description for the protein
+            // If it does have duplicates and it is the master, append the duplicate protein names to the end of the description for the protein
             // and write out the name, new description, and sequence to the new FASTA file
 
             // Otherwise, check if it is a duplicate of a master protein
-            // If it is, then do not write the name, description, or sequence to the new FASTA file
+            // If it is, do not write the name, description, or sequence to the new FASTA file
 
             try
             {
@@ -4900,7 +4903,7 @@ namespace ValidateFastaFile
                     break;
 
                 case (int)MessageCodeConstants.ResiduesAreLikelyDNA:
-                    message = "Residues are likely DNA, and not amino acids";
+                    message = "Residues are likely DNA instead of amino acids";
                     break;
 
                 case (int)MessageCodeConstants.UnspecifiedError:
@@ -5358,7 +5361,8 @@ namespace ValidateFastaFile
             int charIndex,
             string proteinName,
             int warningMessageCode,
-            string extraInfo, string context)
+            string extraInfo,
+            string context)
         {
             RecordFastaFileProblemWork(
                 mFileWarnings, lineNumber, charIndex, proteinName,
@@ -6105,11 +6109,11 @@ namespace ValidateFastaFile
             descriptionStartIndex = 0;
 
             // Make sure the protein name and description are valid
-            // Find the first space and/or tab
+            // Find the first space, non-breaking space, or tab
             var spaceIndex = GetBestSpaceIndex(headerLine);
 
             // At this point, spaceIndex will contain the location of the space or tab separating the protein name and description
-            // However, if the space or tab is directly after the > sign, then we cannot continue (if this is the case, then spaceIndex will be 1)
+            // However, if the space or tab is directly after the > sign, we cannot continue (if this is the case, spaceIndex will be 1)
             if (spaceIndex > 1)
             {
                 proteinName = headerLine.Substring(1, spaceIndex - 1);
