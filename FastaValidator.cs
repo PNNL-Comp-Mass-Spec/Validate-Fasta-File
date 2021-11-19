@@ -11,25 +11,6 @@ namespace ValidateFastaFile
     // Ignore Spelling: A-Za-z, Diff, Dups, gi, jgi, Lf, Mem, ornithine, pre, selenocysteine, Sep, seqs, Validator, varchar, yyyy-MM-dd
 
     /// <summary>
-    /// Old FASTA file validator class name
-    /// </summary>
-    [Obsolete("Renamed to 'FastaValidator'", true)]
-    // ReSharper disable once InconsistentNaming
-    public class clsValidateFastaFile : FastaValidator
-    {
-        /// <summary>
-        /// Parameterless constructor
-        /// </summary>
-        public clsValidateFastaFile() : base() { }
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <param name="parameterFilePath"></param>
-        public clsValidateFastaFile(string parameterFilePath) : base(parameterFilePath) { }
-    }
-
-    /// <summary>
     /// This class will read a protein FASTA file and validate its contents
     /// </summary>
     /// <remarks>
@@ -539,12 +520,6 @@ namespace ValidateFastaFile
             public Dictionary<int, ErrorStats> MessageCodeToErrorStats { get; } = new();
 
             /// <summary>
-            /// Number of items in Messages
-            /// </summary>
-            [Obsolete("Use Messages.Count")]
-            public int Count => Messages.Count;
-
-            /// <summary>
             /// Clear cached messages
             /// </summary>
             public void Reset()
@@ -996,30 +971,6 @@ namespace ValidateFastaFile
         private readonly List<string> mTempFilesToDelete;
 
         /// <summary>
-        /// Gets a processing option
-        /// </summary>
-        /// <param name="switchName"></param>
-        /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
-        [Obsolete("Use GetOptionSwitchValue instead", true)]
-        // ReSharper disable once UnusedMember.Global
-        public bool get_OptionSwitch(SwitchOptions switchName)
-        {
-            return GetOptionSwitchValue(switchName);
-        }
-
-        /// <summary>
-        /// Sets a processing option
-        /// </summary>
-        /// <param name="switchName"></param>
-        /// <param name="value"></param>
-        [Obsolete("Use SetOptionSwitch instead", true)]
-        // ReSharper disable once UnusedMember.Global
-        public void set_OptionSwitch(SwitchOptions switchName, bool value)
-        {
-            SetOptionSwitch(switchName, value);
-        }
-
-        /// <summary>
         /// Set a processing option
         /// </summary>
         /// <param name="switchName"></param>
@@ -1140,20 +1091,6 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="messageType"></param>
         /// <param name="countType"></param>
-        [Obsolete("Use GetErrorWarningCounts instead", true)]
-        // ReSharper disable once UnusedMember.Global
-        public int get_ErrorWarningCounts(
-            MsgTypeConstants messageType,
-            ErrorWarningCountTypes countType)
-        {
-            return GetErrorWarningCounts(messageType, countType);
-        }
-
-        /// <summary>
-        /// Get error warning counts for the given message type and count type
-        /// </summary>
-        /// <param name="messageType"></param>
-        /// <param name="countType"></param>
         public int GetErrorWarningCounts(
             MsgTypeConstants messageType,
             ErrorWarningCountTypes countType)
@@ -1188,17 +1125,6 @@ namespace ValidateFastaFile
             }
 
             return count;
-        }
-
-        /// <summary>
-        /// Get fixed FASTA file stats for the given stat category
-        /// </summary>
-        /// <param name="statCategory"></param>
-        [Obsolete("Use GetFixedFASTAFileStats instead", true)]
-        // ReSharper disable once UnusedMember.Global
-        public int get_FixedFASTAFileStats(FixedFASTAFileValues statCategory)
-        {
-            return GetFixedFASTAFileStats(statCategory);
         }
 
         /// <summary>
@@ -1242,33 +1168,9 @@ namespace ValidateFastaFile
         /// </summary>
         /// <param name="index"></param>
         /// <param name="valueSeparator"></param>
-        [Obsolete("Use GetErrorMessageTextByIndex", true)]
-        // ReSharper disable once UnusedMember.Global
-        public string get_ErrorMessageTextByIndex(int index, string valueSeparator)
-        {
-            return GetErrorMessageTextByIndex(index, valueSeparator);
-        }
-
-        /// <summary>
-        /// Get error message text by index in mErrors
-        /// </summary>
-        /// <param name="index"></param>
-        /// <param name="valueSeparator"></param>
         public string GetErrorMessageTextByIndex(int index, string valueSeparator)
         {
             return GetFileErrorTextByIndex(index, valueSeparator);
-        }
-
-        /// <summary>
-        /// Get warning message text by index in mFileWarnings
-        /// </summary>
-        /// <param name="index"></param>
-        /// <param name="valueSeparator"></param>
-        [Obsolete("Use GetWarningMessageTextByIndex", true)]
-        // ReSharper disable once UnusedMember.Global
-        public string get_WarningMessageTextByIndex(int index, string valueSeparator)
-        {
-            return GetWarningMessageTextByIndex(index, valueSeparator);
         }
 
         /// <summary>
@@ -1285,31 +1187,9 @@ namespace ValidateFastaFile
         /// Get error details, by index in mErrors
         /// </summary>
         /// <param name="errorIndex"></param>
-        [Obsolete("Use GetErrorsByIndex", true)]
-        // ReSharper disable once UnusedMember.Global
-        public MsgInfo get_ErrorsByIndex(int errorIndex)
-        {
-            return GetErrorsByIndex(errorIndex);
-        }
-
-        /// <summary>
-        /// Get error details, by index in mErrors
-        /// </summary>
-        /// <param name="errorIndex"></param>
         public MsgInfo GetErrorsByIndex(int errorIndex)
         {
             return GetFileErrorByIndex(errorIndex);
-        }
-
-        /// <summary>
-        /// Get warning details, by index in mWarnings
-        /// </summary>
-        /// <param name="warningIndex"></param>
-        [Obsolete("Use GetWarningsByIndex", true)]
-        // ReSharper disable once UnusedMember.Global
-        public MsgInfo get_WarningsByIndex(int warningIndex)
-        {
-            return GetWarningsByIndex(warningIndex);
         }
 
         /// <summary>

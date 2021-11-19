@@ -6,18 +6,6 @@ using System.IO;
 
 namespace ValidateFastaFile
 {
-    // Ignore Spelling: Validator
-
-    /// <summary>
-    /// Old class name
-    /// </summary>
-    [Obsolete("Renamed to 'CustomFastaValidator'", true)]
-    // ReSharper disable once InconsistentNaming
-    public class clsCustomValidateFastaFiles : CustomFastaValidator
-    {
-        // Intentionally empty
-    }
-
     /// <summary>
     /// Custom FASTA validator
     /// </summary>
@@ -27,6 +15,8 @@ namespace ValidateFastaFile
     /// </remarks>
     public class CustomFastaValidator : FastaValidator
     {
+        // Ignore Spelling: Validator
+
         /// <summary>
         /// Extended error info
         /// </summary>
