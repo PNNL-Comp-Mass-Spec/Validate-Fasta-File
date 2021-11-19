@@ -1837,7 +1837,7 @@ namespace ValidateFastaFile
                         }
                         else if (lineIn.Length > 100000)
                         {
-                            RecordFastaFileWarning(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesLineTooLong, "Line is over 1 million residues long; this could indicate a problem", string.Empty);
+                            RecordFastaFileWarning(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesLineTooLong, "Line is over 100,000 residues long; this could indicate a problem", string.Empty);
                         }
 
                         if (lineIn == null)
