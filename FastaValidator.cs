@@ -1854,9 +1854,9 @@ namespace ValidateFastaFile
                         }
 
                         // Note: Only trim the start of the line; do not trim the end of the line since SEQUEST incorrectly notates the peptide terminal state if a residue has a space after it
-                        lineIn = lineIn.TrimStart();
+                        var trimmedLine = lineIn.TrimStart();
 
-                        if (lineIn[0] == ProteinLineStartChar)
+                        if (trimmedLine[0] == ProteinLineStartChar)
                         {
                             // Protein entry
 
@@ -1881,7 +1881,7 @@ namespace ValidateFastaFile
 
                             AnalyzeFastaProcessProteinHeader(
                                 fixedFastaWriter,
-                                lineIn,
+                                trimmedLine,
                                 out proteinName,
                                 out processingDuplicateOrInvalidProtein,
                                 preloadedProteinNamesToKeep,
@@ -1927,7 +1927,7 @@ namespace ValidateFastaFile
                                 RecordFastaFileError(LineCount, 0, proteinName, (int)MessageCodeConstants.BlankLineInMiddleOfResidues);
                             }
 
-                            var newResidueCount = lineIn.Length;
+                            var newResidueCount = trimmedLine.Length;
                             ResidueCount += newResidueCount;
 
                             // Check the line length; raise a warning if longer than suggested
@@ -1937,7 +1937,7 @@ namespace ValidateFastaFile
                             }
 
                             // Test the protein sequence rules
-                            EvaluateRules(proteinSequenceRuleDetails, proteinName, lineIn, 0, lineIn, 5);
+                            EvaluateRules(proteinSequenceRuleDetails, proteinName, trimmedLine, 0, trimmedLine, 5);
 
                             if (mGenerateFixedFastaFile || mCheckForDuplicateProteinSequences || mSaveBasicProteinHashInfoFile)
                             {
@@ -1946,17 +1946,17 @@ namespace ValidateFastaFile
                                 if (mFixedFastaOptions.RemoveInvalidResidues)
                                 {
                                     // Auto-fix residues to remove any non-letter characters (spaces, asterisks, etc.)
-                                    residuesClean = reNonLetterResidues.Replace(lineIn, string.Empty);
+                                    residuesClean = reNonLetterResidues.Replace(trimmedLine, string.Empty);
                                 }
                                 else
                                 {
                                     // Do not remove non-letter characters, but do remove leading or trailing whitespace
-                                    residuesClean = string.Copy(lineIn.Trim());
+                                    residuesClean = string.Copy(trimmedLine.Trim());
                                 }
 
                                 if (fixedFastaWriter != null && !processingDuplicateOrInvalidProtein)
                                 {
-                                    if ((residuesClean ?? "") != (lineIn ?? ""))
+                                    if ((residuesClean ?? string.Empty) != (trimmedLine ?? string.Empty))
                                     {
                                         mFixedFastaStats.UpdatedResidueLines++;
                                     }
