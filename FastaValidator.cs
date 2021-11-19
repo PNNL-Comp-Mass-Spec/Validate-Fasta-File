@@ -3498,7 +3498,7 @@ namespace ValidateFastaFile
                 var match = ruleDetail.MatchRegEx.Match(textToTest);
 
                 if (ruleDetail.RuleDefinition.MatchIndicatesProblem && match.Success ||
-                    !(ruleDetail.RuleDefinition.MatchIndicatesProblem && !match.Success))
+                    !ruleDetail.RuleDefinition.MatchIndicatesProblem && !match.Success)
                 {
                     string extraInfo;
                     if (ruleDetail.RuleDefinition.DisplayMatchAsExtraInfo)
