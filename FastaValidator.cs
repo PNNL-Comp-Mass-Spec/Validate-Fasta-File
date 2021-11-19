@@ -3414,37 +3414,23 @@ namespace ValidateFastaFile
 
             if (endCharType != desiredLineEndCharacterType)
             {
-                switch (desiredLineEndCharacterType)
+                newEndChar = desiredLineEndCharacterType switch
                 {
-                    case LineEndingCharacters.CRLF:
-                        newEndChar = "\r\n";
-                        break;
-                    case LineEndingCharacters.CR:
-                        newEndChar = "\r";
-                        break;
-                    case LineEndingCharacters.LF:
-                        newEndChar = "\n";
-                        break;
-                    case LineEndingCharacters.LFCR:
-                        newEndChar = "\r\n";
-                        break;
-                }
+                    LineEndingCharacters.CRLF => "\r\n",
+                    LineEndingCharacters.CR => "\r",
+                    LineEndingCharacters.LF => "\n",
+                    LineEndingCharacters.LFCR => "\r\n",
+                    _ => newEndChar
+                };
 
-                switch (endCharType)
+                origEndCharCount = endCharType switch
                 {
-                    case LineEndingCharacters.CR:
-                        origEndCharCount = 2;
-                        break;
-                    case LineEndingCharacters.CRLF:
-                        origEndCharCount = 1;
-                        break;
-                    case LineEndingCharacters.LF:
-                        origEndCharCount = 1;
-                        break;
-                    case LineEndingCharacters.LFCR:
-                        origEndCharCount = 2;
-                        break;
-                }
+                    LineEndingCharacters.CR => 2,
+                    LineEndingCharacters.CRLF => 1,
+                    LineEndingCharacters.LF => 1,
+                    LineEndingCharacters.LFCR => 2,
+                    _ => origEndCharCount
+                };
 
                 string newFilePath;
 
