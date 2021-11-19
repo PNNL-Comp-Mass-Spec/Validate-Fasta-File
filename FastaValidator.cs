@@ -1847,13 +1847,10 @@ namespace ValidateFastaFile
                             continue;
                         }
 
-                        if (lineIn[0] == ' ')
+                        if (lineIn[0] == ' ' && mWarnLineStartsWithSpace)
                         {
-                            if (mWarnLineStartsWithSpace)
-                            {
-                                RecordFastaFileError(LineCount, 0, string.Empty,
-                                                     (int)MessageCodeConstants.LineStartsWithSpace, string.Empty, ExtractContext(lineIn, 0));
-                            }
+                            RecordFastaFileError(LineCount, 0, string.Empty,
+                                (int)MessageCodeConstants.LineStartsWithSpace, string.Empty, ExtractContext(lineIn, 0));
                         }
 
                         // Note: Only trim the start of the line; do not trim the end of the line since SEQUEST incorrectly notates the peptide terminal state if a residue has a space after it
