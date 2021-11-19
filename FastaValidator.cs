@@ -221,7 +221,8 @@ namespace ValidateFastaFile
             DuplicateProteinSequence = 18,
             RenamedProtein = 19,
             ProteinRemovedSinceDuplicateSequence = 20,
-            DuplicateProteinNameRetained = 21
+            DuplicateProteinNameRetained = 21,
+            ResiduesAreLikelyDNA = 22
 #pragma warning restore 1591
         }
 
@@ -3985,6 +3986,33 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Return true if all of the residues are A, T, C, or G
+        /// </summary>
+        /// <param name="residues"></param>
+        private bool IsLikelyDNA(StringBuilder residues)
+        {
+            var aminoAcidCount = 0;
+            var dnaCount = 0;
+
+            for (var i = 0; i < residues.Length; i++)
+            {
+                if (!char.IsLetter(residues[i]))
+                    continue;
+
+                if (residues[i] is 'A' or 'T' or 'C' or 'G')
+                {
+                    dnaCount++;
+                }
+                else
+                {
+                    aminoAcidCount++;
+                }
+            }
+
+            return dnaCount > 0 && aminoAcidCount == 0;
+        }
+
         private bool LoadExistingProteinHashFile(
             string proteinHashFilePath,
             out NestedStringIntList preloadedProteinNamesToKeep)
@@ -4870,6 +4898,11 @@ namespace ValidateFastaFile
                 case (int)MessageCodeConstants.DuplicateProteinNameRetained:
                     message = "Duplicate protein retained in fixed file";
                     break;
+
+                case (int)MessageCodeConstants.ResiduesAreLikelyDNA:
+                    message = "Residues are likely DNA, and not amino acids";
+                    break;
+
                 case (int)MessageCodeConstants.UnspecifiedError:
                     message = "Unspecified error";
                     break;
@@ -5123,7 +5156,12 @@ namespace ValidateFastaFile
                     fixedFastaWriter.WriteLine(currentResidues.ToString(index, length));
                     index += wrapLength;
                 }
+            }
 
+            if (IsLikelyDNA(currentResidues))
+            {
+                var initialResidues = currentResidues.ToString(0, Math.Min(20, currentResidues.Length));
+                RecordFastaFileWarning(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesAreLikelyDNA, string.Empty, initialResidues);
             }
 
             currentResidues.Clear();
