@@ -55,6 +55,7 @@ namespace ValidateFastaFile
         public FastaValidator()
         {
             mFileDate = "August 5, 2021";
+            mTempFilesToDelete = new List<string>();
             InitializeLocalVariables();
         }
 
@@ -987,7 +988,7 @@ namespace ValidateFastaFile
 
         private string mSortUtilityErrorMessage;
 
-        private List<string> mTempFilesToDelete;
+        private readonly List<string> mTempFilesToDelete;
 
         /// <summary>
         /// Gets a processing option
@@ -3933,7 +3934,7 @@ namespace ValidateFastaFile
 #pragma warning restore CS0162 // Unreachable code detected
             }
 
-            mTempFilesToDelete = new List<string>();
+            mTempFilesToDelete.Clear();
         }
 
         private void InitializeRuleDetails(
