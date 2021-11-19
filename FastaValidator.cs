@@ -3398,23 +3398,6 @@ namespace ValidateFastaFile
             return endCharacterType;
         }
 
-        // Unused function
-        //private string ExtractListItem(string list, int item)
-        //{
-        //    string itemStr = string.Empty;
-        //
-        //    if (item >= 1 && list != null)
-        //    {
-        //        var items = list.Split(',');
-        //        if (items.Length >= item)
-        //        {
-        //            itemStr = items[item - 1];
-        //        }
-        //    }
-        //
-        //    return itemStr;
-        //}
-
         private string NormalizeFileLineEndings(
             string pathOfFileToFix,
             string newFileName,
@@ -4779,68 +4762,35 @@ namespace ValidateFastaFile
                 case (int)MessageCodeConstants.ProteinNameIsTooLong:
                     message = "Protein name is longer than the maximum allowed length of " + mMaximumProteinNameLength.ToString() + " characters";
                     break;
-                //case (int)MessageCodeConstants.ProteinNameContainsInvalidCharacters:
-                //    message = "Protein name contains invalid characters";
-                //    if (!specifiedInvalidProteinNameChars)
-                //    {
-                //        message += " (should contain letters, numbers, period, dash, underscore, colon, comma, or vertical bar)";
-                //        specifiedInvalidProteinNameChars = true;
-                //    }
-                //    break;
+
                 case (int)MessageCodeConstants.LineStartsWithSpace:
                     message = "Found a line starting with a space";
                     break;
-                //case (int)MessageCodeConstants.RightArrowFollowedBySpace:
-                //    message = "Space found directly after the > symbol";
-                //    break;
-                //case (int)MessageCodeConstants.RightArrowFollowedByTab:
-                //    message = "Tab character found directly after the > symbol";
-                //    break;
-                //case (int)MessageCodeConstants.RightArrowButNoProteinName:
-                //    message = "Line starts with > but does not contain a protein name";
-                //    break;
+
                 case (int)MessageCodeConstants.BlankLineBetweenProteinNameAndResidues:
                     message = "A blank line was found between the protein name and its residues";
                     break;
+
                 case (int)MessageCodeConstants.BlankLineInMiddleOfResidues:
                     message = "A blank line was found in the middle of the residue block for the protein";
                     break;
+
                 case (int)MessageCodeConstants.ResiduesFoundWithoutProteinHeader:
                     message = "Residues were found, but a protein header didn't precede them";
                     break;
-                //case (int)MessageCodeConstants.ResiduesWithAsterisk:
-                //    message = "An asterisk was found in the residues";
-                //    break;
-                //case (int)MessageCodeConstants.ResiduesWithSpace:
-                //    message = "A space was found in the residues";
-                //    break;
-                //case (int)MessageCodeConstants.ResiduesWithTab:
-                //    message = "A tab character was found in the residues";
-                //    break;
-                //case (int)MessageCodeConstants.ResiduesWithInvalidCharacters:
-                //    message = "Invalid residues found";
-                //    if (!specifiedResidueChars)
-                //    {
-                //        if (mAllowAsteriskInResidues)
-                //        {
-                //            message += " (should be any capital letter except J, plus *)";
-                //        }
-                //        else
-                //        {
-                //            message += " (should be any capital letter except J)";
-                //        }
-                //        specifiedResidueChars = true;
-                //    }
-                //    break;
+
                 case (int)MessageCodeConstants.ProteinEntriesNotFound:
                     message = "File does not contain any protein entries";
                     break;
+
                 case (int)MessageCodeConstants.FinalProteinEntryMissingResidues:
                     message = "The last entry in the file is a protein header line, but there is no protein sequence line after it";
                     break;
+
                 case (int)MessageCodeConstants.FileDoesNotEndWithLinefeed:
                     message = "File does not end in a blank line; this is a problem for SEQUEST";
                     break;
+
                 case (int)MessageCodeConstants.DuplicateProteinName:
                     message = "Duplicate protein name found";
                     break;
@@ -4849,55 +4799,27 @@ namespace ValidateFastaFile
                 case (int)MessageCodeConstants.ProteinNameIsTooShort:
                     message = "Protein name is shorter than the minimum suggested length of " + mMinimumProteinNameLength.ToString() + " characters";
                     break;
-                //case (int)MessageCodeConstants.ProteinNameContainsComma:
-                //    message = "Protein name contains a comma";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinNameContainsVerticalBars:
-                //    message = "Protein name contains two or more vertical bars";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinNameContainsWarningCharacters:
-                //    message = "Protein name contains undesirable characters";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinNameWithoutDescription:
-                //    message = "Line contains a protein name, but not a description";
-                //    break;
+
                 case (int)MessageCodeConstants.BlankLineBeforeProteinName:
                     message = "Blank line found before the protein name; this is acceptable, but not preferred";
                     break;
-                // case (int)MessageCodeConstants.ProteinNameAndDescriptionSeparatedByTab:
-                //    message = "Protein name is separated from the protein description by a tab";
-                //    break;
+
                 case (int)MessageCodeConstants.ResiduesLineTooLong:
                     message = "Residues line is longer than the suggested maximum length of " + mMaximumResiduesPerLine.ToString() + " characters";
                     break;
-                //case (int)MessageCodeConstants.ProteinDescriptionWithTab:
-                //    message = "Protein description contains a tab character";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinDescriptionWithQuotationMark:
-                //    message = "Protein description contains a quotation mark";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinDescriptionWithEscapedSlash:
-                //    message = "Protein description contains escaped slash: \/";
-                //    break;
-                //case (int)MessageCodeConstants.ProteinDescriptionWithUndesirableCharacter:
-                //    message = "Protein description contains undesirable characters";
-                //    break;
-                //case (int)MessageCodeConstants.ResiduesLineTooLong:
-                //    message = "Residues line is longer than the suggested maximum length of " + mMaximumResiduesPerLine.ToString + " characters";
-                //    break;
-                //case (int)MessageCodeConstants.ResiduesLineContainsU:
-                //    message = "Residues line contains U (selenocysteine); this residue is unsupported by SEQUEST";
-                //    break;
 
                 case (int)MessageCodeConstants.DuplicateProteinSequence:
                     message = "Duplicate protein sequences found";
                     break;
+
                 case (int)MessageCodeConstants.RenamedProtein:
                     message = "Renamed protein because duplicate name";
                     break;
+
                 case (int)MessageCodeConstants.ProteinRemovedSinceDuplicateSequence:
                     message = "Removed protein since duplicate sequence";
                     break;
+
                 case (int)MessageCodeConstants.DuplicateProteinNameRetained:
                     message = "Duplicate protein retained in fixed file";
                     break;
