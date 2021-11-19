@@ -1089,6 +1089,9 @@ namespace ValidateFastaFile
                 case SwitchOptions.AllowAllSymbolsInProteinNames:
                     mAllowAllSymbolsInProteinNames = state;
                     break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(switchName), switchName, "Unrecognized enum for switchName option");
             }
         }
 
@@ -2922,6 +2925,9 @@ namespace ValidateFastaFile
                 case RuleTypes.ProteinSequence:
                     ClearRulesDataStructure(mProteinSequenceRules);
                     break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(ruleType), ruleType, "Unrecognized enum for ruleType");
             }
         }
 
@@ -5974,6 +5980,9 @@ namespace ValidateFastaFile
                 case RuleTypes.ProteinSequence:
                     SetRule(mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
                     break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(ruleType), ruleType, "Unrecognized enum for ruleType");
             }
         }
 
