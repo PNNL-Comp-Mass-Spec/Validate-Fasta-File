@@ -31,7 +31,7 @@ namespace ValidateFastaFile
     {
         // Ignore Spelling: isoleucine, leucine, parseable, pre
 
-        public const string PROGRAM_DATE = "August 5, 2021";
+        public const string PROGRAM_DATE = "November 19, 2021";
 
         private static string mInputFilePath;
         private static string mOutputDirectoryPath;
@@ -437,7 +437,7 @@ namespace ValidateFastaFile
                     "Include a number after /S (like /S:2) to limit the level of subdirectories to examine."));
                 Console.WriteLine();
 
-                Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA) in 2012");
+                Console.WriteLine("Program written by Matthew Monroe for the Department of Energy (PNNL, Richland, WA)");
                 Console.WriteLine("Version: " + GetAppVersion());
                 Console.WriteLine();
 

@@ -35,7 +35,7 @@ namespace ValidateFastaFile
         /// </summary>
         public FastaValidator()
         {
-            mFileDate = "August 5, 2021";
+            mFileDate = "November 19, 2021";
             mTempFilesToDelete = new List<string>();
             InitializeLocalVariables();
         }
