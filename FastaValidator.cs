@@ -3929,7 +3929,7 @@ namespace ValidateFastaFile
         }
 
         /// <summary>
-        /// Return true if all of the residues are A, T, C, or G
+        /// Return true if all of the characters in residues are A, T, C, or G
         /// </summary>
         /// <param name="residues"></param>
         private bool IsLikelyDNA(StringBuilder residues)
@@ -5611,10 +5611,11 @@ namespace ValidateFastaFile
             }
         }
 
+        /// <summary>
+        /// Reset the error arrays and stats variables
+        /// </summary>
         private void ResetStructures()
         {
-            // This is used to reset the error arrays and stats variables
-
             LineCount = 0;
             ProteinCount = 0;
             ResidueCount = 0;
