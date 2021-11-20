@@ -3313,30 +3313,32 @@ namespace ValidateFastaFile
                         break;
                     }
 
-                    if (oneByte == 13)
+                    if (oneByte != 13)
                     {
-                        // Found carriage return
-                        if (fsInFile.Position < fsInFile.Length)
+                        continue;
+                    }
+
+                    // Found carriage return
+                    if (reader.Position < reader.Length)
+                    {
+                        oneByte = reader.ReadByte();
+                        if (oneByte == 10)
                         {
-                            oneByte = fsInFile.ReadByte();
-                            if (oneByte == 10)
-                            {
-                                // CrLf
-                                endCharacterType = LineEndingCharacters.CRLF;
-                            }
-                            else
-                            {
-                                // Cr only
-                                endCharacterType = LineEndingCharacters.CR;
-                            }
+                            // CrLf
+                            endCharacterType = LineEndingCharacters.CRLF;
                         }
                         else
                         {
+                            // Cr only
                             endCharacterType = LineEndingCharacters.CR;
                         }
-
-                        break;
                     }
+                    else
+                    {
+                        endCharacterType = LineEndingCharacters.CR;
+                    }
+
+                    break;
                 }
             }
             catch (Exception)
@@ -4915,27 +4917,25 @@ namespace ValidateFastaFile
                         DeleteTempFiles();
                         return true;
                     }
+
+                    if (mOutputToStatsFile)
+                    {
+                        mStatsFilePath = ConstructStatsFilePath(outputDirectoryPath);
+
+                        using var statsFileWriter = new StreamWriter(mStatsFilePath, true);
+
+                        statsFileWriter.WriteLine(GetTimeStamp() + "\t" +
+                                                  "Error parsing " +
+                                                  Path.GetFileName(inputFilePath) + ": " + GetErrorMessage());
+                    }
                     else
                     {
-                        if (mOutputToStatsFile)
-                        {
-                            mStatsFilePath = ConstructStatsFilePath(outputDirectoryPath);
-
-                            using var statsFileWriter = new StreamWriter(mStatsFilePath, true);
-
-                            statsFileWriter.WriteLine(GetTimeStamp() + "\t" +
-                                                      "Error parsing " +
-                                                      Path.GetFileName(inputFilePath) + ": " + GetErrorMessage());
-                        }
-                        else
-                        {
-                            ShowMessage("Error parsing " +
-                                        Path.GetFileName(inputFilePath) +
-                                        ": " + GetErrorMessage());
-                        }
-
-                        return false;
+                        ShowMessage("Error parsing " +
+                                    Path.GetFileName(inputFilePath) +
+                                    ": " + GetErrorMessage());
                     }
+
+                    return false;
                 }
                 catch (Exception ex)
                 {
