@@ -1,5 +1,25 @@
 Validate Fasta File Change Log
 
+Version 2.3.7994; November 20, 2021
+	- Fix logic bug for rules that have false for MatchIndicatesProblem
+	- Warn if the protein sequence is likely DNA bases
+	- Report an error if a line starts with a non-breaking space or tab
+	- Add ability to read .fasta.gz files
+	- Look for the Unicode replacement character after protein names
+
+Version 2.2.7887; August 5, 2021
+	- When /O is used to specify an output directory, the fixed FASTA file will now be created in the output directory instead of the input directory
+
+Version 2.2.7794; May 4, 2021
+	- Convert to C#
+	- Add .faa as a supported file extension
+	- Report a warning if there is a non-breaking space after the protein name
+	- Add test file with UTF-8 encoding
+
+Version 2.2.7410; April 15, 2020
+	- Check for long lines (with millions of residues or invalid characters)
+	- Update to .NET 4.7.2 and update PRISM.dll from NuGet
+
 Version 2.2.7006; March 8, 2019
 	- Use ComputeStringHashSha1 in PRISM.dll
 
