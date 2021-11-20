@@ -2905,8 +2905,8 @@ namespace ValidateFastaFile
 
             var cachedProteinName = string.Empty;
             var cachedProteinDescription = string.Empty;
-            var sbCachedProteinResidueLines = new StringBuilder(250);
-            var sbCachedProteinResidues = new StringBuilder(250);
+            var cachedProteinResidueLines = new StringBuilder(250);
+            var cachedProteinResidues = new StringBuilder(250);
 
             bool success;
 
@@ -3098,14 +3098,13 @@ namespace ValidateFastaFile
                             WriteCachedProtein(
                                 cachedProteinName, cachedProteinDescription,
                                 consolidatedFastaWriter, proteinSeqHashInfo,
-                                sbCachedProteinResidueLines, sbCachedProteinResidues,
+                                cachedProteinResidueLines, cachedProteinResidues,
                                 consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
                                 proteinNameFirst, duplicateProteinList,
                                 lineCountRead, proteinsWritten);
 
-                            cachedProteinName = string.Empty;
-                            sbCachedProteinResidueLines.Length = 0;
-                            sbCachedProteinResidues.Length = 0;
+                            cachedProteinResidueLines.Length = 0;
+                            cachedProteinResidues.Length = 0;
                         }
 
                         // Extract the protein name and description
@@ -3114,8 +3113,8 @@ namespace ValidateFastaFile
                     else
                     {
                         // Protein residues
-                        sbCachedProteinResidueLines.AppendLine(lineIn);
-                        sbCachedProteinResidues.Append(lineIn.Trim());
+                        cachedProteinResidueLines.AppendLine(lineIn);
+                        cachedProteinResidues.Append(lineIn.Trim());
                     }
                 }
 
@@ -3125,7 +3124,7 @@ namespace ValidateFastaFile
                     WriteCachedProtein(
                         cachedProteinName, cachedProteinDescription,
                         consolidatedFastaWriter, proteinSeqHashInfo,
-                        sbCachedProteinResidueLines, sbCachedProteinResidues,
+                        cachedProteinResidueLines, cachedProteinResidues,
                         consolidateDuplicateProteinSeqsInFasta, consolidateDupsIgnoreILDiff,
                         proteinNameFirst, duplicateProteinList,
                         lineCountRead, proteinsWritten);
@@ -5079,7 +5078,7 @@ namespace ValidateFastaFile
         private int CachedSequenceHashInfoUpdateAppend(
             List<ProteinHashInfo> proteinSeqHashInfo,
             string computedHash,
-            StringBuilder sbCurrentResidues,
+            StringBuilder currentResidues,
             string proteinName)
         {
             if (proteinSeqHashInfo.Count >= proteinSeqHashInfo.Capacity)
@@ -5095,7 +5094,7 @@ namespace ValidateFastaFile
                 }
             }
 
-            var newProteinHashInfo = new ProteinHashInfo(computedHash, sbCurrentResidues, proteinName);
+            var newProteinHashInfo = new ProteinHashInfo(computedHash, currentResidues, proteinName);
             var addLocation = proteinSeqHashInfo.Count;
             proteinSeqHashInfo.Add(newProteinHashInfo);
 
@@ -6019,8 +6018,8 @@ namespace ValidateFastaFile
             string cachedProteinDescription,
             TextWriter consolidatedFastaWriter,
             IList<ProteinHashInfo> proteinSeqHashInfo,
-            StringBuilder sbCachedProteinResidueLines,
-            StringBuilder sbCachedProteinResidues,
+            StringBuilder cachedProteinResidueLines,
+            StringBuilder cachedProteinResidues,
             bool consolidateDuplicateProteinSeqsInFasta,
             bool consolidateDupsIgnoreILDiff,
             NestedStringDictionary<int> proteinNameFirst,
@@ -6043,7 +6042,7 @@ namespace ValidateFastaFile
                     if (mFixedFastaOptions.KeepDuplicateNamedProteinsUnlessMatchingSequence)
                     {
                         // Keep this protein if its sequence hash differs from the first protein with this name
-                        var proteinHash = ComputeProteinHash(sbCachedProteinResidues, consolidateDupsIgnoreILDiff);
+                        var proteinHash = ComputeProteinHash(cachedProteinResidues, consolidateDupsIgnoreILDiff);
                         if ((proteinSeqHashInfo[seqIndex].SequenceHash ?? "") != (proteinHash ?? ""))
                         {
                             RecordFastaFileWarning(lineCountRead, 1, cachedProteinName, (int)MessageCodeConstants.DuplicateProteinNameRetained);
@@ -6153,7 +6152,7 @@ namespace ValidateFastaFile
                 }
 
                 consolidatedFastaWriter.WriteLine(lineOut);
-                consolidatedFastaWriter.Write(sbCachedProteinResidueLines.ToString());
+                consolidatedFastaWriter.Write(cachedProteinResidueLines.ToString());
             }
         }
 

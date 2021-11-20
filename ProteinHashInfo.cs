@@ -48,14 +48,14 @@ namespace ValidateFastaFile
         /// Constructor
         /// </summary>
         /// <param name="seqHash"></param>
-        /// <param name="sbResidues"></param>
+        /// <param name="residues"></param>
         /// <param name="proteinName"></param>
-        public ProteinHashInfo(string seqHash, System.Text.StringBuilder sbResidues, string proteinName)
+        public ProteinHashInfo(string seqHash, System.Text.StringBuilder residues, string proteinName)
         {
             SequenceHash = seqHash;
 
-            SequenceLength = sbResidues.Length;
-            SequenceStart = sbResidues.ToString().Substring(0, Math.Min(sbResidues.Length, 20));
+            SequenceLength = residues.Length;
+            SequenceStart = residues.ToString().Substring(0, Math.Min(residues.Length, 20));
 
             ProteinNameFirst = proteinName;
             mAdditionalProteins = new SortedSet<string>();
