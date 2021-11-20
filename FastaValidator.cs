@@ -899,12 +899,18 @@ namespace ValidateFastaFile
         private char[] mProteinNameSubsequentRefSepChars;
 
         /// <summary>
-        /// This array has a space and a non-breaking space
+        /// <para>
+        /// This array has a space and a non-breaking space (\x00a0)
+        /// </para>
+        /// <para>
+        /// \xfffd (the Unicode replacement character) is included to match a non-breaking space
+        /// when reading an input file that does not specify an encoding using a BOM at the start of the file
+        /// </para>
         /// </summary>
         /// <remarks>
         /// It should not include a tab since we check for that separately
         /// </remarks>
-        private readonly char[] mProteinAccessionSepChars = { ' ', '\x00a0' };
+        private readonly char[] mProteinAccessionSepChars = { ' ', '\x00a0', '\xfffd' };
 
         private bool mAddMissingLinefeedAtEOF;
         private bool mCheckForDuplicateProteinNames;
@@ -970,6 +976,8 @@ namespace ValidateFastaFile
         private string mSortUtilityErrorMessage;
 
         private readonly List<string> mTempFilesToDelete;
+
+        private int mUnicodeReplaceCharacterRuleId;
 
         /// <summary>
         /// Set a processing option
@@ -2110,6 +2118,28 @@ namespace ValidateFastaFile
 
                 // Test the header line rules
                 EvaluateRules(headerLineRuleDetails, proteinName, lineIn, 0, lineIn, DEFAULT_CONTEXT_LENGTH);
+
+                if (proteinName.Length > 0)
+                {
+                    var nameStartIndex = lineIn.IndexOf(proteinName, StringComparison.InvariantCulture);
+                    var charIndexOfPossibleMatch = nameStartIndex + proteinName.Length;
+
+                    if (nameStartIndex >= 0 && charIndexOfPossibleMatch < lineIn.Length)
+                    {
+                        // Look for the Unicode replacement character after the protein name
+
+                        var characterAfterName = lineIn[charIndexOfPossibleMatch];
+
+                        if (characterAfterName == 65533)
+                        {
+                            var ruleId = mUnicodeReplaceCharacterRuleId == 0 ? CUSTOM_RULE_ID_START * 10 : mUnicodeReplaceCharacterRuleId;
+
+                            RecordFastaFileWarning(LineCount, charIndexOfPossibleMatch, proteinName,
+                                ruleId, string.Empty,
+                                ExtractContext(lineIn, charIndexOfPossibleMatch, DEFAULT_CONTEXT_LENGTH));
+                        }
+                    }
+                }
 
                 if (proteinDescription.Length > 0)
                 {
@@ -5746,6 +5776,17 @@ namespace ValidateFastaFile
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+[ \t]*$", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_MISSING, DEFAULT_WARNING_SEVERITY);
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\t", true, "Protein name is separated from the protein description by a tab", DEFAULT_WARNING_SEVERITY);
             SetRule(RuleTypes.HeaderLine, @"^>[^ \t]+\xA0", true, "Non-breaking space after the protein name", DEFAULT_WARNING_SEVERITY);
+
+            // This should match the Unicode replacement character
+            // In practice, the RegEx does not always succeed
+            // Thus, AnalyzeFastaProcessProteinHeader has a workaround that looks for character ID 65533
+
+            mUnicodeReplaceCharacterRuleId = SetRule(
+                RuleTypes.HeaderLine,
+                @"^>[^ \t\xFFFD]+\xFFFD",
+                true,
+                "Unicode replacement character (possibly a non-breaking space) after the protein name",
+                DEFAULT_WARNING_SEVERITY);
 
             // Protein Name error characters
             var allowedChars = @"A-Za-z0-9.\-_:,\|/()\[\]\=\+#";
