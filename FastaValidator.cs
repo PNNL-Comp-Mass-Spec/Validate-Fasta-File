@@ -1932,7 +1932,7 @@ namespace ValidateFastaFile
                             {
                                 var proteinHashInfo = hashItem;
                                 RecordFastaFileWarning(LineCount, 0, proteinHashInfo.ProteinNameFirst, (int)MessageCodeConstants.DuplicateProteinSequence,
-                                    proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ','), proteinHashInfo.SequenceStart);
+                                    proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ", "), proteinHashInfo.SequenceStart);
                             }
                         }
                     }
@@ -3573,12 +3573,18 @@ namespace ValidateFastaFile
 
         private string FlattenArray(IEnumerable<string> items, char sepChar)
         {
+            return FlattenArray(items, sepChar.ToString());
+        }
+
+        private string FlattenArray(IEnumerable<string> items, string separator)
+        {
+            // ReSharper disable once ConvertIfStatementToReturnStatement
             if (items == null)
             {
                 return string.Empty;
             }
 
-            return string.Join(sepChar.ToString(), items);
+            return string.Join(separator, items);
         }
 
         /// <summary>
