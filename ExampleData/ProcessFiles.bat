@@ -4,6 +4,10 @@ rem Create a fixed fasta file, renaming proteins with duplicate names
 rem Create a _ProteinHashes.txt file
 ..\bin\ValidateFastaFile.exe JunkTest.fasta /B
 
+rem Create a FastaFileStats .txt file
+..\bin\ValidateFastaFile.exe JunkTest.fasta /C
+..\bin\ValidateFastaFile.exe JunkTest_UTF8.fasta /C
+
 rem Process a FASTA file with UTF-8 encoding
 ..\bin\ValidateFastaFile.exe JunkTest_UTF8.fasta /B /F /R
 
