@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -1440,7 +1441,7 @@ namespace ValidateFastaFile
             StreamWriter fixedFastaWriter = null;
             StreamWriter sequenceHashWriter = null;
 
-            var fastaFilePathOut = "UndefinedFilePath.xyz";
+            var fixedFastaFilePath = "UndefinedFilePath.xyz";
 
             bool success;
             var exceptionCaught = false;
@@ -1481,7 +1482,12 @@ namespace ValidateFastaFile
                     usingPreloadedProteinNames = true;
                 }
 
-                if (mNormalizeFileLineEndCharacters)
+                if (mNormalizeFileLineEndCharacters && fastaFilePathToCheck.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                {
+                    OnWarningEvent("Cannot normalize line endings since the input file is a gzipped FASTA file");
+                    mFastaFilePath = fastaFilePathToCheck;
+                }
+                else if (mNormalizeFileLineEndCharacters)
                 {
                     mFastaFilePath = NormalizeFileLineEndings(
                         fastaFilePathToCheck,
@@ -1554,24 +1560,49 @@ namespace ValidateFastaFile
                 // Open the input file
                 var startTime = DateTime.UtcNow;
 
-                using (var fastaReader = new StreamReader(new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                Stream fileStream;
+                long fileSizeBytes;
+                string fastaFilePathWithoutGz;
+                bool readingGzippedFile;
+
+                if (Path.HasExtension(fastaFilePathToCheck) &&
+                    Path.GetExtension(fastaFilePathToCheck).Equals(".gz", StringComparison.OrdinalIgnoreCase))
+                {
+                    fastaFilePathWithoutGz = fastaFilePathToCheck.Substring(0, fastaFilePathToCheck.Length - 3);
+                    readingGzippedFile = true;
+
+                    var gzipFileStream = new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    fileSizeBytes = gzipFileStream.Length;
+
+                    fileStream = new GZipStream(gzipFileStream, CompressionMode.Decompress);
+                }
+                else
+                {
+                    fastaFilePathWithoutGz = fastaFilePathToCheck;
+                    readingGzippedFile = false;
+
+                    fileStream = new FileStream(fastaFilePathToCheck, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    fileSizeBytes = fileStream.Length;
+                }
+
+                using (var fastaReader = new StreamReader(fileStream))
                 {
                     // Optionally, create the output FASTA file
                     if (mGenerateFixedFastaFile)
                     {
                         try
                         {
-                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathWithoutGz) ?? string.Empty);
 
-                            fastaFilePathOut = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + "_new.fasta");
+                            fixedFastaFilePath = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(fastaFilePathWithoutGz) + "_new.fasta");
 
-                            fixedFastaWriter = new StreamWriter(new FileStream(fastaFilePathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+                            fixedFastaWriter = new StreamWriter(new FileStream(fixedFastaFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
                         }
                         catch (Exception ex)
                         {
                             // Error opening output file
                             RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.UnspecifiedError,
-                                "Error creating output file " + fastaFilePathOut + ": " + ex.Message, string.Empty);
+                                "Error creating output file " + fixedFastaFilePath + ": " + ex.Message, string.Empty);
                             OnErrorEvent("Error creating output file (Create _new.fasta)", ex);
                             return false;
                         }
@@ -1584,11 +1615,11 @@ namespace ValidateFastaFile
 
                         try
                         {
-                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathToCheck) ?? string.Empty);
+                            var outputDirectory = GetOutputDirectory(Path.GetDirectoryName(fastaFilePathWithoutGz) ?? string.Empty);
 
                             basicProteinHashInfoFilePath = Path.Combine(
                                 outputDirectory,
-                                Path.GetFileNameWithoutExtension(fastaFilePathToCheck) + PROTEIN_HASHES_FILENAME_SUFFIX);
+                                Path.GetFileNameWithoutExtension(fastaFilePathWithoutGz) + PROTEIN_HASHES_FILENAME_SUFFIX);
 
                             sequenceHashWriter = new StreamWriter(new FileStream(basicProteinHashInfoFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
 
@@ -1694,7 +1725,7 @@ namespace ValidateFastaFile
                             if (DateTime.UtcNow.Subtract(lastProgressReport).TotalSeconds >= 0.5)
                             {
                                 lastProgressReport = DateTime.UtcNow;
-                                var percentComplete = (float)(bytesRead / (double)fastaReader.BaseStream.Length * 100.0);
+                                var percentComplete = (float)(bytesRead / (double)fileSizeBytes * 100.0);
                                 if (consolidateDuplicateProteinSeqsInFasta || keepDuplicateNamedProteinsUnlessMatchingSequence)
                                 {
                                     // Bump the % complete down so that 100% complete in this routine will equate to 75% complete
@@ -1936,7 +1967,7 @@ namespace ValidateFastaFile
                 {
                     RecordFastaFileError(LineCount, 0, proteinName, (int)MessageCodeConstants.FinalProteinEntryMissingResidues);
                 }
-                else if (!blankLineProcessed)
+                else if (!blankLineProcessed && !readingGzippedFile)
                 {
                     // File does not end in multiple blank lines; need to re-open it using a binary reader and check the last two characters to make sure they're valid
                     System.Threading.Thread.Sleep(100);
@@ -2010,12 +2041,12 @@ namespace ValidateFastaFile
                     UpdateProgress("Validating FASTA File (" + Math.Round(percentComplete, 0) + "% Done)", percentComplete);
 
                     var hashInfoSuccess = AnalyzeFastaSaveHashInfo(
-                        fastaFilePathToCheck,
+                        fastaFilePathWithoutGz,
                         proteinSeqHashInfo,
                         consolidateDuplicateProteinSeqsInFasta,
                         consolidateDupsIgnoreILDiff,
                         keepDuplicateNamedProteinsUnlessMatchingSequence,
-                        fastaFilePathOut);
+                        fixedFastaFilePath);
 
                     success = hashInfoSuccess && !exceptionCaught;
                 }
@@ -2188,7 +2219,7 @@ namespace ValidateFastaFile
             bool consolidateDuplicateProteinSeqsInFasta,
             bool consolidateDupsIgnoreILDiff,
             bool keepDuplicateNamedProteinsUnlessMatchingSequence,
-            string fastaFilePathOut)
+            string fixedFastaFilePath)
         {
             StreamWriter uniqueProteinSeqsWriter;
             StreamWriter duplicateProteinMapWriter = null;
@@ -2342,7 +2373,7 @@ namespace ValidateFastaFile
                 success = CorrectForDuplicateProteinSeqsInFasta(
                     consolidateDuplicateProteinSeqsInFasta,
                     consolidateDupsIgnoreILDiff,
-                    fastaFilePathOut,
+                    fixedFastaFilePath,
                     proteinSeqHashInfo);
             }
 
