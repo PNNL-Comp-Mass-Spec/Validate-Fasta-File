@@ -41,7 +41,7 @@ namespace ValidateFastaFile
         /// </summary>
         public FastaValidator()
         {
-            mFileDate = "November 19, 2021";
+            mFileDate = "November 20, 2021";
             mTempFilesToDelete = new List<string>();
             InitializeLocalVariables();
         }
@@ -899,6 +899,7 @@ namespace ValidateFastaFile
         private readonly List<RuleDefinition> mProteinNameRules = new();
         private readonly List<RuleDefinition> mProteinDescriptionRules = new();
         private readonly List<RuleDefinition> mProteinSequenceRules = new();
+
         private int mMasterCustomRuleID = CUSTOM_RULE_ID_START;
 
         private char[] mProteinNameFirstRefSepChars;
@@ -2876,12 +2877,15 @@ namespace ValidateFastaFile
                 case RuleTypes.HeaderLine:
                     ClearRulesDataStructure(mHeaderLineRules);
                     break;
+
                 case RuleTypes.ProteinDescription:
                     ClearRulesDataStructure(mProteinDescriptionRules);
                     break;
+
                 case RuleTypes.ProteinName:
                     ClearRulesDataStructure(mProteinNameRules);
                     break;
+
                 case RuleTypes.ProteinSequence:
                     ClearRulesDataStructure(mProteinSequenceRules);
                     break;
