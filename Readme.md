@@ -1,4 +1,3 @@
-
 # Validate Fasta File
 
 This program reads a [FASTA file](https://en.wikipedia.org/wiki/FASTA_format) 
@@ -57,67 +56,56 @@ ValidateFastaFile.exe
  [/X] [/S:[MaxLevel]] [/Q]
 ```
 
-The input file path can contain the wildcard character * and should point 
-to a fasta file.
+The input file path can contain the wildcard character * and should point to a fasta file
 
-The output directory path is optional, and is only used if /C is used.
-If omitted, the output stats file will be created in the directory 
-containing the .Exe file.
+The output directory path is optional, and will be used if `/C`, `/F`, or `/B` is used
+* If omitted, the output stats file will be created in the directory containing the .Exe file.
 
-The parameter file path is optional.  If included, it should point to a 
-valid XML parameter file.
+The parameter file path is optional
+* If included, it should point to a valid XML parameter file.
 
-Use /C to specify that an output file should be created, rather than 
-displaying the results on the screen.
+Use `/C` to specify that an output file should be created, rather than displaying the results on the screen.
 
-Use /F to generate a new, fixed .Fasta file (long protein names will be auto-shortened).
-At the same time, a file with protein names and hash values
-for each unique protein sequences will be generated (_UniqueProteinSeqs.txt). 
-This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence.
-If duplicate sequences are found, then an easily parseable mapping file will
-also be created (_UniqueProteinSeqDuplicates.txt).
+Use `/F` to generate a new, fixed .Fasta file (long protein names will be auto-shortened)
+* At the same time, a file with protein names and hash values for each unique protein sequences will be generated (_UniqueProteinSeqs.txt)
+* This file will also list the other proteins that have duplicate sequences as the first protein mapped to each sequence
+* If duplicate sequences are found, an easily parseable mapping file will also be created (_UniqueProteinSeqDuplicates.txt)
 
-Use /R to rename proteins with duplicate names when using /F to generate a 
-fixed fasta file.
+Use `/R` to rename proteins with duplicate names when using `/F` to generate a fixed fasta file
 
-Use /D to consolidate proteins with duplicate protein sequences when using 
-/F to generate a fixed fasta file.
+Use `/D` to consolidate proteins with duplicate protein sequences when using `/F` to generate a fixed fasta file.
 
-Use /L to ignore I/L (isoleucine vs. leucine) differences when consolidating 
-proteins with duplicate protein sequences while generating a fixed fasta file.
+Use `/L` to ignore I/L (isoleucine vs. leucine) differences when consolidating 
+proteins with duplicate protein sequences while generating a fixed fasta file
 
-Use /V to remove invalid residues (non-letter characters, including an 
-asterisk) when using /F to generate a fixed fasta file.
+Use `/V` to remove invalid residues (non-letter characters, including an asterisk) when using `/F `to generate a fixed fasta file
 
-Use /KeepSameName to keep proteins with the same name but differing sequences 
-when using /F to generate a fixed fasta file (if they have the same name and 
-same sequence, then will only retain one entry); ignored if /R or /D is used
+Use `/KeepSameName` to keep proteins with the same name but differing sequences 
+when using `/F` to generate a fixed fasta file (if they have the same name and 
+same sequence, will only retain one entry)
+* Ignored if `/R` or `/D` is used
 
-Use /AllowDash to allow a - in residues
-use /AllowAsterisk to allow * in residues
+Use `/AllowDash` to allow a - in residues
 
-When parsing large fasta files, you can reduce the memory used by disabling 
-the checking for duplicates
- /SkipDupeSeqCheck disables duplicate sequence checking (which can 
-  require a large amount of memory)
- /SkipDupeNameCheck disables duplicate name checking (which typically 
-  requires less memory)
+use `/AllowAsterisk` to allow * in residues
 
-Use /B to save a hash info file (even if not consolidating duplicates).
-This is useful for parsing a large fasta file to obtain the sequence hash 
-for each protein (hash values are not cached in memory, thus very little
-memory is required).
+When parsing large fasta files, you can reduce the memory used by disabling the checking for duplicates
+* `/SkipDupeSeqCheck` disables duplicate sequence checking (which can require a large amount of memory)
+* `/SkipDupeNameCheck` disables duplicate name checking (which typically requires less memory)
 
-Use /HashFile to specify a pre-computed hash file to use for determining 
-which proteins to keep when generating a fixed fasta file. Use of 
-/HashFile automatically enables /F and automatically disables /D, /R, and /B
+Use `/B` to save a hash info file (even if not consolidating duplicates)
+* This is useful for parsing a large fasta file to obtain the sequence hash for each protein, since hash values are not cached in memory, thus very little
+memory is required
 
-Use /X to specify that a model XML parameter file should be created.
-Use /S to process all valid files in the input directory and subdirectories.
-Include a number after /S (like /S:2) to limit the level of subdirectories 
-to examine.
+Use `/HashFile` to specify a pre-computed hash file to use for determining which proteins to keep when generating a fixed fasta file
+* Use of `/HashFile` automatically enables `/F` and automatically disables `/D`, `/R`, and `/B`
 
-The optional /Q switch will suppress all error messages.
+Use `/X` to specify that a model XML parameter file should be created
+
+Use `/S` to process all valid files in the input directory and subdirectories
+* Include a number after `/S` (like `/S:2`) to limit the level of subdirectories to examine
+
+The optional `/Q` switch will suppress all error messages.
 
 ## Contacts
 
