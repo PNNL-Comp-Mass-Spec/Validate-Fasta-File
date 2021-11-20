@@ -1498,13 +1498,13 @@ namespace ValidateFastaFile
                         !string.IsNullOrWhiteSpace(fastaFilePathToCheck) &&
                         !mFastaFilePath.Equals(fastaFilePathToCheck))
                     {
-                        fastaFilePathToCheck = string.Copy(mFastaFilePath);
+                        fastaFilePathToCheck = mFastaFilePath;
                         OnWroteLineEndNormalizedFASTA(fastaFilePathToCheck);
                     }
                 }
                 else
                 {
-                    mFastaFilePath = string.Copy(fastaFilePathToCheck);
+                    mFastaFilePath = fastaFilePathToCheck;
                 }
 
                 OnProgressUpdate("Parsing " + Path.GetFileName(mFastaFilePath), 0);
@@ -1875,7 +1875,7 @@ namespace ValidateFastaFile
                                 else
                                 {
                                     // Do not remove non-letter characters, but do remove leading or trailing whitespace
-                                    residuesClean = string.Copy(trimmedLine.Trim());
+                                    residuesClean = trimmedLine.Trim();
                                 }
 
                                 if (fixedFastaWriter != null && !processingDuplicateOrInvalidProtein)
@@ -2559,7 +2559,7 @@ namespace ValidateFastaFile
 
                     if (previousProteinLength == 0)
                     {
-                        previousProteinName = string.Copy(proteinName);
+                        previousProteinName = proteinName;
                         previousProteinLength = previousProteinName.Length;
                         continue;
                     }
@@ -2598,7 +2598,7 @@ namespace ValidateFastaFile
                         }
                     }
 
-                    previousProteinName = string.Copy(proteinName);
+                    previousProteinName = proteinName;
                     previousProteinLength = previousProteinName.Length;
                 }
             }
@@ -2644,7 +2644,7 @@ namespace ValidateFastaFile
                 // Next see if the name fits the generic pattern defined by reProteinNameTruncation.reMatchGeneric
                 // Otherwise, use mFixedFastaOptions.LongProteinNameSplitChars to define where to truncate
 
-                newProteinName = string.Copy(proteinName);
+                newProteinName = proteinName;
                 extraProteinNameText = string.Empty;
 
                 match = reProteinNameTruncation.MatchIPI.Match(proteinName);
@@ -2728,7 +2728,7 @@ namespace ValidateFastaFile
                         mFixedFastaStats.ProteinNamesMultipleRefsRemoved++;
                     }
 
-                    proteinName = string.Copy(newProteinName);
+                    proteinName = newProteinName;
 
                     PrependExtraTextToProteinDescription(extraProteinNameText, ref proteinDescription);
                 }
@@ -2736,7 +2736,7 @@ namespace ValidateFastaFile
 
             if (mFixedFastaOptions.ProteinNameInvalidCharsToRemove.Length > 0)
             {
-                newProteinName = string.Copy(proteinName);
+                newProteinName = proteinName;
 
                 // First remove invalid characters from the beginning or end of the protein name
                 newProteinName = newProteinName.Trim(mFixedFastaOptions.ProteinNameInvalidCharsToRemove);
@@ -2751,7 +2751,7 @@ namespace ValidateFastaFile
 
                     if (proteinName != newProteinName && newProteinName.Length >= 3)
                     {
-                        proteinName = string.Copy(newProteinName);
+                        proteinName = newProteinName;
                         mFixedFastaStats.ProteinNamesInvalidCharsReplaced++;
                     }
                 }
@@ -3485,7 +3485,7 @@ namespace ValidateFastaFile
 
                     RecordFastaFileWarning(LineCount, 1, proteinName, (int)MessageCodeConstants.RenamedProtein, "--> " + newProteinName, string.Empty);
 
-                    proteinName = string.Copy(newProteinName);
+                    proteinName = newProteinName;
                     mFixedFastaStats.DuplicateNameProteinsRenamed++;
                     skipDuplicateProtein = false;
                 }
@@ -3673,7 +3673,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                proteinName = string.Copy(fileError.ProteinName);
+                proteinName = fileError.ProteinName;
             }
 
             return LookupMessageType(MsgTypeConstants.ErrorMsg) + sepChar +
@@ -3725,7 +3725,7 @@ namespace ValidateFastaFile
             }
             else
             {
-                proteinName = string.Copy(fileWarning.ProteinName);
+                proteinName = fileWarning.ProteinName;
             }
 
             return LookupMessageType(MsgTypeConstants.WarningMsg) + sepChar +
@@ -4216,7 +4216,7 @@ namespace ValidateFastaFile
 
                             // Update the currentHash values
                             currentSequenceIndex++;
-                            currentHash = string.Copy(proteinHash);
+                            currentHash = proteinHash;
                             currentHashSeqLength = dataValues[sequenceLengthColumnIndex];
 
                             proteinNamesCurrentHash.Clear();
@@ -4285,7 +4285,7 @@ namespace ValidateFastaFile
                         // The stored value will be incremented when this protein name is encountered by the validator
                         preloadedProteinNamesToKeep.Add(proteinName, 0);
 
-                        lastProteinAdded = string.Copy(proteinName);
+                        lastProteinAdded = proteinName;
                     }
                 }
 
@@ -4389,7 +4389,7 @@ namespace ValidateFastaFile
                             }
                         }
 
-                        lastProtein = string.Copy(currentProtein);
+                        lastProtein = currentProtein;
 
                         var dataToWrite = new List<string>()
                         {
@@ -4930,7 +4930,7 @@ namespace ValidateFastaFile
                 }
                 else
                 {
-                    proteinDescription = string.Copy(extraProteinNameText);
+                    proteinDescription = extraProteinNameText;
                 }
             }
         }
@@ -5450,7 +5450,7 @@ namespace ValidateFastaFile
                         }
                         else
                         {
-                            proteinName = string.Copy(fileError.ProteinName);
+                            proteinName = fileError.ProteinName;
                         }
 
                         var messageDescription = LookupMessageDescription(fileError.MessageCode, fileError.ExtraInfo);
@@ -5486,7 +5486,7 @@ namespace ValidateFastaFile
                         }
                         else
                         {
-                            proteinName = string.Copy(fileWarning.ProteinName);
+                            proteinName = fileWarning.ProteinName;
                         }
 
                         ReportResultAddEntry(

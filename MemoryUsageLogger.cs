@@ -313,7 +313,7 @@ namespace ValidateFastaFile
                 }
                 else
                 {
-                    logFilePath = string.Copy(logFileName);
+                    logFilePath = logFileName;
                 }
 
                 var writeHeader = !File.Exists(logFilePath);

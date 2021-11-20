@@ -160,7 +160,7 @@ namespace ValidateFastaFile
 
                         if (previousKeyLength == 0)
                         {
-                            previousKey = string.Copy(currentKey);
+                            previousKey = currentKey;
                             previousKeyLength = previousKey.Length;
                             continue;
                         }

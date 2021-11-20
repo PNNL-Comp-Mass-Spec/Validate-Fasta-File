@@ -259,7 +259,7 @@ namespace ValidateFastaFile
                 mCurrentFileErrors.Clear();
                 mCurrentFileWarnings.Clear();
 
-                mCachedFastaFilePath = string.Copy(mFastaFilePath);
+                mCachedFastaFilePath = mFastaFilePath;
             }
 
             if (messageType == ValidationMessageTypes.WarningMsg)
