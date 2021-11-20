@@ -6,8 +6,8 @@
     <item key="AllowDashInResidues" value="True" />
     <item key="CheckForDuplicateProteinNames" value="True" />
     <item key="CheckForDuplicateProteinSequences" value="True" />
-    <item key="SaveProteinSequenceHashInfoFiles" value="False" />
-    <item key="SaveBasicProteinHashInfoFile" value="False" />
+    <item key="SaveProteinSequenceHashInfoFiles" value="True" />
+    <item key="SaveBasicProteinHashInfoFile" value="True" />
     <item key="MaximumFileErrorsToTrack" value="50" />
     <item key="MinimumProteinNameLength" value="3" />
     <item key="MaximumProteinNameLength" value="34" />
