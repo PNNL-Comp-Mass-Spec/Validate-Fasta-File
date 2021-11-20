@@ -207,9 +207,9 @@ namespace ValidateFastaFile
             }
         }
 
-        private static void DisplayProgressPercent(int percentComplete, bool addCarriageReturn)
+        private static void DisplayProgressPercent(int percentComplete, bool addNewline)
         {
-            if (addCarriageReturn)
+            if (addNewline)
             {
                 Console.WriteLine();
             }
@@ -218,7 +218,7 @@ namespace ValidateFastaFile
                 percentComplete = 100;
 
             Console.Write("Processing: " + percentComplete.ToString() + "% ");
-            if (addCarriageReturn)
+            if (addNewline)
             {
                 Console.WriteLine();
             }

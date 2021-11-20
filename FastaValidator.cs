@@ -2994,13 +2994,13 @@ namespace ValidateFastaFile
                 terminatorSize = DetermineLineTerminatorSize(fixedFastaFilePathTemp);
 
                 // Open the Fixed FASTA file
-                Stream fsInFile = new FileStream(
+                Stream inputStream = new FileStream(
                     fixedFastaFilePathTemp,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.ReadWrite);
 
-                fastaReader = new StreamReader(fsInFile);
+                fastaReader = new StreamReader(inputStream);
             }
             catch (Exception ex)
             {
@@ -3282,18 +3282,18 @@ namespace ValidateFastaFile
             try
             {
                 // Open the input file and look for the first carriage return or line feed
-                using var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-                while (fsInFile.Position < fsInFile.Length && fsInFile.Position < 100000)
+                while (reader.Position < reader.Length && reader.Position < 100000)
                 {
-                    var oneByte = fsInFile.ReadByte();
+                    var oneByte = reader.ReadByte();
 
                     if (oneByte == 10)
                     {
                         // Found linefeed
-                        if (fsInFile.Position < fsInFile.Length)
+                        if (reader.Position < reader.Length)
                         {
-                            oneByte = fsInFile.ReadByte();
+                            oneByte = reader.ReadByte();
                             if (oneByte == 13)
                             {
                                 // LfCr
@@ -6040,15 +6040,15 @@ namespace ValidateFastaFile
             try
             {
                 // Open the input file and validate that the final characters are CrLf, simply CR, or simply LF
-                using var fsInFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                using var reader = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
-                if (fsInFile.Length > 2)
+                if (reader.Length > 2)
                 {
-                    fsInFile.Seek(-1, SeekOrigin.End);
+                    reader.Seek(-1, SeekOrigin.End);
 
-                    var lastByte = fsInFile.ReadByte();
+                    var lastByte = reader.ReadByte();
 
-                    if (lastByte == 10 || lastByte == 13)
+                    if (lastByte is 10 or 13)
                     {
                         // File ends in a linefeed or carriage return character; that's good
                         return true;
@@ -6059,9 +6059,9 @@ namespace ValidateFastaFile
                     return true;
 
                 ShowMessage("Appending CrLf return to: " + Path.GetFileName(inputFilePath));
-                fsInFile.WriteByte(13);
+                reader.WriteByte(13);
 
-                fsInFile.WriteByte(10);
+                reader.WriteByte(10);
 
                 return true;
             }
