@@ -5823,7 +5823,7 @@ namespace ValidateFastaFile
             SetRule(RuleTypes.ProteinDescription, @"\t", true, "Protein description contains a tab character", DEFAULT_WARNING_SEVERITY);
             SetRule(RuleTypes.ProteinDescription, @"\\/", true, @"Protein description contains an escaped slash: \/", DEFAULT_WARNING_SEVERITY);
             SetRule(RuleTypes.ProteinDescription, @"[\x00-\x08\x0E-\x1F]", true, "Protein description contains an escape code character", DEFAULT_ERROR_SEVERITY);
-            SetRule(RuleTypes.ProteinDescription, ".{900,}", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1, false);
+            SetRule(RuleTypes.ProteinDescription, ".{900,}", true, MESSAGE_TEXT_PROTEIN_DESCRIPTION_TOO_LONG, DEFAULT_WARNING_SEVERITY + 1);
 
             // Protein sequence errors
             SetRule(RuleTypes.ProteinSequence, @"[ \t]", true, "A space or tab was found in the residues", DEFAULT_ERROR_SEVERITY);
