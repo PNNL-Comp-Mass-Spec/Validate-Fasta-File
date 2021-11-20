@@ -1129,12 +1129,12 @@ namespace ValidateFastaFile
             }
 
             var count = 0;
-            if (countType == ErrorWarningCountTypes.Specified || countType == ErrorWarningCountTypes.Total)
+            if (countType is ErrorWarningCountTypes.Specified or ErrorWarningCountTypes.Total)
             {
                 count += msgSet.Messages.Count;
             }
 
-            if (countType == ErrorWarningCountTypes.Unspecified || countType == ErrorWarningCountTypes.Total)
+            if (countType is ErrorWarningCountTypes.Unspecified or ErrorWarningCountTypes.Total)
             {
                 count += msgSet.ComputeTotalUnspecifiedCount();
             }
@@ -3682,8 +3682,7 @@ namespace ValidateFastaFile
         /// <returns>The error message, or an empty string if no error</returns>
         public override string GetErrorMessage()
         {
-            if (ErrorCode == ProcessFilesErrorCodes.LocalizedError ||
-                ErrorCode == ProcessFilesErrorCodes.NoError)
+            if (ErrorCode is ProcessFilesErrorCodes.LocalizedError or ProcessFilesErrorCodes.NoError)
             {
                 return mLocalErrorCode switch
                 {
