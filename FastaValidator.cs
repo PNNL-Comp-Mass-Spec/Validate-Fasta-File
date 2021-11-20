@@ -5842,7 +5842,7 @@ namespace ValidateFastaFile
             }
         }
 
-        private void SetRule(
+        private int SetRule(
             RuleTypes ruleType,
             string regexToMatch,
             bool doesMatchIndicateProblem,
@@ -5850,27 +5850,31 @@ namespace ValidateFastaFile
             short severityLevel,
             bool displayMatchAsExtraInfo = false)
         {
-            switch (ruleType)
+            return ruleType switch
             {
-                case RuleTypes.HeaderLine:
-                    SetRule(mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
-                    break;
-                case RuleTypes.ProteinDescription:
-                    SetRule(mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
-                    break;
-                case RuleTypes.ProteinName:
-                    SetRule(mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
-                    break;
-                case RuleTypes.ProteinSequence:
-                    SetRule(mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo);
-                    break;
-
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(ruleType), ruleType, "Unrecognized enum for ruleType");
-            }
+                RuleTypes.HeaderLine => SetRule(
+                    mHeaderLineRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo),
+                RuleTypes.ProteinDescription => SetRule(
+                    mProteinDescriptionRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo),
+                RuleTypes.ProteinName => SetRule(
+                    mProteinNameRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo),
+                RuleTypes.ProteinSequence => SetRule(
+                    mProteinSequenceRules, regexToMatch, doesMatchIndicateProblem, problemReturnMessage, severityLevel, displayMatchAsExtraInfo),
+                _ => throw new ArgumentOutOfRangeException(nameof(ruleType), ruleType, "Unrecognized enum for ruleType")
+            };
         }
 
-        private void SetRule(
+        /// <summary>
+        /// Add a new rule
+        /// </summary>
+        /// <param name="rules"></param>
+        /// <param name="matchRegEx"></param>
+        /// <param name="matchIndicatesProblem"></param>
+        /// <param name="messageWhenProblem"></param>
+        /// <param name="severity"></param>
+        /// <param name="displayMatchAsExtraInfo"></param>
+        /// <returns>Custom rule ID assigned to the rule</returns>
+        private int SetRule(
             List<RuleDefinition> rules,
             string matchRegEx,
             bool matchIndicatesProblem,
@@ -5883,16 +5887,20 @@ namespace ValidateFastaFile
                 throw new ArgumentNullException(nameof(rules));
             }
 
+            var newRuleID = mMasterCustomRuleID;
+
             rules.Add(new RuleDefinition(matchRegEx)
             {
                 MatchIndicatesProblem = matchIndicatesProblem,
                 MessageWhenProblem = messageWhenProblem,
                 Severity = severity,
                 DisplayMatchAsExtraInfo = displayMatchAsExtraInfo,
-                CustomRuleID = mMasterCustomRuleID,
+                CustomRuleID = newRuleID,
             });
 
             mMasterCustomRuleID++;
+
+            return newRuleID;
         }
 
         private bool SortFile(FileInfo proteinHashFile, int sortColumnIndex, string sortedFilePath)
