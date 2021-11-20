@@ -3883,7 +3883,7 @@ namespace ValidateFastaFile
                         // Ignore the error, but mark .Valid = false
                         ruleDetails[index].Valid = false;
 
-                        OnWarningEvent(string.Format("Invalid RegEx '{0}: {1} ", ruleDefinitions[index].MatchRegEx ?? "null", ex));
+                        OnWarningEvent("Invalid RegEx '{0}: {1} ", ruleDefinitions[index].MatchRegEx ?? "null", ex);
                     }
                 }
             }
@@ -4362,7 +4362,7 @@ namespace ValidateFastaFile
 
                         if (dataValues.Length < 2)
                         {
-                            OnWarningEvent(string.Format("Skipping line {0} in the protein hash file since it does not have 2 columns", linesRead));
+                            OnWarningEvent("Skipping line {0} in the protein hash file since it does not have 2 columns", linesRead);
                             continue;
                         }
 
