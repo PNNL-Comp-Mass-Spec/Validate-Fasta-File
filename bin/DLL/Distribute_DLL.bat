@@ -1,7 +1,7 @@
 @echo off
 
-call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Protein_Digestion_Simulator\bin\
-call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Protein_Digestion_Simulator\bin\DLL\
+call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Protein_Digestion_Simulator\ProteinDigestionSimulator\bin\
+call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Protein_Digestion_Simulator\ProteinDigestionSimulator\bin\DLL\
 call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Protein_Digestion_Simulator\Lib\
 
 call Distribute_DLL_Work.bat F:\Documents\Projects\KenAuberry\Organism_Database_Handler\Executables\Debug\
