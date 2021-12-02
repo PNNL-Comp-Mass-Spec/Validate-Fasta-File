@@ -41,7 +41,7 @@ namespace ValidateFastaFile
         /// </summary>
         public FastaValidator()
         {
-            mFileDate = "November 20, 2021";
+            mFileDate = "December 1, 2021";
             mTempFilesToDelete = new List<string>();
             InitializeLocalVariables();
         }
@@ -3080,6 +3080,7 @@ namespace ValidateFastaFile
                     {
                         proteinNameFirst.Add(proteinHashInfo.ProteinNameFirst, index);
                     }
+                    // ReSharper disable once RedundantIfElseBlock
                     else
                     {
                         // .ProteinNameFirst is already present in proteinNameFirst
@@ -3110,6 +3111,7 @@ namespace ValidateFastaFile
                         {
                             proteinNameFirst.Add(additionalProtein, index);
                         }
+                        // ReSharper disable once RedundantIfElseBlock
                         else
                         {
                             // .AdditionalProteins(duplicateIndex) is already present in proteinNameFirst
