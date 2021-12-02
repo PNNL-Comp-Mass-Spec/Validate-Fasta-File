@@ -35,6 +35,9 @@ rem Process a gzipped FASTA file
 rem Use a parameter file to specify options
 %ExePath% QC_Standards_2004-01-21_Dup.fasta /P:ValidateFastaFileOptions_GenerateFixedFasta.xml
 
+rem Process a file with DNA sequences
+%ExePath% H_sapiens_DNA_Excerpts.fasta
+
 :Done
 
 pause
