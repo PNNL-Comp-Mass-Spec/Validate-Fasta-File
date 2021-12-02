@@ -1702,6 +1702,10 @@ namespace ValidateFastaFile
 
                     // Note: This value is updated only if the line length is < mMaximumResiduesPerLine
                     var currentValidResidueLineLengthMax = 0;
+
+                    var nucleicAcidEntries = 0;
+                    var totalEntries = 0;
+
                     var processingDuplicateOrInvalidProtein = false;
 
                     var lastProgressReport = DateTime.UtcNow;
@@ -1802,15 +1806,18 @@ namespace ValidateFastaFile
                             if (currentResidues.Length > 0)
                             {
                                 ProcessResiduesForPreviousProtein(
-                                    proteinName, currentResidues,
+                                    proteinName,
+                                    currentResidues,
                                     proteinSequenceHashes,
                                     proteinSeqHashInfo,
                                     consolidateDupsIgnoreILDiff,
                                     fixedFastaWriter,
                                     currentValidResidueLineLengthMax,
-                                    sequenceHashWriter);
+                                    sequenceHashWriter,
+                                    ref nucleicAcidEntries);
 
                                 currentValidResidueLineLengthMax = 0;
+                                totalEntries++;
                             }
 
                             // Now process this protein entry
@@ -1930,12 +1937,17 @@ namespace ValidateFastaFile
                     if (currentResidues.Length > 0)
                     {
                         ProcessResiduesForPreviousProtein(
-                            proteinName, currentResidues,
+                            proteinName,
+                            currentResidues,
                             proteinSequenceHashes,
                             proteinSeqHashInfo,
                             consolidateDupsIgnoreILDiff,
-                            fixedFastaWriter, currentValidResidueLineLengthMax,
-                            sequenceHashWriter);
+                            fixedFastaWriter,
+                            currentValidResidueLineLengthMax,
+                            sequenceHashWriter,
+                            ref nucleicAcidEntries);
+
+                        totalEntries++;
                     }
 
                     if (mCheckForDuplicateProteinSequences)
@@ -1949,6 +1961,28 @@ namespace ValidateFastaFile
                                 RecordFastaFileWarning(LineCount, 0, proteinHashInfo.ProteinNameFirst, (int)MessageCodeConstants.DuplicateProteinSequence,
                                     proteinHashInfo.ProteinNameFirst + ", " + FlattenArray(proteinHashInfo.AdditionalProteins, ", "), proteinHashInfo.SequenceStart);
                             }
+                        }
+                    }
+
+                    var validProteinCount = totalEntries - nucleicAcidEntries;
+                    if (nucleicAcidEntries > 0 && validProteinCount < nucleicAcidEntries)
+                    {
+                        if (validProteinCount == 0)
+                        {
+                            var sequenceDescription =
+                                nucleicAcidEntries == 1
+                                ? "The sequence is DNA"
+                                : string.Format("The {0} sequences are DNA", nucleicAcidEntries);
+
+                            RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.ResiduesAreLikelyDNA,
+                                "The FASTA file has nucleic acids (DNA)",
+                                string.Format("{0} (residues are A, T, C, or G)", sequenceDescription));
+                        }
+                        else
+                        {
+                            RecordFastaFileError(0, 0, string.Empty, (int)MessageCodeConstants.ResiduesAreLikelyDNA,
+                                "The majority of the FASTA file entries are nucleic acids (DNA)",
+                                string.Format("{0} / {1} sequences are DNA (residues are A, T, C, or G)", nucleicAcidEntries, totalEntries));
                         }
                     }
 
@@ -3936,7 +3970,10 @@ namespace ValidateFastaFile
         /// Return true if all of the characters in residues are A, T, C, or G
         /// </summary>
         /// <param name="residues"></param>
-        private bool IsLikelyDNA(StringBuilder residues)
+        /// <param name="percentNucleicAcidSymbol">
+        /// Value between 0 and 100 indicating the percent of the residues that are A, T, C, or G
+        /// </param>
+        private bool IsLikelyDNA(StringBuilder residues, out double percentNucleicAcidSymbol)
         {
             var aminoAcidCount = 0;
             var dnaCount = 0;
@@ -3955,6 +3992,14 @@ namespace ValidateFastaFile
                     aminoAcidCount++;
                 }
             }
+
+            if (dnaCount + aminoAcidCount == 0)
+            {
+                percentNucleicAcidSymbol = 0;
+                return false;
+            }
+
+            percentNucleicAcidSymbol = dnaCount / (double)(dnaCount + aminoAcidCount) * 100;
 
             return dnaCount > 0 && aminoAcidCount == 0;
         }
@@ -4989,7 +5034,8 @@ namespace ValidateFastaFile
             bool consolidateDupsIgnoreILDiff,
             TextWriter fixedFastaWriter,
             int currentValidResidueLineLengthMax,
-            TextWriter sequenceHashWriter)
+            TextWriter sequenceHashWriter,
+            ref int nucleicAcidEntries)
         {
             // Check for and remove any asterisks at the end of the residues
             while (currentResidues.Length > 0 && currentResidues[currentResidues.Length - 1] == '*')
@@ -5041,10 +5087,15 @@ namespace ValidateFastaFile
                 }
             }
 
-            if (IsLikelyDNA(currentResidues))
+            if (IsLikelyDNA(currentResidues, out var percentNucleicAcidSymbol))
             {
                 var initialResidues = currentResidues.ToString(0, Math.Min(20, currentResidues.Length));
                 RecordFastaFileWarning(LineCount, 0, proteinName, (int)MessageCodeConstants.ResiduesAreLikelyDNA, string.Empty, initialResidues);
+            }
+
+            if (percentNucleicAcidSymbol > 95)
+            {
+                nucleicAcidEntries++;
             }
 
             currentResidues.Clear();
