@@ -11,4 +11,4 @@ call Distribute_DLL_Work.bat F:\Documents\Projects\KenAuberry\Organism_Database_
 
 call Distribute_DLL_Work.bat F:\Documents\Projects\DataMining\Validate_Fasta_File\TestValidateFastaFileDLL\bin\
 
-pause
+if not "%1"=="NoPause" pause
