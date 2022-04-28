@@ -31,7 +31,7 @@ namespace ValidateFastaFile
     {
         // Ignore Spelling: isoleucine, leucine, parseable, pre
 
-        public const string PROGRAM_DATE = "January 7, 2022";
+        public const string PROGRAM_DATE = "April 27, 2022";
 
         private static string mInputFilePath;
         private static string mOutputDirectoryPath;
