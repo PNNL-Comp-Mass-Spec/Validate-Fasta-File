@@ -77,7 +77,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Show the protein name and sequence hash
         /// </summary>
-        /// <returns></returns>
         public override string ToString()
         {
             return ProteinNameFirst + ": " + SequenceHash;

@@ -44,12 +44,12 @@ namespace ValidateFastaFile
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
-        /// <param name="spannerCharLength"></param>
         /// <remarks>
         /// If spannerCharLength is too small, all of the items added to this class instance using Add() will be
         /// tracked by the same dictionary, which could result in a dictionary surpassing the 2 GB boundary
         /// </remarks>
+        /// <param name="ignoreCaseForKeys">True to create case-insensitive dictionaries (and thus ignore differences between uppercase and lowercase letters)</param>
+        /// <param name="spannerCharLength"></param>
         public NestedStringDictionary(bool ignoreCaseForKeys = false, byte spannerCharLength = 1)
         {
             IgnoreCase = ignoreCaseForKeys;
@@ -126,7 +126,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Return a string summarizing the number of items in the dictionary associated with each spanning key
         /// </summary>
-        /// <returns>String description of the stored data</returns>
         /// <remarks>
         /// Example return strings:
         /// 1 spanning key:  'a' with 1 item
@@ -134,6 +133,7 @@ namespace ValidateFastaFile
         /// 3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
         /// 5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
         /// </remarks>
+        /// <returns>String description of the stored data</returns>
         public string GetSizeSummary()
         {
             var summary = mData.Keys.Count + " spanning keys";

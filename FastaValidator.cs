@@ -989,9 +989,9 @@ namespace ValidateFastaFile
         /// <summary>
         /// Set a processing option
         /// </summary>
+        /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
         /// <param name="switchName"></param>
         /// <param name="state"></param>
-        /// <remarks>Be sure to call SetDefaultRules() after setting all of the options</remarks>
         public void SetOptionSwitch(SwitchOptions switchName, bool state)
         {
             switch (switchName)
@@ -1444,13 +1444,13 @@ namespace ValidateFastaFile
         /// Optionally create a new, fixed FASTA file
         /// Optionally also consolidate proteins with duplicate sequences
         /// </summary>
+        /// <remarks>Assumes fastaFilePathToCheck exists</remarks>
         /// <param name="fastaFilePathToCheck"></param>
         /// <param name="preloadedProteinNamesToKeep">
         /// Preloaded list of protein names to include in the fixed FASTA file
         /// Keys are protein names, values are the number of entries written to the fixed FASTA file for the given protein name
         /// </param>
         /// <returns>True if the file was successfully analyzed (even if errors were found)</returns>
-        /// <remarks>Assumes fastaFilePathToCheck exists</remarks>
         private bool AnalyzeFastaFile(string fastaFilePathToCheck, NestedStringIntList preloadedProteinNamesToKeep)
         {
             StreamWriter fixedFastaWriter = null;
@@ -2454,13 +2454,13 @@ namespace ValidateFastaFile
         /// <summary>
         /// Pre-scan a portion of the FASTA file to determine the appropriate value for mProteinNameSpannerCharLength
         /// </summary>
-        /// <param name="fastaFilePathToTest">FASTA file to examine</param>
-        /// <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
         /// <remarks>
         /// Reads 50 MB chunks from 10 sections of the FASTA file (or the entire FASTA file if under 500 MB in size)
         /// Keeps track of the portion of protein names in common between adjacent proteins
         /// Uses this information to determine an appropriate value for mProteinNameSpannerCharLength
         /// </remarks>
+        /// <param name="fastaFilePathToTest">FASTA file to examine</param>
+        /// <param name="terminatorSize">Linefeed length (1 for LF or 2 for CRLF)</param>
         private void AutoDetermineFastaProteinNameSpannerCharLength(string fastaFilePathToTest, int terminatorSize)
         {
             const int PARTS_TO_SAMPLE = 10;
@@ -3679,8 +3679,8 @@ namespace ValidateFastaFile
         /// <summary>
         /// Find the first space (or first tab) in the protein header line
         /// </summary>
-        /// <param name="headerLine"></param>
         /// <remarks>Used for determining protein name</remarks>
+        /// <param name="headerLine"></param>
         private int GetBestSpaceIndex(string headerLine)
         {
             var spaceIndex = headerLine.IndexOfAny(mProteinAccessionSepChars);
@@ -4875,11 +4875,11 @@ namespace ValidateFastaFile
         /// <summary>
         /// Validate a single FASTA file
         /// </summary>
-        /// <returns>True if success; false if a fatal error</returns>
         /// <remarks>
         /// Note that .ProcessFile returns True if a file is successfully processed (even if errors are found)
         /// Used by CustomValidateFastaFiles
         /// </remarks>
+        /// <returns>True if success; false if a fatal error</returns>
         // ReSharper disable once UnusedMember.Global
         protected bool SimpleProcessFile(string inputFilePath)
         {
@@ -5198,11 +5198,11 @@ namespace ValidateFastaFile
         /// <summary>
         /// Read rules from an XML parameter file
         /// </summary>
+        /// <remarks>Even if RuleCount = 0, this function will return True</remarks>
         /// <param name="settingsFile"></param>
         /// <param name="sectionName"></param>
         /// <param name="rules"></param>
         /// <returns>True if the section named sectionName is present and if it contains an item with keyName = "RuleCount"</returns>
-        /// <remarks>Even if RuleCount = 0, this function will return True</remarks>
         private bool ReadRulesFromParameterFile(
             XmlSettingsFileAccessor settingsFile,
             string sectionName,

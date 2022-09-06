@@ -51,12 +51,12 @@ namespace ValidateFastaFile
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="spannerCharLength"></param>
-        /// <param name="raiseExceptionIfAddedDataNotSorted"></param>
         /// <remarks>
         /// If spannerCharLength is too small, all of the items added to this class instance using Add() will be
         /// tracked by the same list, which could result in a list surpassing the 2 GB boundary
         /// </remarks>
+        /// <param name="spannerCharLength"></param>
+        /// <param name="raiseExceptionIfAddedDataNotSorted"></param>
         public NestedStringIntList(byte spannerCharLength = 1, bool raiseExceptionIfAddedDataNotSorted = false)
         {
             mData = new Dictionary<string, List<KeyValuePair<string, int>>>(StringComparer.InvariantCulture);
@@ -275,9 +275,9 @@ namespace ValidateFastaFile
         /// <summary>
         /// Check for the existence of a string item (ignoring the associated integer)
         /// </summary>
+        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         /// <param name="item">String to find</param>
         /// <returns>True if the item exists, otherwise false</returns>
-        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public bool Contains(string item)
         {
             var spannerKey = GetSpannerKey(item);
@@ -298,7 +298,6 @@ namespace ValidateFastaFile
         /// <summary>
         /// Return a string summarizing the number of items in the List associated with each spanning key
         /// </summary>
-        /// <returns>String description of the stored data</returns>
         /// <remarks>
         /// Example return strings:
         /// 1 spanning key:  'a' with 1 item
@@ -306,6 +305,7 @@ namespace ValidateFastaFile
         /// 3 spanning keys: including 'a' with 1 item, 'o' with 1 item, and 'p' with 1 item
         /// 5 spanning keys: including 'a' with 2 items, 'p' with 2 items, and 'w' with 1 item
         /// </remarks>
+        /// <returns>String description of the stored data</returns>
         public string GetSizeSummary()
         {
             var summary = mData.Keys.Count + " spanning keys";
@@ -376,10 +376,10 @@ namespace ValidateFastaFile
         /// <summary>
         /// Return the integer associated with the given string item
         /// </summary>
+        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         /// <param name="item">String to find</param>
         /// <param name="valueIfNotFound"></param>
         /// <returns>Integer value if found, otherwise nothing</returns>
-        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         public int GetValueForItem(string item, int valueIfNotFound = -1)
         {
             var spannerKey = GetSpannerKey(item);
@@ -450,9 +450,9 @@ namespace ValidateFastaFile
         /// <summary>
         /// Update the integer associated with the given string item
         /// </summary>
+        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         /// <param name="item">String to find</param>
         /// <param name="value">Integer value associated with the item</param>
-        /// <remarks>For large lists call Sort() prior to calling this function</remarks>
         /// <returns>True item was found and updated, false if the item does not exist</returns>
         public bool SetValueForItem(string item, int value)
         {
